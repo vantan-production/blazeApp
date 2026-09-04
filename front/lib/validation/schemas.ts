@@ -61,3 +61,19 @@ export const inquiryNameSchema = stringField(
 	VALIDATION_LIMITS.inquiryName.max,
 	"名前",
 );
+
+// 問い合わせの対応ステータス（back/src/db/schema.ts と同じ値・同じラベル）
+export const inquiryStatusSchema = z.enum([
+	"pending",
+	"in_progress",
+	"resolved",
+]);
+
+export type InquiryStatus = z.infer<typeof inquiryStatusSchema>;
+
+// 画面表示用のラベル（DBには英語キーが入る）
+export const INQUIRY_STATUS_LABELS: Record<InquiryStatus, string> = {
+	pending: "未対応",
+	in_progress: "対応中",
+	resolved: "対応済み",
+};

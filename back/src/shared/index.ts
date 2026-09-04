@@ -32,6 +32,8 @@ export {
   titleSchema,
   bodySchema,
   inquiryNameSchema,
+  inquiryStatusSchema,
+  INQUIRY_STATUS_LABELS,
   consentStatusSchema,
   categorySchema,
   trialNameSchema,
@@ -94,6 +96,7 @@ export { parsePage, buildPagination } from "../utils/pagination.js";
 // メール送信
 export {
   sendPasswordResetEmail,
+  sendInquiryAutoReplyEmail,
   sendTrialApplicationConfirmationEmail,
   sendTrialApplicationAdminNotification,
 } from "../utils/mail.js";

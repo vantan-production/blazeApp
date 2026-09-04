@@ -163,3 +163,36 @@ export async function sendTrialApplicationAdminNotification(
     throw new Error(`体験申し込み通知メールの送信に失敗しました: ${error.message}`);
   }
 }
+
+/**
+ * 問い合わせ受付の自動返信メールをお客様に送信する
+ * テスト環境（NODE_ENV=test）では実送信せずスキップする
+ */
+export async function sendInquiryAutoReplyEmail(data: {
+  email: string;
+  name: string;
+  title: string;
+  body: string;
+}): Promise<void> {
+  if (process.env.NODE_ENV === "test") return;
+
+  const { error } = await getResendClient().emails.send({
+    from: MAIL_FROM,
+    to: data.email,
+    subject: "【西尾ブレイズ】お問い合わせを受け付けました",
+    html: `
+      <p>${escapeHtml(data.name)} 様</p>
+      <p>問い合わせありがとうございます。スタッフが順に対応していきます。今しばらくお待ちください。</p>
+      <hr />
+      <p>【お問い合わせ内容】</p>
+      <p>件名: ${escapeHtml(data.title)}</p>
+      <p>${escapeHtml(data.body).replace(/\n/g, "<br />")}</p>
+      <hr />
+      <p>※このメールは自動送信です。このメールへの返信ではお問い合わせを受け付けられません。</p>
+    `,
+  });
+
+  if (error) {
+    throw new Error(`問い合わせ自動返信メールの送信に失敗しました: ${error.message}`);
+  }
+}

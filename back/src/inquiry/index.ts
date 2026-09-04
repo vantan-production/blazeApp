@@ -1,4 +1,4 @@
-// 問い合わせAPI（5エンドポイント）
+// 問い合わせAPI（6エンドポイント）
 
 import { randomUUID } from "node:crypto";
 import {
@@ -12,6 +12,7 @@ import { requireAdmin } from "../db/roleGuard.js";
 import { getAll } from "./getAll.js";
 import { getById } from "./getById.js";
 import { create } from "./create.js";
+import { updateStatus } from "./updateStatus.js";
 import { createReply } from "./reply.js";
 import { deleteReply } from "./deleteReply.js";
 
@@ -45,6 +46,9 @@ app.get("/api/inquiry/:id", authToken, requireAdmin, (c) => getById(c));
 
 // POST /api/inquiry — お客様からの問い合わせ（認証不要）
 app.post("/api/inquiry", inquiryLimiter, (c) => create(c));
+
+// PATCH /api/inquiry/:id/status — 対応ステータスの更新（admin以上）
+app.patch("/api/inquiry/:id/status", authToken, requireAdmin, (c) => updateStatus(c));
 
 // POST /api/inquiry/:id/reply — 問い合わせへの返信（admin以上）
 app.post("/api/inquiry/:id/reply", authToken, requireAdmin, (c) => createReply(c));

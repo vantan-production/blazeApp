@@ -61,10 +61,16 @@ export const inquiry = pgTable("inquiry", {
   ...baseFields,
   // お客様の名前（ニックネーム可）
   name: varchar("name", { length: 100 }).notNull(),
+  // お客様のメールアドレス（自動返信メールの宛先）
+  // email欄を追加する前に投稿された既存データがあるためDB上はnullable。
+  // APIでは必須項目としてバリデーションする（inquiry/create.ts）
+  email: varchar("email", { length: 255 }),
   title: varchar("title", { length: 100 }).notNull(),
   body: text("body").notNull(),
   // 画像のS3パス（任意）
   img: s3Path("img"),
+  // 対応ステータス: 'pending'（未対応・初期値）| 'in_progress'（対応中）| 'resolved'（対応済み）
+  status: varchar("status", { length: 20 }).notNull().default("pending"),
 });
 
 // 問い合わせ返信テーブル
@@ -294,6 +300,18 @@ export const inquiryNameSchema = stringField(
 );
 
 export const consentStatusSchema = z.enum(["pending", "approved", "rejected"]);
+
+// 問い合わせの対応ステータス
+export const inquiryStatusSchema = z.enum(["pending", "in_progress", "resolved"]);
+
+export type InquiryStatus = z.infer<typeof inquiryStatusSchema>;
+
+// 画面表示用のラベル（DBには英語キーを保存し、表示だけ日本語にする）
+export const INQUIRY_STATUS_LABELS: Record<InquiryStatus, string> = {
+  pending: "未対応",
+  in_progress: "対応中",
+  resolved: "対応済み",
+};
 
 // 体験申し込み用バリデーション
 

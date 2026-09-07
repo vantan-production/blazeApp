@@ -1,4 +1,8 @@
 // メール送信ユーティリティ（Resend）
+//
+// 各メールは「本文の組み立て（buildXxx）」と「送信（sendXxx）」に分けている。
+// 組み立て部分は副作用が無いので単体テストで宛先・件名・エスケープを検証でき、
+// 送信部分は scripts/sendTestMail.ts から実際のResend宛に流して疎通確認できる。
 
 import { Resend } from "resend";
 
@@ -9,28 +13,79 @@ function getResendClient(): Resend {
   return resend;
 }
 
+// 組み立て済みのメール1通。Resend の emails.send() にそのまま渡せる形にしておく。
+export interface MailMessage {
+  from: string;
+  to: string | string[];
+  subject: string;
+  html: string;
+}
+
 // 送信元アドレス（Resend側でドメイン検証済みのものを設定する）
-const MAIL_FROM = process.env.MAIL_FROM ?? "onboarding@resend.dev";
+// 環境変数はモジュールロード時ではなく参照時に読む（テストやスクリプトから差し替えられるようにするため）
+function mailFrom(): string {
+  return process.env.MAIL_FROM ?? "onboarding@resend.dev";
+}
 
 // リセットリンクの生成に使うフロントエンドのオリジン
-const FRONTEND_URL = process.env.FRONTEND_URL ?? "http://localhost:3000";
+function frontendUrl(): string {
+  return process.env.FRONTEND_URL ?? "http://localhost:3000";
+}
+
+// 体験申し込みの通知先（カンマ区切りで複数指定可）
+export function trialNotificationEmails(): string[] {
+  const raw = process.env.TRIAL_NOTIFICATION_EMAIL;
+  if (!raw) return [];
+  return raw
+    .split(",")
+    .map((e) => e.trim())
+    .filter(Boolean);
+}
+
+// メールHTMLに埋め込む前にユーザー入力をエスケープする（HTML/メールインジェクション対策）
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
 
 /**
- * パスワード再設定メールを送信する
+ * 組み立て済みのメールをResendへ送信する
  * テスト環境（NODE_ENV=test）では実送信せずスキップする
- * @param to - 送信先メールアドレス
- * @param token - リセットトークン（生値。DBにはハッシュのみ保存される）
+ * scripts/sendTestMail.ts からも同じ経路で送るため export している
+ * @param message - buildXxx() が組み立てたメール
+ * @param failureLabel - 送信失敗時のエラーメッセージに使う名称
  */
-export async function sendPasswordResetEmail(
-  to: string,
-  token: string,
+export async function sendMailMessage(
+  message: MailMessage,
+  failureLabel = "メール",
 ): Promise<void> {
   if (process.env.NODE_ENV === "test") return;
 
-  const resetUrl = `${FRONTEND_URL}/admin/reset-password?token=${encodeURIComponent(token)}`;
+  const { error } = await getResendClient().emails.send(message);
 
-  const { error } = await getResendClient().emails.send({
-    from: MAIL_FROM,
+  if (error) {
+    throw new Error(`${failureLabel}の送信に失敗しました: ${error.message}`);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// パスワード再設定
+// ---------------------------------------------------------------------------
+
+/**
+ * パスワード再設定メールを組み立てる
+ * @param to - 送信先メールアドレス
+ * @param token - リセットトークン（生値。DBにはハッシュのみ保存される）
+ */
+export function buildPasswordResetEmail(to: string, token: string): MailMessage {
+  const resetUrl = `${frontendUrl()}/admin/reset-password?token=${encodeURIComponent(token)}`;
+
+  return {
+    from: mailFrom(),
     to,
     subject: "【西尾ブレイズ管理画面】パスワード再設定のご案内",
     html: `
@@ -39,12 +94,20 @@ export async function sendPasswordResetEmail(
       <p><a href="${resetUrl}">${resetUrl}</a></p>
       <p>このリクエストに心当たりがない場合は、本メールを無視してください。</p>
     `,
-  });
-
-  if (error) {
-    throw new Error(`パスワード再設定メールの送信に失敗しました: ${error.message}`);
-  }
+  };
 }
+
+/**
+ * パスワード再設定メールを送信する
+ * テスト環境（NODE_ENV=test）では実送信せずスキップする
+ */
+export async function sendPasswordResetEmail(to: string, token: string): Promise<void> {
+  await sendMailMessage(buildPasswordResetEmail(to, token), "パスワード再設定メール");
+}
+
+// ---------------------------------------------------------------------------
+// 体験申し込み
+// ---------------------------------------------------------------------------
 
 // 体験申し込みの通知に使う入力データ
 export interface TrialApplicationMailData {
@@ -60,16 +123,6 @@ export interface TrialApplicationMailData {
   motivation: "flyer" | "instagram" | "referral" | "other";
   motivationOther?: string | undefined;
   referrerName?: string | undefined;
-}
-
-// メールHTMLに埋め込む前にユーザー入力をエスケープする（HTML/メールインジェクション対策）
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
 }
 
 const GENDER_LABELS: Record<TrialApplicationMailData["gender"], string> = {
@@ -95,17 +148,12 @@ function formatMotivation(data: TrialApplicationMailData): string {
   return MOTIVATION_LABELS[data.motivation];
 }
 
-/**
- * 体験申し込みの受付確認メールを申込者に送信する
- * テスト環境（NODE_ENV=test）では実送信せずスキップする
- */
-export async function sendTrialApplicationConfirmationEmail(
+/** 体験申し込みの受付確認メール（申込者宛）を組み立てる */
+export function buildTrialApplicationConfirmationEmail(
   data: TrialApplicationMailData,
-): Promise<void> {
-  if (process.env.NODE_ENV === "test") return;
-
-  const { error } = await getResendClient().emails.send({
-    from: MAIL_FROM,
+): MailMessage {
+  return {
+    from: mailFrom(),
     to: data.email,
     subject: "【西尾ブレイズ】体験申し込みを受け付けました",
     html: `
@@ -114,34 +162,32 @@ export async function sendTrialApplicationConfirmationEmail(
       <p>体験日: ${escapeHtml(data.trialDate)}</p>
       <p>このメールに心当たりがない場合は、本メールを無視してください。</p>
     `,
-  });
-
-  if (error) {
-    throw new Error(`体験申し込み確認メールの送信に失敗しました: ${error.message}`);
-  }
+  };
 }
 
-// 体験申し込みの通知先（カンマ区切りで複数指定可）
-const TRIAL_NOTIFICATION_EMAILS = process.env.TRIAL_NOTIFICATION_EMAIL
-  ? process.env.TRIAL_NOTIFICATION_EMAIL.split(",").map((e) => e.trim()).filter(Boolean)
-  : [];
-
 /**
- * 体験申し込みがあったことを管理者宛に通知する
- * TRIAL_NOTIFICATION_EMAIL未設定時・テスト環境では実送信せずスキップする
+ * 体験申し込みの受付確認メールを申込者に送信する
+ * テスト環境（NODE_ENV=test）では実送信せずスキップする
  */
-export async function sendTrialApplicationAdminNotification(
+export async function sendTrialApplicationConfirmationEmail(
   data: TrialApplicationMailData,
 ): Promise<void> {
-  if (process.env.NODE_ENV === "test") return;
-  if (TRIAL_NOTIFICATION_EMAILS.length === 0) {
-    console.warn("[trial-application] TRIAL_NOTIFICATION_EMAIL未設定のため通知メールをスキップしました");
-    return;
-  }
+  await sendMailMessage(buildTrialApplicationConfirmationEmail(data), "体験申し込み確認メール");
+}
 
-  const { error } = await getResendClient().emails.send({
-    from: MAIL_FROM,
-    to: TRIAL_NOTIFICATION_EMAILS,
+/**
+ * 体験申し込みの管理者通知メールを組み立てる
+ * TRIAL_NOTIFICATION_EMAIL が未設定なら宛先が無いので null を返す
+ */
+export function buildTrialApplicationAdminNotification(
+  data: TrialApplicationMailData,
+): MailMessage | null {
+  const to = trialNotificationEmails();
+  if (to.length === 0) return null;
+
+  return {
+    from: mailFrom(),
+    to,
     subject: "【西尾ブレイズ】新しい体験申し込みがありました",
     html: `
       <p>新しい体験申し込みがありました。</p>
@@ -157,27 +203,43 @@ export async function sendTrialApplicationAdminNotification(
         <li>きっかけ: ${formatMotivation(data)}</li>
       </ul>
     `,
-  });
-
-  if (error) {
-    throw new Error(`体験申し込み通知メールの送信に失敗しました: ${error.message}`);
-  }
+  };
 }
 
 /**
- * 問い合わせ受付の自動返信メールをお客様に送信する
- * テスト環境（NODE_ENV=test）では実送信せずスキップする
+ * 体験申し込みがあったことを管理者宛に通知する
+ * TRIAL_NOTIFICATION_EMAIL未設定時・テスト環境では実送信せずスキップする
  */
-export async function sendInquiryAutoReplyEmail(data: {
+export async function sendTrialApplicationAdminNotification(
+  data: TrialApplicationMailData,
+): Promise<void> {
+  const message = buildTrialApplicationAdminNotification(data);
+  if (!message) {
+    console.warn(
+      "[trial-application] TRIAL_NOTIFICATION_EMAIL未設定のため通知メールをスキップしました",
+    );
+    return;
+  }
+
+  await sendMailMessage(message, "体験申し込み通知メール");
+}
+
+// ---------------------------------------------------------------------------
+// 問い合わせ
+// ---------------------------------------------------------------------------
+
+// 問い合わせの自動返信に使う入力データ
+export interface InquiryAutoReplyMailData {
   email: string;
   name: string;
   title: string;
   body: string;
-}): Promise<void> {
-  if (process.env.NODE_ENV === "test") return;
+}
 
-  const { error } = await getResendClient().emails.send({
-    from: MAIL_FROM,
+/** 問い合わせ受付の自動返信メール（お客様宛）を組み立てる */
+export function buildInquiryAutoReplyEmail(data: InquiryAutoReplyMailData): MailMessage {
+  return {
+    from: mailFrom(),
     to: data.email,
     subject: "【西尾ブレイズ】お問い合わせを受け付けました",
     html: `
@@ -190,9 +252,15 @@ export async function sendInquiryAutoReplyEmail(data: {
       <hr />
       <p>※このメールは自動送信です。このメールへの返信ではお問い合わせを受け付けられません。</p>
     `,
-  });
+  };
+}
 
-  if (error) {
-    throw new Error(`問い合わせ自動返信メールの送信に失敗しました: ${error.message}`);
-  }
+/**
+ * 問い合わせ受付の自動返信メールをお客様に送信する
+ * テスト環境（NODE_ENV=test）では実送信せずスキップする
+ */
+export async function sendInquiryAutoReplyEmail(
+  data: InquiryAutoReplyMailData,
+): Promise<void> {
+  await sendMailMessage(buildInquiryAutoReplyEmail(data), "問い合わせ自動返信メール");
 }

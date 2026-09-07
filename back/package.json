@@ -9,7 +9,12 @@
     "start": "node dist/server.js",
     "test": "dotenv -e .env.test -- vitest run",
     "test:watch": "dotenv -e .env.test -- vitest",
-    "sync:validation": "tsx scripts/exportValidationLimits.ts"
+    "sync:validation": "tsx scripts/exportValidationLimits.ts",
+    "lint": "biome lint .",
+    "lint:fix": "biome lint --write .",
+    "format": "biome format --write .",
+    "check": "biome check .",
+    "check:fix": "biome check --write ."
   },
   "keywords": [],
   "author": "",
@@ -37,6 +42,7 @@
     "zxcvbn": "^4.4.2"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.5.4",
     "@types/fluent-ffmpeg": "^2.1.28",
     "@types/node": "^25.6.0",
     "@types/pg": "^8.20.0",

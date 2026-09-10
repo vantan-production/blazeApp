@@ -22,9 +22,15 @@ export function createGetAll(type: NewsType) {
     // 未ログインには visibility='member' の記事を出さない。
     // 認証必須のルートではないため getOptionalUser で閲覧者を判定する。
     const viewer = await getOptionalUser(c);
-    const filter = isMemberOrAbove(viewer)
-      ? eq(news.type, type)
-      : and(eq(news.type, type), eq(news.visibility, "public"));
+
+    // 承認待ち・下書きの記事は公開APIに出さない。
+    // admin 以上は管理画面から確認できるよう status を問わない。
+    const isAdmin = viewer?.role === "owner" || viewer?.role === "admin";
+    const conditions = [eq(news.type, type)];
+    if (!isMemberOrAbove(viewer)) conditions.push(eq(news.visibility, "public"));
+    if (!isAdmin) conditions.push(eq(news.status, "published"));
+
+    const filter = and(...conditions);
 
     const [all, totalResult] = await Promise.all([
       db

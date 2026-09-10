@@ -61,6 +61,9 @@ export const news = pgTable("news", {
   type: varchar("type", { length: 10 }).notNull(),
   // 公開範囲: 'public' = 誰でも / 'member' = 関係者限定（type='notice' は常に 'member'）
   visibility: varchar("visibility", { length: 10 }).notNull().default("public"),
+  // 公開状態: 'draft'（下書き）| 'pending'（承認待ち）| 'published'（公開中・既定）
+  // member が投稿申請すると 'pending' になり、admin が承認して 'published' になる
+  status: varchar("status", { length: 10 }).notNull().default("published"),
   // カテゴリー（自由入力・任意。固定の選択肢は持たず、投稿時に都度テキストで追加できる）
   category: varchar("category", { length: 30 }),
   // 投稿した管理者のID（アカウント削除時はNULLになる）
@@ -167,6 +170,8 @@ export const game = pgTable("game", {
   ...baseFields,
   // 画像のS3パス
   img: s3Path("img"),
+  // 公開状態: 'draft' | 'pending' | 'published'（既定）。news と同じ扱い
+  status: varchar("status", { length: 10 }).notNull().default("published"),
   // 投稿した管理者のID（アカウント削除時はNULLになる）
   admin_id: uuid("admin_id").references(() => admin.id, {
     onDelete: "set null",
@@ -207,6 +212,28 @@ export const movies = pgTable("movies", {
   }),
 });
 
+// 関係者限定 資料庫（規約・年間スケジュール・練習メニュー等のPDF配布）
+// 実体は files テーブル（document_id で紐づく）に置く
+export const documents = pgTable("documents", {
+  ...withUpdatedAt,
+  title: varchar("title", { length: 100 }).notNull(),
+  description: text("description"),
+  // 分類（自由入力・任意）
+  category: varchar("category", { length: 30 }),
+  admin_id: uuid("admin_id").references(() => admin.id, { onDelete: "set null" }),
+});
+
+// 通知設定（ユーザーごとのオプトアウト用。行が無ければ既定＝どちらも有効）
+export const notificationSettings = pgTable("notification_settings", {
+  ...baseFields,
+  user_id: uuid("user_id")
+    .references(() => admin.id, { onDelete: "cascade" })
+    .notNull()
+    .unique(),
+  notice_email: boolean("notice_email").notNull().default(true),
+  survey_email: boolean("survey_email").notNull().default(true),
+});
+
 // ファイルストレージテーブル
 export const files = pgTable("files", {
   ...baseFields,
@@ -218,6 +245,9 @@ export const files = pgTable("files", {
     onDelete: "cascade",
   }),
   achievement_id: uuid("achievement_id").references(() => achievement.id, {
+    onDelete: "cascade",
+  }),
+  document_id: uuid("document_id").references(() => documents.id, {
     onDelete: "cascade",
   }),
 });
@@ -374,6 +404,8 @@ export const VALIDATION_LIMITS = {
   surveyOptionLabel: { min: 1, max: 100 },
   surveyComment: { max: 500 },
   consentReason: { max: 500 },
+  documentTitle: { min: 1, max: 100 },
+  documentDescription: { max: 2000 },
 } as const;
 
 export const emailSchema = z
@@ -458,6 +490,9 @@ export const INQUIRY_STATUS_LABELS: Record<InquiryStatus, string> = {
   resolved: "対応済み",
 };
 
+// 投稿の公開状態
+export const postStatusSchema = z.enum(["draft", "pending", "published"]);
+
 // アンケート用バリデーション
 export const surveyTitleSchema = stringField(
   VALIDATION_LIMITS.surveyTitle.min,
@@ -486,6 +521,18 @@ const dateOnlySchema = (label: string) =>
     .trim()
     .regex(/^\d{4}-\d{2}-\d{2}$/, `${label}はYYYY-MM-DD形式で入力してください。`)
     .refine((v) => !Number.isNaN(Date.parse(v)), `${label}の日付が正しくありません。`);
+
+// 資料庫用バリデーション
+export const documentTitleSchema = stringField(
+  VALIDATION_LIMITS.documentTitle.min,
+  VALIDATION_LIMITS.documentTitle.max,
+  "資料のタイトル",
+);
+export const documentDescriptionSchema = optionalStringField(
+  VALIDATION_LIMITS.documentDescription.max,
+  "資料の説明",
+);
+
 
 export const trialNameSchema = stringField(
   VALIDATION_LIMITS.trialName.min,

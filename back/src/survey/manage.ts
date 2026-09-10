@@ -3,6 +3,7 @@
 import { eq } from "../index.js";
 import { db, surveys, surveyOptions } from "../shared/index.js";
 import { createSurveySchema, updateSurveySchema, toFieldErrors } from "./schemas.js";
+import { notifyMembers } from "../notification/index.js";
 import type { Context } from "hono";
 
 /** リクエストボディをJSONとして読む（不正なら null） */
@@ -56,6 +57,9 @@ export async function createSurvey(c: Context) {
 
     return survey;
   });
+
+  // 通知は待たない。失敗しても作成自体は成功させる（設計書 §10 G）
+  notifyMembers("survey", created.title);
 
   return c.json(
     { success: true, message: "アンケートを作成しました。", data: created },

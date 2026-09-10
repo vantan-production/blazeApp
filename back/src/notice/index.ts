@@ -17,6 +17,8 @@ import { createNewsTypeHandlers } from "../news/handlers.js";
 import { getAllNotices } from "./getAll.js";
 import { markAsRead } from "./markRead.js";
 import { getReadStatus } from "./getReadStatus.js";
+import { notifyMembers } from "../notification/index.js";
+import type { Context } from "hono";
 
 const { getById, create, update, remove } = createNewsTypeHandlers(
   "notice",
@@ -28,7 +30,15 @@ const app = new Hono();
 
 // :id との衝突を避けるため、固定パスを先に登録する
 app.get("/api/notices", authToken, requireMember, (c) => getAllNotices(c));
-app.post("/api/notices", authToken, requireAdmin, (c) => create(c));
+// 投稿に成功したときだけ通知する。通知の失敗で投稿を巻き戻さない（設計書 §10 G）
+app.post("/api/notices", authToken, requireAdmin, async (c: Context) => {
+  const res = await create(c);
+  if (res.status === 200) {
+    const created = (await res.clone().json()) as { data?: { title?: string } };
+    if (created.data?.title) notifyMembers("notice", created.data.title);
+  }
+  return res;
+});
 
 app.get("/api/notices/:id/reads", authToken, requireAdmin, (c) => getReadStatus(c));
 app.post("/api/notices/:id/read", authToken, requireMember, (c) => markAsRead(c));

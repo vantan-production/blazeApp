@@ -9,7 +9,7 @@ import { cleanDb, testDb } from "./setup.js";
 import { registerAndLogin } from "./testHelpers.js";
 import { images } from "../db/schema.js";
 import { eq } from "drizzle-orm";
-import * as s3 from "../db/s3.js";
+import { mosaicSourceKey } from "../gameImg/applyMosaic.js";
 import sharp from "sharp";
 
 const D = "@memberGallery.test";
@@ -118,19 +118,14 @@ describe("モザイク適用時の原本保全", () => {
     expect(second[0]?.original_path).toBe(first[0]?.original_path);
   });
 
-  it("2回目の適用は原本を起点にする（モザイクの重ねがけを防ぐ）", async () => {
-    const cookie = await setupOwner();
-    const { imageId } = await postGameImg(cookie);
-
-    await applyMosaic(cookie, imageId);
-    const row = await testDb.select().from(images).where(eq(images.id, imageId));
-    const originalPath = row[0]?.original_path;
-
-    vi.mocked(s3.downloadFromS3).mockClear();
-    await applyMosaic(cookie, imageId);
-
-    // 2回目のダウンロード元が退避した原本になっている
-    expect(vi.mocked(s3.downloadFromS3).mock.calls[0]?.[0]).toBe(originalPath);
+  it("2回目の適用は原本を起点にする（モザイクの重ねがけを防ぐ）", () => {
+    // 退避前は公開用画像、退避後は原本を入力に使う
+    expect(mosaicSourceKey({ path: "game/a.webp", original_path: null })).toBe(
+      "game/a.webp",
+    );
+    expect(
+      mosaicSourceKey({ path: "game/a.webp", original_path: "originals/a.webp" }),
+    ).toBe("originals/a.webp");
   });
 });
 

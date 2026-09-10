@@ -158,6 +158,74 @@ export async function sendInvitationEmail(
 }
 
 // ---------------------------------------------------------------------------
+// 関係者への通知（新しいお知らせ・アンケート）
+// ---------------------------------------------------------------------------
+
+/**
+ * 新しい関係者限定お知らせの通知メールを組み立てる
+ * @param to - 宛先（複数可。Resend の to は配列を受け付ける）
+ * @param title - お知らせのタイトル
+ */
+export function buildNoticeNotificationEmail(
+  to: string[],
+  title: string,
+): MailMessage {
+  const noticesUrl = `${frontendUrl()}/members/notices`;
+
+  return {
+    from: mailFrom(),
+    to,
+    subject: "【西尾ブレイズ】新しいお知らせがあります",
+    html: `
+      <p>関係者向けの新しいお知らせが投稿されました。</p>
+      <p>${escapeHtml(title)}</p>
+      <p><a href="${noticesUrl}">${noticesUrl}</a></p>
+      <p>通知が不要な場合は、ログイン後の通知設定から停止できます。</p>
+    `,
+  };
+}
+
+/** 新しい関係者限定お知らせを通知する */
+export async function sendNoticeNotificationEmail(
+  to: string[],
+  title: string,
+): Promise<void> {
+  await sendMailMessage(buildNoticeNotificationEmail(to, title), "お知らせ通知メール");
+}
+
+/**
+ * 新しいアンケートの通知メールを組み立てる
+ * @param to - 宛先（複数可）
+ * @param title - アンケートのタイトル
+ */
+export function buildSurveyNotificationEmail(
+  to: string[],
+  title: string,
+): MailMessage {
+  const surveysUrl = `${frontendUrl()}/members/surveys`;
+
+  return {
+    from: mailFrom(),
+    to,
+    subject: "【西尾ブレイズ】アンケートへの回答をお願いします",
+    html: `
+      <p>新しいアンケート（出欠確認）が公開されました。</p>
+      <p>${escapeHtml(title)}</p>
+      <p><a href="${surveysUrl}">${surveysUrl}</a></p>
+      <p>通知が不要な場合は、ログイン後の通知設定から停止できます。</p>
+    `,
+  };
+}
+
+/** 新しいアンケートを通知する */
+export async function sendSurveyNotificationEmail(
+  to: string[],
+  title: string,
+): Promise<void> {
+  await sendMailMessage(buildSurveyNotificationEmail(to, title), "アンケート通知メール");
+}
+
+// ---------------------------------------------------------------------------
 // 体験申し込み
 // ---------------------------------------------------------------------------
 

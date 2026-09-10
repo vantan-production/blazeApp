@@ -34,6 +34,8 @@ export async function cleanDb() {
     TRUNCATE TABLE
       invitations,
       news_reads,
+      notification_settings,
+      documents,
       consent_requests,
       survey_responses,
       survey_options,

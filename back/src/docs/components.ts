@@ -202,6 +202,32 @@ export const components: JsonSchema = {
       },
     },
 
+    Document: {
+      type: "object",
+      description: "関係者限定の配布資料（実体は files テーブルのファイル1件）",
+      properties: {
+        id: uuidField("資料ID"),
+        title: { type: "string" },
+        description: { type: ["string", "null"] },
+        category: { type: ["string", "null"] },
+        admin_id: { type: ["string", "null"], format: "uuid" },
+        admin_name: { type: "string", description: "登録者名" },
+        file_name: { type: ["string", "null"], description: "ファイル名" },
+        has_file: { type: "boolean" },
+        created_at: dateTimeField("登録日時"),
+        updated_at: dateTimeField("更新日時"),
+      },
+    },
+
+    NotificationSettings: {
+      type: "object",
+      description: "ユーザーごとの通知設定（未設定なら既定でどちらも true）",
+      properties: {
+        notice_email: { type: "boolean" },
+        survey_email: { type: "boolean" },
+      },
+    },
+
     MemberGalleryImage: {
       type: "object",
       description: "関係者向けギャラリーの画像（URLは原本を指す）",
@@ -434,6 +460,12 @@ export const components: JsonSchema = {
           description: "画像の署名付きURL（S3キーから都度生成）",
         },
         type: { type: "string", enum: ["news", "media", "notice"] },
+        status: {
+          type: "string",
+          enum: ["draft", "pending", "published"],
+          description:
+            "公開状態。member の投稿申請は pending で作られ、admin の承認で published になる。公開APIは published のみ返す",
+        },
         visibility: {
           type: "string",
           enum: ["public", "member"],

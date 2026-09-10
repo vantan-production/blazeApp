@@ -18,6 +18,16 @@ import {
 import { mosaicSchema, isWithinImageBounds, computeMosaicScale } from "./mosaicLogic.js";
 import type { Context } from "hono";
 
+/**
+ * モザイクの入力にするS3キーを決める。
+ * 退避済みの原本があればそれを使う。公開用画像を起点にすると
+ * モザイクの上にモザイクが重なり、元に戻せなくなるため。
+ */
+export const mosaicSourceKey = (image: {
+  path: string;
+  original_path: string | null;
+}): string => image.original_path ?? image.path;
+
 export const applyMosaic = async (c: Context) => {
   const imageId = c.req.param("imageId");
   if (!imageId) return c.json({ success: false, errors: "IDが指定されていません。" }, 400);
@@ -50,9 +60,7 @@ export const applyMosaic = async (c: Context) => {
   const image = existing[0]!;
   const s3Key = image.path;
 
-  // 2回目以降のモザイクは、退避済みの原本を起点にする。
-  // 公開用画像を起点にすると、モザイクの上にモザイクが重なって元に戻せなくなるため。
-  const sourceKey = image.original_path ?? s3Key;
+  const sourceKey = mosaicSourceKey(image);
 
   try {
     // S3から元画像をダウンロード

@@ -7,6 +7,11 @@ import { newsPaths, mediaPaths } from "./paths/news.js";
 import { noticePaths } from "./paths/notice.js";
 import { surveyPaths } from "./paths/survey.js";
 import { memberGalleryPaths, consentRequestPaths } from "./paths/members.js";
+import {
+  documentPaths,
+  submissionPaths,
+  notificationPaths,
+} from "./paths/phase4.js";
 import { inquiryPaths } from "./paths/inquiry.js";
 import { trialPaths } from "./paths/trial.js";
 import { achievementPaths } from "./paths/achievement.js";
@@ -59,6 +64,9 @@ export const buildOpenApiDocument = (serverUrl: string): JsonSchema => ({
       name: "掲載取り下げ依頼",
       description: "写真の掲載取り下げの申し出と、その対応",
     },
+    { name: "資料庫", description: "関係者向けの配布資料（規約・スケジュール等）" },
+    { name: "投稿申請", description: "member の投稿申請と、admin による承認・差し戻し" },
+    { name: "通知設定", description: "お知らせ・アンケートのメール通知のオプトアウト" },
     { name: "実績", description: "実績投稿（画像・動画・ファイル対応）" },
     { name: "問い合わせ", description: "問い合わせの受信・対応ステータス・返信" },
     { name: "体験申し込み", description: "体験申し込みの受付と管理" },
@@ -82,6 +90,9 @@ export const buildOpenApiDocument = (serverUrl: string): JsonSchema => ({
     ...surveyPaths,
     ...memberGalleryPaths,
     ...consentRequestPaths,
+    ...documentPaths,
+    ...submissionPaths,
+    ...notificationPaths,
     ...achievementPaths,
     ...inquiryPaths,
     ...trialPaths,

@@ -35,10 +35,18 @@ export function createGetById(type: NewsType, label: string) {
       return c.json({ success: false, errors: `${label}が見つかりません。` }, 404);
     }
 
-    // 未ログインに関係者限定記事を返さない。存在を明かさないため 403 ではなく 404 にする
-    if (item.visibility === "member") {
+    // 公開範囲・公開状態のどちらも、条件を満たさない相手には存在を明かさず 404 にする
+    const needsViewerCheck = item.visibility === "member" || item.status !== "published";
+    if (needsViewerCheck) {
       const viewer = await getOptionalUser(c);
-      if (!isMemberOrAbove(viewer)) {
+      const isAdmin = viewer?.role === "owner" || viewer?.role === "admin";
+
+      if (item.visibility === "member" && !isMemberOrAbove(viewer)) {
+        return c.json({ success: false, errors: `${label}が見つかりません。` }, 404);
+      }
+
+      // 承認待ち・下書きは admin 以上か、投稿した本人だけが見られる
+      if (item.status !== "published" && !isAdmin && viewer?.id !== item.admin_id) {
         return c.json({ success: false, errors: `${label}が見つかりません。` }, 404);
       }
     }

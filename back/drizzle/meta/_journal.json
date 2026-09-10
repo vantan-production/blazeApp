@@ -99,6 +99,13 @@
       "when": 1784850004000,
       "tag": "0013_invitations",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1784850005000,
+      "tag": "0014_notice_visibility",
+      "breakpoints": true
     }
   ]
 }

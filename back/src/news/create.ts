@@ -7,20 +7,28 @@ import {
   titleSchema,
   bodySchema,
   categorySchema,
+  visibilitySchema,
   processImageUpload,
 } from "../shared/index.js";
 import type { Context } from "hono";
+import type { NewsType } from "./handlers.js";
 
-export function createCreate(type: "news" | "media", label: string, s3Prefix: string) {
+export function createCreate(type: NewsType, label: string, s3Prefix: string) {
   return async (c: Context) => {
     const user = c.get("user") as { id: string };
     const body = await c.req.parseBody();
 
-    const schema = z.object({ title: titleSchema, body: bodySchema, category: categorySchema.optional() });
+    const schema = z.object({
+      title: titleSchema,
+      body: bodySchema,
+      category: categorySchema.optional(),
+      visibility: visibilitySchema.optional(),
+    });
     const result = schema.safeParse({
       title: body["title"],
       body: body["body"],
       category: body["category"] || undefined,
+      visibility: body["visibility"] || undefined,
     });
 
     if (!result.success) {
@@ -61,6 +69,8 @@ export function createCreate(type: "news" | "media", label: string, s3Prefix: st
         type,
         admin_id: user.id,
         category: result.data.category ?? null,
+        // 事務連絡は定義上つねに関係者限定。それ以外は指定が無ければ公開
+        visibility: type === "notice" ? "member" : (result.data.visibility ?? "public"),
       })
       .returning();
 

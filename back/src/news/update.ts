@@ -7,11 +7,13 @@ import {
   titleSchema,
   bodySchema,
   categorySchema,
+  visibilitySchema,
   replaceMediaOnS3,
 } from "../shared/index.js";
 import type { Context } from "hono";
+import type { NewsType } from "./handlers.js";
 
-export function createUpdate(type: "news" | "media", label: string, s3Prefix: string) {
+export function createUpdate(type: NewsType, label: string, s3Prefix: string) {
   return async (c: Context) => {
     const id = c.req.param("id");
     if (!id) return c.json({ success: false, errors: "IDが指定されていません。" }, 400);
@@ -34,12 +36,14 @@ export function createUpdate(type: "news" | "media", label: string, s3Prefix: st
       title: titleSchema.optional(),
       body: bodySchema.optional(),
       category: categorySchema.optional(),
+      visibility: visibilitySchema.optional(),
     });
 
     const result = schema.safeParse({
       title: body["title"] || undefined,
       body: body["body"] || undefined,
       category: categoryProvided && !categoryCleared ? rawCategory : undefined,
+      visibility: body["visibility"] || undefined,
     });
 
     if (!result.success) {
@@ -60,6 +64,10 @@ export function createUpdate(type: "news" | "media", label: string, s3Prefix: st
     if (result.data.body) updateData.body = result.data.body;
     if (result.data.category) updateData.category = result.data.category;
     else if (categoryCleared) updateData.category = null;
+    // 事務連絡は関係者限定で固定するため、公開範囲の変更を受け付けない
+    if (result.data.visibility && type !== "notice") {
+      updateData.visibility = result.data.visibility;
+    }
 
     // 新しい画像がアップロードされた場合は差し替え
     const imageFile = body["image"];

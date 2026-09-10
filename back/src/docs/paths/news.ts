@@ -21,7 +21,8 @@ function createNewsTypePaths(basePath: string, tag: string, label: string): Path
       get: {
         tags: [tag],
         summary: `${label}一覧`,
-        description: "作成日時の降順・1ページ10件。",
+        description:
+          "作成日時の降順・1ページ10件。未ログインの場合は visibility='public' のみを返す（Cookie があれば関係者限定の記事も含む）。",
         security: [],
         parameters: [pageParam],
         responses: {
@@ -40,6 +41,7 @@ function createNewsTypePaths(basePath: string, tag: string, label: string): Path
             title: fields.title,
             body: fields.body,
             category: fields.category,
+            visibility: fields.visibility,
             image: fields.image,
           },
         }),
@@ -71,6 +73,8 @@ function createNewsTypePaths(basePath: string, tag: string, label: string): Path
       get: {
         tags: [tag],
         summary: `${label}詳細`,
+        description:
+          "visibility='member' の記事は、未ログインからは存在を明かさないため 404 を返す。",
         security: [],
         parameters: [pathParam("id", `${label}のID`)],
         responses: {
@@ -90,6 +94,7 @@ function createNewsTypePaths(basePath: string, tag: string, label: string): Path
             title: fields.title,
             body: fields.body,
             category: fields.category,
+            visibility: fields.visibility,
             image: fields.image,
           },
         }),

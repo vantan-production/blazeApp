@@ -2,10 +2,20 @@
 
 import { eq } from "../index.js";
 import { getTableColumns } from "drizzle-orm";
-import { db, news, admin, images, toMediaUrl, getRelatedMediaUrls } from "../shared/index.js";
+import {
+  db,
+  news,
+  admin,
+  images,
+  toMediaUrl,
+  getRelatedMediaUrls,
+  getOptionalUser,
+  isMemberOrAbove,
+} from "../shared/index.js";
 import type { Context } from "hono";
+import type { NewsType } from "./handlers.js";
 
-export function createGetById(type: "news" | "media", label: string) {
+export function createGetById(type: NewsType, label: string) {
   return async (c: Context) => {
     const id = c.req.param("id");
     if (!id) return c.json({ success: false, errors: "IDが指定されていません。" }, 400);
@@ -23,6 +33,14 @@ export function createGetById(type: "news" | "media", label: string) {
 
     if (!item || item.type !== type) {
       return c.json({ success: false, errors: `${label}が見つかりません。` }, 404);
+    }
+
+    // 未ログインに関係者限定記事を返さない。存在を明かさないため 403 ではなく 404 にする
+    if (item.visibility === "member") {
+      const viewer = await getOptionalUser(c);
+      if (!isMemberOrAbove(viewer)) {
+        return c.json({ success: false, errors: `${label}が見つかりません。` }, 404);
+      }
     }
 
     return c.json(

@@ -10,6 +10,7 @@ export { redisClient } from "../db/redis.js";
 export {
   admin,
   news,
+  newsReads,
   inquiry,
   reply,
   achievement,
@@ -36,6 +37,7 @@ export {
   inquiryStatusSchema,
   INQUIRY_STATUS_LABELS,
   consentStatusSchema,
+  visibilitySchema,
   categorySchema,
   invitationRoleSchema,
   invitationTokenSchema,
@@ -56,7 +58,8 @@ export {
 export { authToken, getOptionalUser } from "../db/token.js";
 
 // ロールガード
-export { requireOwner, requireAdmin } from "../db/roleGuard.js";
+export { requireOwner, requireAdmin, requireMember, isMemberOrAbove } from "../db/roleGuard.js";
+export type { Role } from "../db/roleGuard.js";
 
 // S3ストレージ
 export {

@@ -33,6 +33,7 @@ export async function cleanDb() {
   await testPool.query(`
     TRUNCATE TABLE
       invitations,
+      news_reads,
       password_reset_tokens,
       deletion_approvals,
       deletion_requests,

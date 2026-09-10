@@ -202,9 +202,40 @@ export const components: JsonSchema = {
       },
     },
 
+    Notice: {
+      allOf: [
+        { $ref: "#/components/schemas/NewsPost" },
+        {
+          type: "object",
+          description: "関係者限定お知らせ（一覧では自分の既読状態が付く）",
+          properties: {
+            is_read: { type: "boolean", description: "自分が既読かどうか" },
+            read_at: {
+              type: ["string", "null"],
+              format: "date-time",
+              description: "自分が既読にした日時（未読なら null）",
+            },
+          },
+        },
+      ],
+    },
+
+    NoticeReader: {
+      type: "object",
+      description: "既読状況に並ぶユーザー（未読側には read_at が無い）",
+      properties: {
+        id: uuidField("ユーザーID"),
+        name: { type: "string" },
+        email: { type: "string", format: "email" },
+        role: { type: "string", enum: ["owner", "admin", "member"] },
+        read_at: { type: "string", format: "date-time" },
+      },
+    },
+
     NewsPost: {
       type: "object",
-      description: "ニュース / メディア情報（news テーブル。type で分類）",
+      description:
+        "ニュース / メディア情報 / 関係者限定お知らせ（news テーブル。type で分類）",
       properties: {
         id: uuidField("投稿ID"),
         title: { type: "string" },
@@ -214,7 +245,13 @@ export const components: JsonSchema = {
           type: ["string", "null"],
           description: "画像の署名付きURL（S3キーから都度生成）",
         },
-        type: { type: "string", enum: ["news", "media"] },
+        type: { type: "string", enum: ["news", "media", "notice"] },
+        visibility: {
+          type: "string",
+          enum: ["public", "member"],
+          description:
+            "公開範囲。member は関係者限定で、未ログインの一覧・詳細には現れない（type='notice' は常に member）",
+        },
         category: { type: ["string", "null"] },
         admin_id: { type: ["string", "null"], format: "uuid" },
         admin_name: {
@@ -382,6 +419,11 @@ export const fields = {
     "パスワード（半角英数字記号。登録時は zxcvbn スコア3以上が必要）",
   ),
   adminName: str(VALIDATION_LIMITS.adminName, "管理者名"),
+  visibility: {
+    type: "string",
+    enum: ["public", "member"],
+    description: "公開範囲（既定は public。member は関係者限定）",
+  },
   invitationToken: {
     type: "string",
     pattern: "^[0-9a-f]{64}$",

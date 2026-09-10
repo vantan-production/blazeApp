@@ -47,8 +47,10 @@ export const news = pgTable("news", {
   body: text("body").notNull(),
   // メイン画像のS3パス（任意）
   img: s3Path("img"),
-  // 'news' または 'media' でニュースとメディア情報を分ける
+  // 'news' | 'media' | 'notice' で公開ニュース・メディア情報・関係者向け事務連絡を分ける
   type: varchar("type", { length: 10 }).notNull(),
+  // 公開範囲: 'public' = 誰でも / 'member' = 関係者限定（type='notice' は常に 'member'）
+  visibility: varchar("visibility", { length: 10 }).notNull().default("public"),
   // カテゴリー（自由入力・任意。固定の選択肢は持たず、投稿時に都度テキストで追加できる）
   category: varchar("category", { length: 30 }),
   // 投稿した管理者のID（アカウント削除時はNULLになる）
@@ -56,6 +58,20 @@ export const news = pgTable("news", {
     onDelete: "set null",
   }),
 });
+
+// 関係者限定お知らせの既読管理（誰がどのお知らせを読んだか）
+export const newsReads = pgTable("news_reads", {
+  ...baseFields,
+  news_id: uuid("news_id")
+    .references(() => news.id, { onDelete: "cascade" })
+    .notNull(),
+  user_id: uuid("user_id")
+    .references(() => admin.id, { onDelete: "cascade" })
+    .notNull(),
+  read_at: timestamp("read_at").defaultNow().notNull(),
+}, (t) => ({
+  uniqueRead: unique("news_reads_news_user_uniq").on(t.news_id, t.user_id),
+}));
 
 // 問い合わせテーブル
 export const inquiry = pgTable("inquiry", {
@@ -319,6 +335,9 @@ export const inquiryNameSchema = stringField(
   VALIDATION_LIMITS.inquiryName.max,
   "名前",
 );
+
+// 投稿の公開範囲
+export const visibilitySchema = z.enum(["public", "member"]);
 
 export const consentStatusSchema = z.enum(["pending", "approved", "rejected"]);
 

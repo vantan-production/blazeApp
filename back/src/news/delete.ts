@@ -3,8 +3,9 @@
 import { eq } from "../index.js";
 import { db, news, images, deleteFromS3, deleteMediaFromS3 } from "../shared/index.js";
 import type { Context } from "hono";
+import type { NewsType } from "./handlers.js";
 
-export function createRemove(type: "news" | "media", label: string) {
+export function createRemove(type: NewsType, label: string) {
   return async (c: Context) => {
     const id = c.req.param("id");
     if (!id) return c.json({ success: false, errors: "IDが指定されていません。" }, 400);

@@ -202,6 +202,136 @@ export const components: JsonSchema = {
       },
     },
 
+    Survey: {
+      type: "object",
+      description: "アンケート／出欠確認",
+      properties: {
+        id: uuidField("アンケートID"),
+        title: { type: "string" },
+        body: { type: ["string", "null"], description: "説明文" },
+        closes_at: {
+          type: ["string", "null"],
+          format: "date-time",
+          description: "回答締切（null なら締切なし）",
+        },
+        allow_multiple: { type: "boolean", description: "複数選択を許可するか" },
+        admin_id: { type: ["string", "null"], format: "uuid" },
+        created_at: dateTimeField("作成日時"),
+        updated_at: dateTimeField("更新日時"),
+      },
+    },
+
+    SurveySummary: {
+      allOf: [
+        { $ref: "#/components/schemas/Survey" },
+        {
+          type: "object",
+          properties: {
+            admin_name: { type: "string", description: "作成者名" },
+            is_closed: { type: "boolean", description: "締切を過ぎているか" },
+            has_responded: { type: "boolean", description: "自分が回答済みか" },
+          },
+        },
+      ],
+    },
+
+    SurveyOption: {
+      type: "object",
+      description: "アンケートの選択肢",
+      properties: {
+        id: uuidField("選択肢ID"),
+        survey_id: uuidField("アンケートID"),
+        label: { type: "string" },
+        sort_order: { type: "integer", description: "表示順" },
+        created_at: dateTimeField("作成日時"),
+      },
+    },
+
+    SurveyDetail: {
+      allOf: [
+        { $ref: "#/components/schemas/Survey" },
+        {
+          type: "object",
+          properties: {
+            admin_name: { type: "string" },
+            is_closed: { type: "boolean" },
+            options: {
+              type: "array",
+              items: { $ref: "#/components/schemas/SurveyOption" },
+            },
+            my_response: {
+              type: "object",
+              description: "自分の回答（未回答なら option_ids が空）",
+              properties: {
+                option_ids: {
+                  type: "array",
+                  items: { type: "string", format: "uuid" },
+                },
+                comment: { type: ["string", "null"] },
+              },
+            },
+          },
+        },
+      ],
+    },
+
+    SurveyParticipant: {
+      type: "object",
+      description: "アンケートの対象ユーザー",
+      properties: {
+        id: uuidField("ユーザーID"),
+        name: { type: "string" },
+        email: { type: "string", format: "email" },
+        role: { type: "string", enum: ["owner", "admin", "member"] },
+      },
+    },
+
+    SurveyResults: {
+      type: "object",
+      description: "アンケートの集計結果",
+      properties: {
+        respondent_count: {
+          type: "integer",
+          description: "回答した実人数（複数選択でも1人は1と数える）",
+        },
+        options: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              option_id: uuidField("選択肢ID"),
+              label: { type: "string" },
+              sort_order: { type: "integer" },
+              count: { type: "integer", description: "票数" },
+              voters: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    id: uuidField("ユーザーID"),
+                    name: { type: "string" },
+                    email: { type: ["string", "null"], format: "email" },
+                  },
+                },
+              },
+            },
+          },
+        },
+        comments: {
+          type: "array",
+          description: "自由記述（1人1件にまとめたもの）",
+          items: {
+            type: "object",
+            properties: {
+              user_id: uuidField("ユーザーID"),
+              name: { type: "string" },
+              comment: { type: "string" },
+            },
+          },
+        },
+      },
+    },
+
     Notice: {
       allOf: [
         { $ref: "#/components/schemas/NewsPost" },

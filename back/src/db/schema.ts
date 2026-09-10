@@ -1,6 +1,16 @@
 // スキーマ設計
 
-import { pgTable, uuid, varchar, timestamp, text, date, unique } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  uuid,
+  varchar,
+  timestamp,
+  text,
+  date,
+  unique,
+  boolean,
+  integer,
+} from "drizzle-orm/pg-core";
 import { z } from "zod";
 
 // ヘルパー
@@ -237,6 +247,51 @@ export const deletionApprovals = pgTable("deletion_approvals", {
   uniqueApproval: unique("deletion_approvals_request_approved_uniq").on(t.request_id, t.approved_by),
 }));
 
+// アンケート／出欠確認テーブル
+// 出欠確認は survey_options に「出席 / 欠席 / 未定」を入れるだけで実現できる
+export const surveys = pgTable("surveys", {
+  ...withUpdatedAt,
+  title: varchar("title", { length: 100 }).notNull(),
+  body: text("body"),
+  // 回答締切（任意。過ぎると回答を受け付けない）
+  closes_at: timestamp("closes_at"),
+  // 複数選択を許可するか
+  allow_multiple: boolean("allow_multiple").notNull().default(false),
+  // 作成した管理者（アカウント削除時はNULLになる）
+  admin_id: uuid("admin_id").references(() => admin.id, { onDelete: "set null" }),
+});
+
+// アンケートの選択肢
+export const surveyOptions = pgTable("survey_options", {
+  ...baseFields,
+  survey_id: uuid("survey_id")
+    .references(() => surveys.id, { onDelete: "cascade" })
+    .notNull(),
+  label: varchar("label", { length: 100 }).notNull(),
+  // 表示順
+  sort_order: integer("sort_order").notNull().default(0),
+});
+
+// アンケートへの回答（1行 = 1人が選んだ1つの選択肢）
+export const surveyResponses = pgTable("survey_responses", {
+  ...baseFields,
+  survey_id: uuid("survey_id")
+    .references(() => surveys.id, { onDelete: "cascade" })
+    .notNull(),
+  option_id: uuid("option_id")
+    .references(() => surveyOptions.id, { onDelete: "cascade" })
+    .notNull(),
+  user_id: uuid("user_id")
+    .references(() => admin.id, { onDelete: "cascade" })
+    .notNull(),
+  // 自由記述（任意）
+  comment: text("comment"),
+}, (t) => ({
+  // 同じ選択肢を二重に選べないようにする。単一選択の検証はアプリ側で行う
+  uniqueResponse: unique("survey_responses_survey_option_user_uniq")
+    .on(t.survey_id, t.option_id, t.user_id),
+}));
+
 // パスワード再設定トークン（メールで送るのはtokenの生値、DBにはハッシュのみ保存）
 export const passwordResetTokens = pgTable("password_reset_tokens", {
   ...baseFields,
@@ -293,6 +348,9 @@ export const VALIDATION_LIMITS = {
   phoneNumber: { min: 1, max: 20 },
   motivationOther: { min: 1, max: 200 },
   referrerName: { max: 100 },
+  surveyTitle: { min: 1, max: 100 },
+  surveyOptionLabel: { min: 1, max: 100 },
+  surveyComment: { max: 500 },
 } as const;
 
 export const emailSchema = z
@@ -362,6 +420,18 @@ export const INQUIRY_STATUS_LABELS: Record<InquiryStatus, string> = {
   in_progress: "対応中",
   resolved: "対応済み",
 };
+
+// アンケート用バリデーション
+export const surveyTitleSchema = stringField(
+  VALIDATION_LIMITS.surveyTitle.min,
+  VALIDATION_LIMITS.surveyTitle.max,
+  "アンケートのタイトル",
+);
+export const surveyOptionLabelSchema = stringField(
+  VALIDATION_LIMITS.surveyOptionLabel.min,
+  VALIDATION_LIMITS.surveyOptionLabel.max,
+  "選択肢",
+);
 
 // 体験申し込み用バリデーション
 

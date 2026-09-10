@@ -5,6 +5,7 @@ import { components, type JsonSchema } from "./components.js";
 import { adminPaths, invitationPaths, healthPaths } from "./paths/admin.js";
 import { newsPaths, mediaPaths } from "./paths/news.js";
 import { noticePaths } from "./paths/notice.js";
+import { surveyPaths } from "./paths/survey.js";
 import { inquiryPaths } from "./paths/inquiry.js";
 import { trialPaths } from "./paths/trial.js";
 import { achievementPaths } from "./paths/achievement.js";
@@ -45,6 +46,10 @@ export const buildOpenApiDocument = (serverUrl: string): JsonSchema => ({
       name: "関係者限定お知らせ",
       description: "関係者向けの事務連絡と既読管理（news テーブル type='notice'）",
     },
+    {
+      name: "アンケート",
+      description: "アンケート・出欠確認の作成／回答／集計／未回答者の把握",
+    },
     { name: "実績", description: "実績投稿（画像・動画・ファイル対応）" },
     { name: "問い合わせ", description: "問い合わせの受信・対応ステータス・返信" },
     { name: "体験申し込み", description: "体験申し込みの受付と管理" },
@@ -61,6 +66,7 @@ export const buildOpenApiDocument = (serverUrl: string): JsonSchema => ({
     ...newsPaths,
     ...mediaPaths,
     ...noticePaths,
+    ...surveyPaths,
     ...achievementPaths,
     ...inquiryPaths,
     ...trialPaths,

@@ -24,6 +24,7 @@ import resetPasswordApp from "./admin/resetPassword.js";
 // コンテンツ
 import newsApp from "./news/index.js";
 import noticeApp from "./notice/index.js";
+import surveyApp from "./survey/index.js";
 import inquiryApp from "./inquiry/index.js";
 import trialApp from "./trial/index.js";
 import achievementApp from "./achievement/index.js";
@@ -85,6 +86,7 @@ app.route("/", forgotPasswordApp);
 app.route("/", resetPasswordApp);
 app.route("/", newsApp);
 app.route("/", noticeApp);
+app.route("/", surveyApp);
 app.route("/", inquiryApp);
 app.route("/", trialApp);
 app.route("/", achievementApp);

@@ -21,6 +21,9 @@ export {
   deletionRequests,
   deletionApprovals,
   passwordResetTokens,
+  surveys,
+  surveyOptions,
+  surveyResponses,
   trialApplication,
   invitations,
 } from "../db/schema.js";
@@ -39,6 +42,8 @@ export {
   consentStatusSchema,
   visibilitySchema,
   categorySchema,
+  surveyTitleSchema,
+  surveyOptionLabelSchema,
   invitationRoleSchema,
   invitationTokenSchema,
   trialNameSchema,

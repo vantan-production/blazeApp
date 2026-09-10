@@ -28,6 +28,9 @@ import achievementApp from "./achievement/index.js";
 import gameImgApp from "./gameImg/index.js";
 import mediaApp from "./media/index.js";
 
+// APIドキュメント（Scalar UI）
+import docsApp, { isDocsEnabled } from "./docs/index.js";
+
 export const app = new Hono();
 
 // ヘルスチェック（ECS/ALBのターゲットグループ監視用）
@@ -46,6 +49,9 @@ const allowedOrigins = process.env.CORS_ORIGIN
   ? process.env.CORS_ORIGIN.split(",")
   : ["http://localhost:3000"];
 
+// このサーバー自身のオリジン（/docs から自分自身のAPIを叩くときのCSRF検証で使う）
+const selfOrigin = `http://localhost:${process.env.PORT || 8080}`;
+
 // CORS
 app.use(
   "*",
@@ -58,7 +64,10 @@ app.use(
 );
 
 // CSRF対策（Cookie認証はSameSite=Strictのみに頼らず、Origin/Sec-Fetch-Siteヘッダーもサーバー側で検証する）
-app.use("*", csrf({ origin: allowedOrigins }));
+// /docs（Scalar UI）を有効にしている間は、同一オリジンから送るフォーム形式のリクエストも許可する。
+// ※ hono/csrf が検証するのは HTML フォームで送れる content-type のみ（JSON は CORS プリフライトで守られる）
+const csrfOrigins = isDocsEnabled ? [...allowedOrigins, selfOrigin] : allowedOrigins;
+app.use("*", csrf({ origin: csrfOrigins }));
 
 // ルーティング
 app.route("/", registerApp);
@@ -77,6 +86,11 @@ app.route("/", trialApp);
 app.route("/", achievementApp);
 app.route("/", gameImgApp);
 app.route("/", mediaApp);
+
+// APIドキュメント（本番では既定で無効。ENABLE_API_DOCS=true で明示的に有効化できる）
+if (isDocsEnabled) {
+  app.route("/", docsApp);
+}
 
 // 30日超過アカウントの完全削除・期限切れパスワード再設定トークンの削除
 export const cleanupExpiredAccounts = async () => {

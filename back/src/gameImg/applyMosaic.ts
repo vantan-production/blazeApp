@@ -1,5 +1,9 @@
 // POST /api/gameImg/images/:imageId/mosaic — 指定領域にモザイクを適用（管理者のみ）
-// 管理者が x, y, width, height (ピクセル座標) を送信すると、その領域をピクセル化して S3 上書き
+// 管理者が x, y, width, height (ピクセル座標) を送信すると、その領域をピクセル化して公開用画像を差し替える。
+//
+// 適用前に原本を originals/ 配下へ退避する（初回のみ）。
+// 以前は同じS3キーに上書きしていたため原本が失われ、モザイクのやり直しも
+// member への原本配布もできなかった（docs/role-design.md §5-2）。
 
 import sharp from "sharp";
 import { eq } from "../index.js";
@@ -9,6 +13,7 @@ import {
   downloadFromS3,
   uploadToS3,
   getPresignedDownloadUrl,
+  generateS3Key,
 } from "../shared/index.js";
 import { mosaicSchema, isWithinImageBounds, computeMosaicScale } from "./mosaicLogic.js";
 import type { Context } from "hono";
@@ -42,11 +47,16 @@ export const applyMosaic = async (c: Context) => {
   }
 
   const { x, y, width, height } = parsed.data;
-  const s3Key = existing[0]!.path;
+  const image = existing[0]!;
+  const s3Key = image.path;
+
+  // 2回目以降のモザイクは、退避済みの原本を起点にする。
+  // 公開用画像を起点にすると、モザイクの上にモザイクが重なって元に戻せなくなるため。
+  const sourceKey = image.original_path ?? s3Key;
 
   try {
     // S3から元画像をダウンロード
-    const originalBuffer = await downloadFromS3(s3Key);
+    const originalBuffer = await downloadFromS3(sourceKey);
 
     // 画像サイズを取得して座標が範囲内か確認
     const metadata = await sharp(originalBuffer).metadata();
@@ -79,7 +89,17 @@ export const applyMosaic = async (c: Context) => {
       .webp({ quality: 80 })
       .toBuffer();
 
-    // S3 に上書きアップロード（元画像を完全に置き換え）
+    // 初回のモザイク適用時だけ、原本を別キーへ退避する
+    if (!image.original_path) {
+      const originalKey = generateS3Key("originals", imageId, "original.webp");
+      await uploadToS3(originalBuffer, originalKey, "image/webp");
+      await db
+        .update(images)
+        .set({ original_path: originalKey })
+        .where(eq(images.id, imageId));
+    }
+
+    // 公開用画像を差し替える（原本は originals/ 側に残る）
     await uploadToS3(result, s3Key, "image/webp");
   } catch (e) {
     console.error("[applyMosaic] 画像処理に失敗:", e);

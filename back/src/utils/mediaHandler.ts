@@ -189,10 +189,12 @@ export async function replaceMediaOnS3(
  * @param records - S3パスを持つレコードの配列
  */
 export async function deleteMediaFromS3(
-  records: { path: string }[],
+  records: { path: string; original_path?: string | null }[],
 ): Promise<void> {
   for (const record of records) {
     await deleteFromS3(record.path);
+    // モザイク適用時に退避した原本も一緒に消す（images のみ持つカラム）
+    if (record.original_path) await deleteFromS3(record.original_path);
   }
 }
 

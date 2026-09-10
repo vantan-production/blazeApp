@@ -22,7 +22,7 @@ export const gameImgPaths: Paths = {
       tags: [TAG],
       summary: "試合風景一覧",
       description:
-        "未認証時は掲載同意済み（approved）の画像のみを返す。admin 以上は全画像を確認できる。",
+        "未認証時は掲載同意済み（approved）の画像のみを、モザイク適用後の状態で返す。member 以上は全画像を原本（モザイクなし）で確認できる。",
       security: [],
       parameters: [pageParam],
       responses: {
@@ -122,7 +122,7 @@ export const gameImgPaths: Paths = {
       tags: [TAG],
       summary: "画像へのモザイク適用（admin 以上）",
       description:
-        "指定した矩形領域をピクセル化して S3 の画像を上書きする。座標は元画像のピクセル基準。",
+        "指定した矩形領域をピクセル化し、公開用の画像を差し替える。初回適用時に原本を originals/ 配下へ退避するため、やり直しても劣化せず、member 向けの原本閲覧も維持される。座標は元画像のピクセル基準。",
       parameters: [pathParam("imageId", "画像ID")],
       requestBody: jsonBody({
         type: "object",

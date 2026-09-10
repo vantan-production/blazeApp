@@ -202,6 +202,64 @@ export const components: JsonSchema = {
       },
     },
 
+    MemberGalleryImage: {
+      type: "object",
+      description: "関係者向けギャラリーの画像（URLは原本を指す）",
+      properties: {
+        id: uuidField("画像ID"),
+        game_id: { type: ["string", "null"], format: "uuid" },
+        consent_status: { type: "string", enum: ["pending", "approved", "rejected"] },
+        created_at: dateTimeField("登録日時"),
+        admin_name: { type: "string", description: "投稿者名" },
+        url: { type: "string", description: "原本の署名付きURL" },
+        is_original: {
+          type: "boolean",
+          description: "退避済みの原本かどうか（モザイク未適用なら false）",
+        },
+      },
+    },
+
+    ConsentRequest: {
+      type: "object",
+      description: "掲載取り下げ依頼",
+      properties: {
+        id: uuidField("依頼ID"),
+        image_id: uuidField("対象の画像ID"),
+        requested_by: uuidField("依頼者のユーザーID"),
+        reason: { type: ["string", "null"], description: "依頼理由" },
+        status: {
+          type: "string",
+          enum: ["pending", "accepted", "rejected"],
+          description: "pending=未対応 / accepted=取り下げた / rejected=取り下げない",
+        },
+        handled_by: { type: ["string", "null"], format: "uuid" },
+        handled_at: { type: ["string", "null"], format: "date-time" },
+        created_at: dateTimeField("依頼日時"),
+      },
+    },
+
+    ConsentRequestListItem: {
+      allOf: [
+        { $ref: "#/components/schemas/ConsentRequest" },
+        {
+          type: "object",
+          properties: {
+            requester_name: { type: "string" },
+            requester_email: { type: ["string", "null"], format: "email" },
+            handler_name: { type: ["string", "null"], description: "対応した管理者名" },
+            image_url: {
+              type: ["string", "null"],
+              description: "対象写真の署名付きURL（どの写真かを確認するため）",
+            },
+            image_consent_status: {
+              type: ["string", "null"],
+              enum: ["pending", "approved", "rejected", null],
+            },
+          },
+        },
+      ],
+    },
+
     Survey: {
       type: "object",
       description: "アンケート／出欠確認",
@@ -499,7 +557,12 @@ export const components: JsonSchema = {
         consent_status: {
           type: "string",
           enum: ["pending", "approved", "rejected"],
-          description: "掲載同意ステータス（未確認 / 同意済み / 拒否）",
+          description: "掲載同意ステータス（未確認 / 同意済み / 拒否）。member 以上にのみ返す",
+        },
+        is_original: {
+          type: "boolean",
+          description:
+            "url が退避済みの原本を指しているか（member 以上にのみ返す。モザイク未適用なら false）",
         },
         game_id: { type: ["string", "null"], format: "uuid" },
         created_at: dateTimeField("登録日時"),

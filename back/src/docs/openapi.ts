@@ -6,6 +6,7 @@ import { adminPaths, invitationPaths, healthPaths } from "./paths/admin.js";
 import { newsPaths, mediaPaths } from "./paths/news.js";
 import { noticePaths } from "./paths/notice.js";
 import { surveyPaths } from "./paths/survey.js";
+import { memberGalleryPaths, consentRequestPaths } from "./paths/members.js";
 import { inquiryPaths } from "./paths/inquiry.js";
 import { trialPaths } from "./paths/trial.js";
 import { achievementPaths } from "./paths/achievement.js";
@@ -50,10 +51,22 @@ export const buildOpenApiDocument = (serverUrl: string): JsonSchema => ({
       name: "アンケート",
       description: "アンケート・出欠確認の作成／回答／集計／未回答者の把握",
     },
+    {
+      name: "関係者ギャラリー",
+      description: "試合風景の原本（モザイクなし）の閲覧とダウンロード",
+    },
+    {
+      name: "掲載取り下げ依頼",
+      description: "写真の掲載取り下げの申し出と、その対応",
+    },
     { name: "実績", description: "実績投稿（画像・動画・ファイル対応）" },
     { name: "問い合わせ", description: "問い合わせの受信・対応ステータス・返信" },
     { name: "体験申し込み", description: "体験申し込みの受付と管理" },
-    { name: "試合風景", description: "試合風景の投稿・掲載同意・モザイク" },
+    {
+      name: "試合風景",
+      description:
+        "試合風景の投稿・掲載同意・モザイク（公開分。関係者向けの原本は「関係者ギャラリー」）",
+    },
     { name: "ヘルスチェック", description: "死活監視" },
   ],
   // 既定では Cookie 認証が必要。認証不要のエンドポイントは個別に security: [] を指定している
@@ -67,6 +80,8 @@ export const buildOpenApiDocument = (serverUrl: string): JsonSchema => ({
     ...mediaPaths,
     ...noticePaths,
     ...surveyPaths,
+    ...memberGalleryPaths,
+    ...consentRequestPaths,
     ...achievementPaths,
     ...inquiryPaths,
     ...trialPaths,

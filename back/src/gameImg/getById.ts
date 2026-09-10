@@ -1,10 +1,17 @@
 // GET /api/gameImg/:id — 特定の試合風景を取得
-// 管理者: 全画像 + consent_status を返す
-// 一般: approved のみ表示
+// member 以上: 全画像 + consent_status + 原本を返す
+// 一般: approved のみ・モザイク適用後の画像を表示
 
 import { eq } from "../index.js";
 import { getTableColumns } from "drizzle-orm";
-import { db, game, admin, toMediaUrl, getOptionalUser } from "../shared/index.js";
+import {
+  db,
+  game,
+  admin,
+  toMediaUrl,
+  getOptionalUser,
+  isMemberOrAbove,
+} from "../shared/index.js";
 import { getVisibleGameImages } from "./visibleImages.js";
 import type { Context } from "hono";
 
@@ -23,20 +30,20 @@ export const getById = async (c: Context) => {
       .leftJoin(admin, eq(game.admin_id, admin.id))
       .where(eq(game.id, id)),
   ]);
-  // memberは一般ユーザーと同じ可視性（承認済みのみ）にする。owner/adminのみ全件+ステータスを見られる
-  const isAdmin = user !== null && (user.role === "owner" || user.role === "admin");
+  // 関係者（member 以上）は全件と原本を見られる（設計書 §9 C）
+  const canViewAll = isMemberOrAbove(user);
 
   const item = result[0];
   if (!item) return c.json({ success: false, errors: "試合風景が見つかりません。" }, 404);
 
-  const imageList = await getVisibleGameImages(id, isAdmin);
+  const imageList = await getVisibleGameImages(id, user);
 
   // 一般ユーザーは approved 画像が1枚もない投稿を非表示にする
-  if (!isAdmin && imageList.length === 0) {
+  if (!canViewAll && imageList.length === 0) {
     return c.json({ success: false, errors: "試合風景が見つかりません。" }, 404);
   }
 
-  const imgUrl = isAdmin ? await toMediaUrl(item.img) : (imageList[0]?.url ?? null);
+  const imgUrl = canViewAll ? await toMediaUrl(item.img) : (imageList[0]?.url ?? null);
 
   return c.json(
     {

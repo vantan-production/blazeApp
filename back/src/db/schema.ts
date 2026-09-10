@@ -176,8 +176,11 @@ export const game = pgTable("game", {
 // 画像ストレージテーブル（複数画像対応）
 export const images = pgTable("images", {
   ...baseFields,
-  // S3上のパス
+  // 公開用のS3パス（モザイク適用後）。既存カラムの役割は変えない
   path: varchar("path", { length: 500 }).notNull(),
+  // 原本のS3パス。モザイク適用時に初回のみ退避先をセットする。
+  // モザイク前は null（path がそのまま原本）。
+  original_path: varchar("original_path", { length: 500 }),
   // 掲載同意ステータス（試合風景画像のみ使用）
   // 'pending': 未確認（デフォルト）, 'approved': 同意済み, 'rejected': 拒否
   consent_status: varchar("consent_status", { length: 10 }).notNull().default("pending"),
@@ -246,6 +249,25 @@ export const deletionApprovals = pgTable("deletion_approvals", {
 }, (t) => ({
   uniqueApproval: unique("deletion_approvals_request_approved_uniq").on(t.request_id, t.approved_by),
 }));
+
+// 掲載取り下げ依頼（member が写真の取り下げを申し出る）
+// 「どの写真に誰が写っているか」の紐付けは持たず、任意の画像に対する依頼として扱う
+export const consentRequests = pgTable("consent_requests", {
+  ...baseFields,
+  image_id: uuid("image_id")
+    .references(() => images.id, { onDelete: "cascade" })
+    .notNull(),
+  requested_by: uuid("requested_by")
+    .references(() => admin.id, { onDelete: "cascade" })
+    .notNull(),
+  // 依頼理由（任意）
+  reason: text("reason"),
+  // 'pending'（未対応・初期値）| 'accepted'（取り下げた）| 'rejected'（取り下げない）
+  status: varchar("status", { length: 10 }).notNull().default("pending"),
+  // 対応した管理者と対応日時
+  handled_by: uuid("handled_by").references(() => admin.id, { onDelete: "set null" }),
+  handled_at: timestamp("handled_at"),
+});
 
 // アンケート／出欠確認テーブル
 // 出欠確認は survey_options に「出席 / 欠席 / 未定」を入れるだけで実現できる
@@ -351,6 +373,7 @@ export const VALIDATION_LIMITS = {
   surveyTitle: { min: 1, max: 100 },
   surveyOptionLabel: { min: 1, max: 100 },
   surveyComment: { max: 500 },
+  consentReason: { max: 500 },
 } as const;
 
 export const emailSchema = z
@@ -396,6 +419,20 @@ export const inquiryNameSchema = stringField(
 
 // 投稿の公開範囲
 export const visibilitySchema = z.enum(["public", "member"]);
+
+// 取り下げ依頼の対応ステータス
+export const consentRequestStatusSchema = z.enum(["pending", "accepted", "rejected"]);
+
+// 取り下げ依頼の理由（任意）
+export const consentReasonSchema = z
+  .string()
+  .trim()
+  .max(
+    VALIDATION_LIMITS.consentReason.max,
+    `理由は${VALIDATION_LIMITS.consentReason.max}文字以内で入力してください。`,
+  )
+  .optional()
+  .transform((v) => (v === "" ? undefined : v));
 
 export const consentStatusSchema = z.enum(["pending", "approved", "rejected"]);
 

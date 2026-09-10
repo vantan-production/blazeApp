@@ -3,7 +3,8 @@ import { createHash } from "node:crypto";
 import { describe, it, expect, beforeEach } from "vitest";
 import { app } from "../app.js";
 import { cleanDb, testPool } from "./setup.js";
-import { extractCookie } from "./testHelpers.js";
+import { extractCookie, seedInvitation } from "./testHelpers.js";
+import { createOwnerAccount, ownerExists } from "../admin/createOwner.js";
 
 const D = "@reset.test";
 const NEW_PASSWORD = "NewTest@Password2!";
@@ -12,11 +13,24 @@ beforeEach(async () => {
   await cleanDb();
 });
 
+// 登録は招待制になったため、招待を発行する owner と招待そのものを先に用意する
+async function ensureOwner() {
+  if (!(await ownerExists())) {
+    await createOwnerAccount({
+      name: "Seed Owner",
+      email: `seed-owner${D}`,
+      password: "Test@Password1!",
+    });
+  }
+}
+
 async function register(name: string, email: string, password: string) {
+  await ensureOwner();
+  const token = await seedInvitation(email);
   return app.request("/api/admin/register", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name, email, password, passwordConfirmation: password }),
+    body: JSON.stringify({ token, name, email, password, passwordConfirmation: password }),
   });
 }
 

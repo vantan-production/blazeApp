@@ -92,6 +92,13 @@
       "when": 1784850003000,
       "tag": "0012_inquiry_status",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1784850004000,
+      "tag": "0013_invitations",
+      "breakpoints": true
     }
   ]
 }

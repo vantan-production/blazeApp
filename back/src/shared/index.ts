@@ -21,6 +21,7 @@ export {
   deletionApprovals,
   passwordResetTokens,
   trialApplication,
+  invitations,
 } from "../db/schema.js";
 
 // バリデーションスキーマ
@@ -36,6 +37,8 @@ export {
   INQUIRY_STATUS_LABELS,
   consentStatusSchema,
   categorySchema,
+  invitationRoleSchema,
+  invitationTokenSchema,
   trialNameSchema,
   furiganaSchema,
   schoolNameSchema,
@@ -96,6 +99,7 @@ export { parsePage, buildPagination } from "../utils/pagination.js";
 // メール送信
 export {
   sendPasswordResetEmail,
+  sendInvitationEmail,
   sendInquiryAutoReplyEmail,
   sendTrialApplicationConfirmationEmail,
   sendTrialApplicationAdminNotification,

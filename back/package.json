@@ -10,6 +10,7 @@
     "test": "dotenv -e .env.test -- vitest run",
     "test:watch": "dotenv -e .env.test -- vitest",
     "sync:validation": "tsx scripts/exportValidationLimits.ts",
+    "create:owner": "tsx scripts/createOwner.ts",
     "lint": "biome lint .",
     "lint:fix": "biome lint --write .",
     "format": "biome format --write .",

@@ -35,7 +35,8 @@ export const admin = pgTable("users", {
   token_issued_at: timestamp("token_issued_at").defaultNow().notNull(),
   // 削除日時（nullなら有効、セットされていれば削除済み・30日以内なら復活可能）
   deleted_at: timestamp("deleted_at"),
-  // 権限ロール: 'owner' | 'admin' | 'member'（初回登録者が owner、以降は member）
+  // 権限ロール: 'owner' | 'admin' | 'member'
+  // 登録時のロールは invitations.role から決まる（最初の owner のみ scripts/createOwner.ts で作成）
   role: varchar("role", { length: 10 }).notNull().default("member"),
 });
 
@@ -234,6 +235,26 @@ export const passwordResetTokens = pgTable("password_reset_tokens", {
   used_at: timestamp("used_at"),
 });
 
+// 招待（メールで送るのはtokenの生値、DBにはハッシュのみ保存）
+// 自己登録は廃止し、owner が発行したこの招待経由でのみアカウントを作成できる
+export const invitations = pgTable("invitations", {
+  ...baseFields,
+  // 招待先のメールアドレス。登録時にこのアドレスと一致することを検証する
+  email: varchar("email", { length: 255 }).notNull(),
+  // sha256ハッシュ（hex64文字）。生トークンはDBに保存しない
+  token_hash: varchar("token_hash", { length: 64 }).notNull().unique(),
+  // 招待時に付与するロール: 'admin' | 'member'（owner は招待では発行しない）
+  role: varchar("role", { length: 10 }).notNull(),
+  // 発行した owner
+  invited_by: uuid("invited_by")
+    .references(() => admin.id, { onDelete: "cascade" })
+    .notNull(),
+  // 発行から7日で失効
+  expires_at: timestamp("expires_at").notNull(),
+  // 使用済みなら日時が入る（再利用防止）
+  used_at: timestamp("used_at"),
+});
+
 // バリデーションスキーマ
 
 // 文字数上限などの制約値。ここが唯一の定義元（single source of truth）。
@@ -300,6 +321,16 @@ export const inquiryNameSchema = stringField(
 );
 
 export const consentStatusSchema = z.enum(["pending", "approved", "rejected"]);
+
+// 招待で付与できるロール。owner は招待では発行せず、seed（scripts/createOwner.ts）か
+// 既存 owner によるロール変更でのみ与えられる
+export const invitationRoleSchema = z.enum(["admin", "member"]);
+
+// 招待トークン（生値）の形式。randomBytes(32).toString("hex") と同じ64桁のhex
+export const invitationTokenSchema = z
+  .string()
+  .trim()
+  .regex(/^[0-9a-f]{64}$/, "招待トークンの形式が正しくありません。");
 
 // 問い合わせの対応ステータス
 export const inquiryStatusSchema = z.enum(["pending", "in_progress", "resolved"]);

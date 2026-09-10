@@ -2,7 +2,7 @@
 // ここで作った JSON を /docs/openapi.json で配信し、/docs の Scalar UI が読み込む。
 
 import { components, type JsonSchema } from "./components.js";
-import { adminPaths, healthPaths } from "./paths/admin.js";
+import { adminPaths, invitationPaths, healthPaths } from "./paths/admin.js";
 import { newsPaths, mediaPaths } from "./paths/news.js";
 import { inquiryPaths } from "./paths/inquiry.js";
 import { trialPaths } from "./paths/trial.js";
@@ -52,6 +52,7 @@ export const buildOpenApiDocument = (serverUrl: string): JsonSchema => ({
   paths: {
     ...healthPaths,
     ...adminPaths,
+    ...invitationPaths,
     ...newsPaths,
     ...mediaPaths,
     ...achievementPaths,

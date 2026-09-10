@@ -1,5 +1,9 @@
+// アカウント登録 API
+// POST /api/admin/register — owner が発行した招待トークン経由でのみ登録できる
+// 最初の owner は招待できないため scripts/createOwner.ts で作成する
+
 import { randomBytes } from "node:crypto";
-import { isNull, sql } from "drizzle-orm";
+import { and, isNull } from "drizzle-orm";
 import { hashToken } from "../db/token.js";
 import {
   Hono,
@@ -14,9 +18,11 @@ import {
 import {
   db,
   admin,
+  invitations,
   emailSchema,
   passwordBaseSchema,
   adminNameSchema,
+  invitationTokenSchema,
   redisClient,
 } from "../shared/index.js";
 
@@ -53,6 +59,8 @@ export const comparePassword = async (
 app.post("/api/admin/register", registerLimiter, async (c) => {
   const userRegisterSchema = z
     .object({
+      // 招待トークン（生値）。owner が発行した招待経由でのみ登録できる
+      token: invitationTokenSchema,
       name: adminNameSchema,
       email: emailSchema,
       password: passwordBaseSchema,
@@ -108,7 +116,33 @@ app.post("/api/admin/register", registerLimiter, async (c) => {
       400,
     );
   }
-  const { name, email, password } = result.data;
+  const { token, name, email, password } = result.data;
+
+  // 招待の検証（存在する・未使用・期限内・宛先が一致）
+  // 招待の有無を推測されないよう、どの失敗も同じ文言で返す
+  const INVALID_INVITATION = "招待リンクが無効です。owner に再発行を依頼してください。";
+
+  const invitationRows = await db
+    .select()
+    .from(invitations)
+    .where(eq(invitations.token_hash, hashToken(token)));
+
+  const invitation = invitationRows[0];
+  if (!invitation || invitation.used_at) {
+    return c.json({ success: false, errors: INVALID_INVITATION }, 400);
+  }
+
+  if (invitation.expires_at.getTime() < Date.now()) {
+    return c.json(
+      { success: false, errors: "招待リンクの有効期限が切れています。" },
+      400,
+    );
+  }
+
+  // 招待されたアドレス以外での登録は許可しない（リンクの転送による第三者登録を防ぐ）
+  if (invitation.email !== email) {
+    return c.json({ success: false, errors: INVALID_INVITATION }, 400);
+  }
 
   // メールアドレスの重複チェック
   const existingUser = await db
@@ -126,12 +160,8 @@ app.post("/api/admin/register", registerLimiter, async (c) => {
   // パスワードのハッシュ化
   const hashedPassword = await hashPassword(password);
 
-  // 初回登録者を owner に、以降は member にする
-  const countResult = await db
-    .select({ total: sql<string>`count(*)` })
-    .from(admin)
-    .where(isNull(admin.deleted_at));
-  const role = Number(countResult[0]?.total ?? 0) === 0 ? "owner" : "member";
+  // ロールは招待時に owner が指定したものを使う（自己申告は受け付けない）
+  const role = invitation.role;
 
   // トークンを生成（生値はCookie、ハッシュをDBに保存）
   const rawToken = randomBytes(32).toString("hex");
@@ -139,15 +169,36 @@ app.post("/api/admin/register", registerLimiter, async (c) => {
   const token_issued_at = new Date();
 
   try {
-    // DBにユーザーデータを保存
-    await db.insert(admin).values({
-      token: hashedToken,
-      name,
-      email,
-      password: hashedPassword,
-      token_issued_at,
-      role,
+    // 招待の使用済みマークとユーザー作成を原子化する。
+    // used_at IS NULL を条件に更新し、更新できなければ他のリクエストが先に使ったと判断する
+    // （同じリンクで同時に登録されるのを防ぐ）
+    let alreadyUsed = false;
+
+    await db.transaction(async (tx) => {
+      const consumed = await tx
+        .update(invitations)
+        .set({ used_at: new Date() })
+        .where(and(eq(invitations.id, invitation.id), isNull(invitations.used_at)))
+        .returning({ id: invitations.id });
+
+      if (consumed.length === 0) {
+        alreadyUsed = true;
+        return;
+      }
+
+      await tx.insert(admin).values({
+        token: hashedToken,
+        name,
+        email,
+        password: hashedPassword,
+        token_issued_at,
+        role,
+      });
     });
+
+    if (alreadyUsed) {
+      return c.json({ success: false, errors: INVALID_INVITATION }, 400);
+    }
     // 同時アクセスされてもしっかりエラーが出る
   } catch (e: any) {
     if (e.code === "23505") {
@@ -171,7 +222,7 @@ app.post("/api/admin/register", registerLimiter, async (c) => {
     {
       success: true,
       message: "アカウント作成成功",
-      data: { name, email },
+      data: { name, email, role },
     },
     200,
   );

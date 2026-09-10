@@ -16,14 +16,15 @@ export const adminPaths: Paths = {
   "/api/admin/register": {
     post: {
       tags: [TAG],
-      summary: "管理者登録",
+      summary: "管理者登録（招待制）",
       description:
-        "初回登録者は owner、以降は member として登録される。成功時は token が HttpOnly Cookie で発行される。レートリミット: 1分に1回。",
+        "owner が発行した招待トークン経由でのみ登録できる。ロールは招待時に指定されたもの（admin / member）が付与される。email は招待された宛先と一致する必要がある。成功時は token が HttpOnly Cookie で発行される。レートリミット: 1分に1回。",
       security: [],
       requestBody: jsonBody({
         type: "object",
-        required: ["name", "email", "password", "passwordConfirmation"],
+        required: ["token", "name", "email", "password", "passwordConfirmation"],
         properties: {
+          token: fields.invitationToken,
           name: fields.adminName,
           email: fields.email,
           password: fields.password,
@@ -38,6 +39,7 @@ export const adminPaths: Paths = {
             properties: {
               name: { type: "string" },
               email: { type: "string", format: "email" },
+              role: { type: "string", enum: ["admin", "member"] },
             },
           },
         }),
@@ -272,6 +274,113 @@ export const adminPaths: Paths = {
       parameters: [pathParam("requestId", "削除リクエストID")],
       responses: {
         "200": messageResponse("キャンセル成功"),
+        ...errors("BadRequest", "Unauthorized", "Forbidden", "NotFound"),
+      },
+    },
+  },
+};
+
+// 招待（owner専用。verify のみ認証不要）
+export const invitationPaths: Paths = {
+  "/api/admin/invitations": {
+    post: {
+      tags: [TAG],
+      summary: "招待の発行（owner のみ）",
+      description:
+        "指定したメールアドレス宛に招待リンクを送信する。同じアドレス宛の未使用の招待は、この発行時に失効する。有効期限は7日。",
+      requestBody: jsonBody({
+        type: "object",
+        required: ["email", "role"],
+        properties: { email: fields.email, role: fields.invitationRole },
+      }),
+      responses: {
+        "200": jsonResponse("発行成功（招待メールを送信）", {
+          message: { type: "string" },
+          data: {
+            type: "object",
+            properties: {
+              email: { type: "string", format: "email" },
+              role: fields.invitationRole,
+              expires_at: { type: "string", format: "date-time" },
+            },
+          },
+        }),
+        ...errors("BadRequest", "Unauthorized", "Forbidden", "Conflict"),
+      },
+    },
+    get: {
+      tags: [TAG],
+      summary: "招待一覧（owner のみ）",
+      description:
+        "新しい順に返す。status は used_at / expires_at から導出した表示用の値。トークンハッシュは含まない。",
+      responses: {
+        "200": jsonResponse("取得成功", {
+          total: { type: "integer" },
+          data: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                id: { type: "string", format: "uuid" },
+                email: { type: "string", format: "email" },
+                role: fields.invitationRole,
+                invited_by: { type: "string", format: "uuid" },
+                expires_at: { type: "string", format: "date-time" },
+                used_at: { type: ["string", "null"], format: "date-time" },
+                created_at: { type: "string", format: "date-time" },
+                status: {
+                  type: "string",
+                  enum: ["pending", "used", "expired"],
+                  description: "pending=未使用かつ期限内 / used=使用済み / expired=未使用で期限切れ",
+                },
+              },
+            },
+          },
+        }),
+        ...errors("Unauthorized", "Forbidden"),
+      },
+    },
+  },
+
+  "/api/admin/invitations/verify": {
+    get: {
+      tags: [TAG],
+      summary: "招待トークンの有効性確認",
+      description:
+        "登録画面がリンクの有効性を判定するために使う。認証不要。無効・期限切れ・使用済みはいずれも 400。",
+      security: [],
+      parameters: [
+        {
+          name: "token",
+          in: "query",
+          required: true,
+          schema: fields.invitationToken,
+          description: "招待トークン（生値）",
+        },
+      ],
+      responses: {
+        "200": jsonResponse("有効な招待", {
+          data: {
+            type: "object",
+            properties: {
+              email: { type: "string", format: "email" },
+              role: fields.invitationRole,
+            },
+          },
+        }),
+        ...errors("BadRequest"),
+      },
+    },
+  },
+
+  "/api/admin/invitations/{id}": {
+    delete: {
+      tags: [TAG],
+      summary: "招待の失効（owner のみ）",
+      description: "未使用の招待のみ失効できる。使用済みの招待は履歴として残すため削除できない。",
+      parameters: [pathParam("id", "招待ID")],
+      responses: {
+        "200": messageResponse("失効成功"),
         ...errors("BadRequest", "Unauthorized", "Forbidden", "NotFound"),
       },
     },

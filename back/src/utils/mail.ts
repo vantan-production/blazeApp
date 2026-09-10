@@ -106,6 +106,58 @@ export async function sendPasswordResetEmail(to: string, token: string): Promise
 }
 
 // ---------------------------------------------------------------------------
+// 招待
+// ---------------------------------------------------------------------------
+
+// 招待で付与できるロールの表示名（メール本文で「どの権限で招待されたか」を伝える）
+const INVITATION_ROLE_LABELS = {
+  admin: "投稿担当（admin）",
+  member: "関係者（member）",
+} as const;
+
+export type InvitationRole = keyof typeof INVITATION_ROLE_LABELS;
+
+/**
+ * 招待メールを組み立てる
+ * @param to - 招待先メールアドレス
+ * @param token - 招待トークン（生値。DBにはハッシュのみ保存される）
+ * @param role - 招待時に付与するロール
+ */
+export function buildInvitationEmail(
+  to: string,
+  token: string,
+  role: InvitationRole,
+): MailMessage {
+  const registerUrl = `${frontendUrl()}/register?token=${encodeURIComponent(token)}`;
+
+  return {
+    from: mailFrom(),
+    to,
+    subject: "【西尾ブレイズ】アカウント作成のご案内",
+    html: `
+      <p>西尾ブレイズのアカウント作成に招待されました。</p>
+      <p>権限: ${escapeHtml(INVITATION_ROLE_LABELS[role])}</p>
+      <p>以下のリンクからアカウントを作成してください（有効期限は7日間です）。</p>
+      <p><a href="${registerUrl}">${registerUrl}</a></p>
+      <p>登録にはこのメールが届いたアドレス（${escapeHtml(to)}）が必要です。</p>
+      <p>このご案内に心当たりがない場合は、本メールを破棄してください。</p>
+    `,
+  };
+}
+
+/**
+ * 招待メールを送信する
+ * テスト環境（NODE_ENV=test）では実送信せずスキップする
+ */
+export async function sendInvitationEmail(
+  to: string,
+  token: string,
+  role: InvitationRole,
+): Promise<void> {
+  await sendMailMessage(buildInvitationEmail(to, token, role), "招待メール");
+}
+
+// ---------------------------------------------------------------------------
 // 体験申し込み
 // ---------------------------------------------------------------------------
 

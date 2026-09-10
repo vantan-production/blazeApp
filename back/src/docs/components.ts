@@ -382,6 +382,16 @@ export const fields = {
     "パスワード（半角英数字記号。登録時は zxcvbn スコア3以上が必要）",
   ),
   adminName: str(VALIDATION_LIMITS.adminName, "管理者名"),
+  invitationToken: {
+    type: "string",
+    pattern: "^[0-9a-f]{64}$",
+    description: "招待トークン（招待メールのリンクに含まれる64桁のhex）",
+  },
+  invitationRole: {
+    type: "string",
+    enum: ["admin", "member"],
+    description: "招待時に付与するロール（owner は招待では発行できない）",
+  },
   inquiryName: str(VALIDATION_LIMITS.inquiryName, "問い合わせ者の名前"),
   image: { type: "string", format: "binary", description: "画像ファイル（任意）" },
   movie: { type: "string", format: "binary", description: "動画ファイル（任意）" },

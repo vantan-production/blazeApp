@@ -16,6 +16,7 @@ import meApp from "./admin/me.js";
 import accountDeleteApp from "./admin/accountDelete.js";
 import accountRecoverApp from "./admin/accountRecover.js";
 import userManagementApp from "./admin/userManagement.js";
+import invitationsApp from "./admin/invitations.js";
 import deleteRequestApp from "./admin/deleteRequest.js";
 import forgotPasswordApp from "./admin/forgotPassword.js";
 import resetPasswordApp from "./admin/resetPassword.js";
@@ -77,6 +78,7 @@ app.route("/", meApp);
 app.route("/", accountDeleteApp);
 app.route("/", accountRecoverApp);
 app.route("/", userManagementApp);
+app.route("/", invitationsApp);
 app.route("/", deleteRequestApp);
 app.route("/", forgotPasswordApp);
 app.route("/", resetPasswordApp);
@@ -92,7 +94,7 @@ if (isDocsEnabled) {
   app.route("/", docsApp);
 }
 
-// 30日超過アカウントの完全削除・期限切れパスワード再設定トークンの削除
+// 30日超過アカウントの完全削除・期限切れパスワード再設定トークン／招待の削除
 export const cleanupExpiredAccounts = async () => {
   try {
     await db.execute(sql`
@@ -111,5 +113,15 @@ export const cleanupExpiredAccounts = async () => {
     `);
   } catch (e) {
     console.error("[cleanup] パスワード再設定トークンのクリーンアップ失敗:", e);
+  }
+
+  // 使用済みの招待は「誰をいつ招待したか」の履歴として残し、未使用の期限切れのみ削除する
+  try {
+    await db.execute(sql`
+      DELETE FROM invitations
+      WHERE expires_at < NOW() AND used_at IS NULL
+    `);
+  } catch (e) {
+    console.error("[cleanup] 期限切れ招待のクリーンアップ失敗:", e);
   }
 };

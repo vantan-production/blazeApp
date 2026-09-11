@@ -4,9 +4,11 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { csrf } from "hono/csrf";
 import { logger } from "hono/logger";
+import { requestId } from "hono/request-id";
 import { secureHeaders } from "hono/secure-headers";
 import { sql } from "drizzle-orm";
 import { db } from "./db/index.js";
+import { errorHandler, logAppError, securityMonitor } from "./utils/monitoring.js";
 
 // 管理者
 import registerApp from "./admin/register.js";
@@ -42,7 +44,11 @@ import docsApp, { isDocsEnabled } from "./docs/index.js";
 export const app = new Hono();
 
 // ヘルスチェック（ECS/ALBのターゲットグループ監視用）
+// ALB が数十秒ごとに叩くため、この下のミドルウェア（ログ・CORS等）より前に置いて素通しする
 app.get("/health", (c) => c.json({ success: true }));
+
+// リクエストID。1リクエストで出るログ同士を突き合わせるために全ログへ載せる
+app.use("*", requestId());
 
 // アクセスログ（テスト時は NODE_ENV=test で抑制）
 if (process.env.NODE_ENV !== "test") {
@@ -75,6 +81,11 @@ app.use(
 // /docs（Scalar UI）を有効にしている間は、同一オリジンから送るフォーム形式のリクエストも許可する。
 // ※ hono/csrf が検証するのは HTML フォームで送れる content-type のみ（JSON は CORS プリフライトで守られる）
 const csrfOrigins = isDocsEnabled ? [...allowedOrigins, selfOrigin] : allowedOrigins;
+
+// 不正アクセス検知（csrf の外側に置き、CSRF拒否の403も記録対象にする）
+// 判定の詳細は src/utils/monitoring.ts を参照
+app.use("*", securityMonitor({ allowedOrigins: csrfOrigins }));
+
 app.use("*", csrf({ origin: csrfOrigins }));
 
 // ルーティング
@@ -108,6 +119,9 @@ if (isDocsEnabled) {
   app.route("/", docsApp);
 }
 
+// 未捕捉例外の記録と、内部情報を含まない500の返却。ルート登録より後に置く必要がある
+app.onError(errorHandler);
+
 // 30日超過アカウントの完全削除・期限切れパスワード再設定トークン／招待の削除
 export const cleanupExpiredAccounts = async () => {
   try {
@@ -117,7 +131,7 @@ export const cleanupExpiredAccounts = async () => {
         AND deleted_at < NOW() - INTERVAL '30 days'
     `);
   } catch (e) {
-    console.error("[cleanup] 削除済みアカウントのクリーンアップ失敗:", e);
+    logAppError("cleanup.deletedAccounts", e);
   }
 
   try {
@@ -126,7 +140,7 @@ export const cleanupExpiredAccounts = async () => {
       WHERE expires_at < NOW()
     `);
   } catch (e) {
-    console.error("[cleanup] パスワード再設定トークンのクリーンアップ失敗:", e);
+    logAppError("cleanup.passwordResetTokens", e);
   }
 
   // 使用済みの招待は「誰をいつ招待したか」の履歴として残し、未使用の期限切れのみ削除する
@@ -136,6 +150,6 @@ export const cleanupExpiredAccounts = async () => {
       WHERE expires_at < NOW() AND used_at IS NULL
     `);
   } catch (e) {
-    console.error("[cleanup] 期限切れ招待のクリーンアップ失敗:", e);
+    logAppError("cleanup.expiredInvitations", e);
   }
 };

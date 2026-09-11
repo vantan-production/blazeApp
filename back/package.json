@@ -18,7 +18,8 @@
     "check:fix": "biome check --write .",
     "mail:preview": "tsx scripts/sendTestMail.ts --dry-run",
     "mail:send": "tsx scripts/sendTestMail.ts",
-    "fixtures:media": "tsx scripts/fetchMediaFixtures.ts"
+    "fixtures:media": "tsx scripts/fetchMediaFixtures.ts",
+    "monitoring:samples": "dotenv -e .env.test -- tsx scripts/exportMonitoringSamples.ts"
   },
   "keywords": [],
   "author": "",

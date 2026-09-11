@@ -16,6 +16,7 @@ import {
   passwordBaseSchema,
   redisClient,
 } from "../shared/index.js";
+import { setSecurityActor } from "../utils/monitoring.js";
 
 // タイミング攻撃対策用のダミーハッシュ（ユーザーが存在しない場合に使用）
 // bcrypt.compareが必ず失敗する正規の60文字ハッシュ。形式が不正だとエラーになるため実在するハッシュを使用
@@ -73,6 +74,10 @@ app.post("/api/admin/login", loginLimiter, async (c) => {
     );
   }
   const { email, password } = result.data;
+
+  // 「同じアカウントに対する総当たり」と「多数のアカウントを浅く試す攻撃」を
+  // 監視ログ上で区別できるようにする。生のメールアドレスは載せずハッシュだけを記録する
+  setSecurityActor(c, email);
 
   // メールアドレスでユーザーを検索
   const existingUsers = await db

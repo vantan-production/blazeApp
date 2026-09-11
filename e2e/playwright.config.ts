@@ -13,24 +13,21 @@
 // Postgres / Redis は back/docker-compose.test.yml のものを使う（npm run db:up）。
 
 import { defineConfig, devices } from "@playwright/test";
+import { TEST_DATABASE_URL, TEST_REDIS_URL, assertTestDatabase } from "./tests/fixtures.js";
 
 const API_PORT = 8080;
 const HARNESS_PORT = 3100;
+
+// 接続先の検証は**ここ**で行う。下の webServer が起動する back は
+// runMigrations() を走らせるため、seed の中で確かめたのでは既に手遅れになる。
+// この設定ファイルの読み込みはどのプロセスの起動よりも先に起きる。
+assertTestDatabase();
 
 /** ブラウザが「アプリのページ」として見るオリジン。API と同一サイト（どちらも localhost） */
 export const APP_ORIGIN = `http://localhost:${HARNESS_PORT}`;
 /** 攻撃者サイト相当のオリジン。localhost とは別サイトなので SameSite 判定が効く */
 export const EVIL_ORIGIN = `http://evil.test:${HARNESS_PORT}`;
 export const API_ORIGIN = `http://localhost:${API_PORT}`;
-
-// tests/fixtures.ts と同じ優先順位で解決する（seed が TRUNCATE する先と、
-// ここで起動する API の接続先が食い違わないようにするため）
-const TEST_DATABASE_URL =
-  process.env.E2E_DATABASE_URL ??
-  process.env.DATABASE_URL ??
-  "postgres://test:test@localhost:5433/test_db";
-const TEST_REDIS_URL =
-  process.env.E2E_REDIS_URL ?? process.env.REDIS_URL ?? "redis://localhost:6380";
 
 export default defineConfig({
   testDir: "./tests",

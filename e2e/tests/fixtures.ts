@@ -16,21 +16,25 @@ export const OWNER = {
   password: "Test@Password1!",
 };
 
-// E2E 専用の接続先を優先する。DATABASE_URL は開発用DBを指していることがあり、
-// seed が TRUNCATE ... CASCADE を投げる先としては危険なため（assertTestDatabase 参照）
+// 接続先は E2E 専用の環境変数だけで上書きできる。
+// DATABASE_URL には開発用DBが入っていることがあり、それを拾うと
+//   1. webServer が起動した back が、その開発用DBにマイグレーションを適用する
+//   2. その後に走る seed が TRUNCATE ... CASCADE を投げる
+// という順序で、ガードが効く前に開発中のデータが壊れる。だから読まない。
 export const TEST_DATABASE_URL =
-  process.env.E2E_DATABASE_URL ??
-  process.env.DATABASE_URL ??
-  "postgres://test:test@localhost:5433/test_db";
+  process.env.E2E_DATABASE_URL ?? "postgres://test:test@localhost:5433/test_db";
 export const TEST_REDIS_URL =
-  process.env.E2E_REDIS_URL ?? process.env.REDIS_URL ?? "redis://localhost:6380";
+  process.env.E2E_REDIS_URL ?? "redis://localhost:6380";
 
 /**
- * seed が users を CASCADE で空にする前に、接続先がテスト用DBであることを確かめる。
+ * 接続先がテスト用DBであることを確かめる。
  *
- * TEST_DATABASE_URL は環境変数から来るため、開発用の DATABASE_URL が
- * export されているだけで開発中のデータが消える。コメントでは防げないので
- * 「ローカルホストかつDB名に test を含む」ことを条件として機械的に弾く。
+ * E2E_DATABASE_URL で任意のDBを指せてしまうため、「ローカルホストかつ
+ * DB名に test を含む」ことを条件に機械的に弾く。
+ *
+ * **呼ぶ場所が重要**: back は起動時に runMigrations() を走らせるので、
+ * webServer が上がった後（seed の中）では遅い。playwright.config.ts の
+ * 読み込み時＝どのプロセスも起動する前に呼ぶこと。
  */
 export function assertTestDatabase(url = TEST_DATABASE_URL): void {
   let dbName: string;
@@ -38,15 +42,16 @@ export function assertTestDatabase(url = TEST_DATABASE_URL): void {
   try {
     const parsed = new URL(url);
     dbName = decodeURIComponent(parsed.pathname.replace(/^\//, ""));
-    host = parsed.hostname;
+    // IPv6 は URL.hostname がブラケット付きの "[::1]" を返す
+    host = parsed.hostname.replace(/^\[|\]$/g, "");
   } catch {
-    throw new Error("TEST_DATABASE_URL を URL として解釈できませんでした。");
+    throw new Error("E2E_DATABASE_URL を URL として解釈できませんでした。");
   }
 
   const isLocalHost = host === "localhost" || host === "127.0.0.1" || host === "::1";
   if (!isLocalHost || !/(^|[_-])test(_|$)/.test(dbName)) {
     throw new Error(
-      "E2E の seed は users を CASCADE で削除するため、ローカルのテスト用DBでしか実行できません。\n" +
+      "E2E は users を CASCADE で削除するため、ローカルのテスト用DBでしか実行できません。\n" +
         `接続先: host=${host} db=${dbName}\n` +
         "back/docker-compose.test.yml の DB を指すよう E2E_DATABASE_URL を設定してください。",
     );

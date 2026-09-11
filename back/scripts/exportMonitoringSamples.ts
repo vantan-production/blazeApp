@@ -48,7 +48,8 @@ function assertTestDatabase(): void {
   try {
     const parsed = new URL(url);
     dbName = decodeURIComponent(parsed.pathname.replace(/^\//, ""));
-    host = parsed.hostname;
+    // IPv6 は URL.hostname がブラケット付きの "[::1]" を返す
+    host = parsed.hostname.replace(/^\[|\]$/g, "");
   } catch {
     throw new Error("DATABASE_URL を URL として解釈できませんでした。");
   }

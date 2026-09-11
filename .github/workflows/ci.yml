@@ -98,9 +98,11 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
+    # e2e は E2E_ 接頭辞の変数だけを見る（DATABASE_URL は開発用DBを指しうるため
+    # 意図的に読まない。e2e/tests/fixtures.ts の assertTestDatabase 参照）
     env:
-      DATABASE_URL: postgres://test:test@localhost:5433/test_db
-      REDIS_URL: redis://localhost:6380
+      E2E_DATABASE_URL: postgres://test:test@localhost:5433/test_db
+      E2E_REDIS_URL: redis://localhost:6380
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4

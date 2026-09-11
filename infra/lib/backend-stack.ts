@@ -60,6 +60,17 @@ export class BackendStack extends cdk.Stack {
     const frontendUrl = requireContext("frontendUrl");
     const mailFrom = requireContext("mailFrom");
 
+    // 体験申し込みの管理者通知メールの宛先（カンマ区切りで複数可）。
+    // 未指定でもデプロイは通すが、その場合は通知メールが送られないので警告を出す。
+    const trialNotificationEmail =
+      (this.node.tryGetContext("trialNotificationEmail") as string | undefined) ?? "";
+    if (trialNotificationEmail.length === 0) {
+      cdk.Annotations.of(this).addWarningV2(
+        "blazeapp:trialNotificationEmail",
+        "-c trialNotificationEmail=... が未指定です。体験申し込みの管理者通知メールは送信されません。",
+      );
+    }
+
     const vpc = new ec2.Vpc(this, "Vpc", {
       maxAzs: 2,
       natGateways: 0,
@@ -100,6 +111,7 @@ export class BackendStack extends cdk.Stack {
             CORS_ORIGIN: corsOrigin,
             FRONTEND_URL: frontendUrl,
             MAIL_FROM: mailFrom,
+            TRIAL_NOTIFICATION_EMAIL: trialNotificationEmail,
           },
           secrets: Object.fromEntries(
             SECRET_ENV_KEYS.map((key) => [

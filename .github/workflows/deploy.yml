@@ -94,6 +94,9 @@ jobs:
       # corsOrigin/frontendUrl/mailFrom は Settings > Secrets and variables > Actions > Variables で
       # PROD_CORS_ORIGIN / PROD_FRONTEND_URL / PROD_MAIL_FROM（dev用は DEV_ 接頭辞）を設定しておくこと。
       # 未設定のままだと infra/lib/backend-stack.ts のガードによりここでデプロイが失敗する（意図的な挙動）。
+      # trialNotificationEmail（PROD_TRIAL_NOTIFICATION_EMAIL / DEV_TRIAL_NOTIFICATION_EMAIL）は任意。
+      # 未設定でもデプロイは通るが、体験申し込みの管理者通知メールが送信されない。
+      # ※ `A && B || C` 記法の都合上、PROD側だけ空にすると DEV 側の値が使われる。使う場合は両方設定すること。
       - name: Deploy to AWS (ECS Fargate)
         working-directory: infra
         run: |
@@ -101,10 +104,12 @@ jobs:
             --context stage=${{ github.ref_name == 'main' && 'prod' || 'dev' }} \
             --context "corsOrigin=$CORS_ORIGIN" \
             --context "frontendUrl=$FRONTEND_URL" \
-            --context "mailFrom=$MAIL_FROM"
+            --context "mailFrom=$MAIL_FROM" \
+            --context "trialNotificationEmail=$TRIAL_NOTIFICATION_EMAIL"
         env:
           CDK_DEFAULT_ACCOUNT: ${{ secrets.AWS_ACCOUNT_ID }}
           CDK_DEFAULT_REGION: ap-northeast-1
           CORS_ORIGIN: ${{ github.ref_name == 'main' && vars.PROD_CORS_ORIGIN || vars.DEV_CORS_ORIGIN }}
           FRONTEND_URL: ${{ github.ref_name == 'main' && vars.PROD_FRONTEND_URL || vars.DEV_FRONTEND_URL }}
           MAIL_FROM: ${{ github.ref_name == 'main' && vars.PROD_MAIL_FROM || vars.DEV_MAIL_FROM }}
+          TRIAL_NOTIFICATION_EMAIL: ${{ github.ref_name == 'main' && vars.PROD_TRIAL_NOTIFICATION_EMAIL || vars.DEV_TRIAL_NOTIFICATION_EMAIL }}

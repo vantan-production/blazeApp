@@ -8,6 +8,8 @@ import {
   buildTrialApplicationConfirmationEmail,
   buildTrialApplicationAdminNotification,
   buildInquiryAutoReplyEmail,
+  buildNoticeNotificationEmail,
+  buildSurveyNotificationEmail,
   trialNotificationEmails,
   sendInquiryAutoReplyEmail,
   type TrialApplicationMailData,
@@ -180,6 +182,28 @@ describe("buildInquiryAutoReplyEmail", () => {
     expect(mail.html).not.toContain("<b>強調</b>");
     expect(mail.html).not.toContain("<img src=x");
     expect(mail.html).toContain("&lt;b&gt;強調&lt;/b&gt;");
+  });
+});
+
+// 関係者への一斉通知は「宛先が互いに見えないこと」が要件。
+// to に全員を並べると1通のヘッダーに全アドレスが載り、関係者間でメールアドレスが漏れる。
+describe("関係者への一斉通知（宛先の秘匿）", () => {
+  const members = ["a@example.com", "b@example.com", "c@example.com"];
+
+  it("お知らせ通知は受信者を bcc に入れ、to には出さない", () => {
+    const mail = buildNoticeNotificationEmail(members, "新しいお知らせ");
+
+    expect(mail.bcc).toEqual(members);
+    expect(mail.to).toBe("noreply@nishioblaze.test");
+    expect(JSON.stringify(mail.to)).not.toContain("a@example.com");
+  });
+
+  it("アンケート通知も受信者を bcc に入れる", () => {
+    const mail = buildSurveyNotificationEmail(members, "出欠確認");
+
+    expect(mail.bcc).toEqual(members);
+    expect(mail.to).toBe("noreply@nishioblaze.test");
+    expect(JSON.stringify(mail.to)).not.toContain("a@example.com");
   });
 });
 

@@ -17,6 +17,9 @@ function getResendClient(): Resend {
 export interface MailMessage {
   from: string;
   to: string | string[];
+  // 宛先を互いに見せたくない一斉送信で使う。to には差出人だけを入れ、
+  // 実際の受信者は全員こちらに入れる（Resend は bcc をそのまま受け付ける）
+  bcc?: string[];
   subject: string;
   html: string;
 }
@@ -163,7 +166,10 @@ export async function sendInvitationEmail(
 
 /**
  * 新しい関係者限定お知らせの通知メールを組み立てる
- * @param to - 宛先（複数可。Resend の to は配列を受け付ける）
+ *
+ * 宛先は必ず bcc に入れる。to に関係者全員を並べると1通のヘッダーに全アドレスが載り、
+ * 受け取った関係者が他の関係者のメールアドレスを全員分見られてしまう。
+ * @param to - 通知先（複数可。bcc に入るので互いには見えない）
  * @param title - お知らせのタイトル
  */
 export function buildNoticeNotificationEmail(
@@ -174,7 +180,8 @@ export function buildNoticeNotificationEmail(
 
   return {
     from: mailFrom(),
-    to,
+    to: mailFrom(),
+    bcc: to,
     subject: "【西尾ブレイズ】新しいお知らせがあります",
     html: `
       <p>関係者向けの新しいお知らせが投稿されました。</p>
@@ -195,7 +202,10 @@ export async function sendNoticeNotificationEmail(
 
 /**
  * 新しいアンケートの通知メールを組み立てる
- * @param to - 宛先（複数可）
+ *
+ * お知らせ通知と同じ理由で、宛先は to ではなく bcc に入れる
+ * （buildNoticeNotificationEmail のコメント参照）。
+ * @param to - 通知先（複数可。bcc に入るので互いには見えない）
  * @param title - アンケートのタイトル
  */
 export function buildSurveyNotificationEmail(
@@ -206,7 +216,8 @@ export function buildSurveyNotificationEmail(
 
   return {
     from: mailFrom(),
-    to,
+    to: mailFrom(),
+    bcc: to,
     subject: "【西尾ブレイズ】アンケートへの回答をお願いします",
     html: `
       <p>新しいアンケート（出欠確認）が公開されました。</p>

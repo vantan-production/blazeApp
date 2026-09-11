@@ -3,7 +3,6 @@
 import { randomUUID } from "node:crypto";
 import {
   Hono,
-  getConnInfo,
   rateLimiter,
   RedisStore,
 } from "../index.js";
@@ -15,6 +14,7 @@ import { create } from "./create.js";
 import { updateStatus } from "./updateStatus.js";
 import { createReply } from "./reply.js";
 import { deleteReply } from "./deleteReply.js";
+import { clientIp } from "../utils/monitoring.js";
 
 type Variables = {
   user: typeof admin.$inferSelect;
@@ -30,8 +30,11 @@ const inquiryLimiter =
         windowMs: 60 * 1000,
         limit: 1,
         message: "1分間に1回しか送信できません。",
+        // ALB配下では接続元IPが常にALBになるため、X-Forwarded-For から実IPを取る（monitoring.ts参照）。
+        // IPが判別できない場合は毎回別キーにして、無関係な送信者を巻き込まないようにする
         keyGenerator: (c) => {
-          try { return getConnInfo(c).remote.address ?? randomUUID(); } catch { return randomUUID(); }
+          const ip = clientIp(c);
+          return ip === "unknown" ? randomUUID() : ip;
         },
         store: new RedisStore({
           sendCommand: (...args: string[]) => redisClient.sendCommand(args),

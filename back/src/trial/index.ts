@@ -1,11 +1,12 @@
 // 体験申し込みAPI（3エンドポイント）
 
-import { Hono, getConnInfo, rateLimiter, RedisStore } from "../index.js";
+import { Hono, rateLimiter, RedisStore } from "../index.js";
 import { admin, authToken, redisClient } from "../shared/index.js";
 import { requireAdmin } from "../db/roleGuard.js";
 import { getAll } from "./getAll.js";
 import { getById } from "./getById.js";
 import { create } from "./create.js";
+import { clientIp } from "../utils/monitoring.js";
 
 type Variables = {
   user: typeof admin.$inferSelect;
@@ -21,9 +22,9 @@ const trialLimiter =
         windowMs: 60 * 1000,
         limit: 1,
         message: "1分間に1回しか送信できません。",
-        keyGenerator: (c) => {
-          try { return getConnInfo(c).remote.address ?? "unknown"; } catch { return "unknown"; }
-        },
+        // ALB配下では接続元IPが常にALBになるため、X-Forwarded-For から実IPを取る。
+        // 素の接続元IPで数えると、全利用者が1つのバケットを共有してしまう（monitoring.ts参照）
+        keyGenerator: (c) => clientIp(c),
         store: new RedisStore({
           sendCommand: (...args: string[]) => redisClient.sendCommand(args),
         }) as any,

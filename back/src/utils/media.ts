@@ -312,6 +312,33 @@ function applyExifOrientation(
 	}
 }
 
+// HEIF の回転・反転プロパティ（irot / imir）のボックス。
+// どちらも「4バイトのサイズ(=9) + 4バイトの型名 + 1バイトの値」の固定長なので、
+// サイズごとバイト列で探せば画素データへの誤一致はまず起きない。
+const HEIF_IROT_BOX = Buffer.from([0x00, 0x00, 0x00, 0x09, 0x69, 0x72, 0x6f, 0x74]);
+const HEIF_IMIR_BOX = Buffer.from([0x00, 0x00, 0x00, 0x09, 0x69, 0x6d, 0x69, 0x72]);
+
+/**
+ * HEIF が irot / imir（回転・反転の変換プロパティ）を持っているかを調べる。
+ *
+ * libheif はこの2つを復号時に画素へ適用して返す。つまり変換プロパティを持つファイルは
+ * 展開した時点で既に正しい向きになっており、そこへ EXIF の Orientation を重ねると
+ * 二重に回ってしまう。HEIF では変換プロパティ側が正であり EXIF より優先されるため、
+ * 「変換プロパティが無いときだけ EXIF を見る」という判断に使う。
+ *
+ * テストから直接検証できるよう export している。
+ */
+export function hasHeifTransformProperty(buffer: Buffer): boolean {
+	// 変換プロパティは meta ボックス内（iprp > ipco）にしか現れない。
+	// meta が見つかればその範囲だけを見て、見つからなければ全体を対象にする。
+	const metaAt = buffer.indexOf(Buffer.from("meta", "ascii"));
+	const search = metaAt === -1 ? buffer : buffer.subarray(metaAt);
+
+	return (
+		search.indexOf(HEIF_IROT_BOX) !== -1 || search.indexOf(HEIF_IMIR_BOX) !== -1
+	);
+}
+
 /** HEICを生ピクセルに展開して sharp のパイプラインを作る */
 async function heicToSharp(buffer: Buffer): Promise<sharp.Sharp> {
 	const { default: decode } = await import("heic-decode");
@@ -324,8 +351,11 @@ async function heicToSharp(buffer: Buffer): Promise<sharp.Sharp> {
 		},
 	);
 
-	// libheif は HEIF 側の回転指定(irot)を展開時に反映するが、EXIF の Orientation は
-	// 生ピクセルに落とした時点で失われる。Orientation が 1 以外のHEICのために手当てする。
+	// libheif は HEIF 側の変換プロパティ(irot/imir)を展開時に画素へ適用する。
+	// それを持つファイルに EXIF の Orientation を重ねて掛けると二重に回るため、
+	// 変換プロパティが無いHEIC（向きの情報が EXIF にしか無いもの）だけを手当てする。
+	if (hasHeifTransformProperty(buffer)) return image;
+
 	return applyExifOrientation(image, await readExifOrientation(buffer));
 }
 

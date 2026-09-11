@@ -14,6 +14,7 @@ import {
 	compressImage,
 	compressVideo,
 	extractRawPreview,
+	hasHeifTransformProperty,
 	isRawImageExtension,
 	isValidImageExtension,
 	isValidVideoExtension,
@@ -201,6 +202,40 @@ describe("compressImage", () => {
 
 		expect(meta.width).toBe(10);
 		expect(meta.height).toBe(10);
+	});
+
+	// HEIF の向きは irot/imir（変換プロパティ）と EXIF Orientation の2箇所に入りうる。
+	// libheif は前者を復号時に画素へ適用して返すため、それを持つファイルに EXIF を
+	// 重ねて掛けると二重に回る。判定がその見分けをできていることを確認する。
+	describe("HEIF の変換プロパティ検出", () => {
+		// meta ボックスの中に固定長の irot / imir ボックスを置いた最小の並び
+		const heifWith = (boxType: string): Buffer =>
+			Buffer.concat([
+				Buffer.from("\0\0\0\x18ftypheic", "binary"),
+				Buffer.from("meta", "ascii"),
+				Buffer.from([0x00, 0x00, 0x00, 0x09]),
+				Buffer.from(boxType, "ascii"),
+				Buffer.from([0x01]),
+			]);
+
+		it("irot を持つHEIFを検出する", () => {
+			expect(hasHeifTransformProperty(heifWith("irot"))).toBe(true);
+		});
+
+		it("imir を持つHEIFを検出する", () => {
+			expect(hasHeifTransformProperty(heifWith("imir"))).toBe(true);
+		});
+
+		it("変換プロパティが無ければ false（この場合だけ EXIF Orientation を適用する）", () => {
+			const plain = Buffer.concat([
+				Buffer.from("\0\0\0\x18ftypheic", "binary"),
+				Buffer.from("meta", "ascii"),
+				Buffer.from([0x00, 0x00, 0x00, 0x0a]),
+				Buffer.from("ispe", "ascii"),
+				Buffer.from([0x01, 0x02]),
+			]);
+			expect(hasHeifTransformProperty(plain)).toBe(false);
+		});
 	});
 
 	// EXIF Orientation は「保存されているピクセルをどう回して表示するか」の指定。

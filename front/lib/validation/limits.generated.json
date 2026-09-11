@@ -1,76 +1,76 @@
 {
-  "email": {
-    "max": 255
-  },
-  "password": {
-    "min": 8,
-    "max": 72
-  },
-  "adminName": {
-    "min": 1,
-    "max": 20
-  },
-  "title": {
-    "min": 1,
-    "max": 50
-  },
-  "body": {
-    "min": 1,
-    "max": 2000
-  },
-  "category": {
-    "min": 1,
-    "max": 30
-  },
-  "inquiryName": {
-    "min": 1,
-    "max": 16
-  },
-  "trialName": {
-    "min": 1,
-    "max": 50
-  },
-  "furigana": {
-    "min": 1,
-    "max": 100
-  },
-  "schoolName": {
-    "min": 1,
-    "max": 100
-  },
-  "cramSchool": {
-    "max": 100
-  },
-  "phoneNumber": {
-    "min": 1,
-    "max": 20
-  },
-  "motivationOther": {
-    "min": 1,
-    "max": 200
-  },
-  "referrerName": {
-    "max": 100
-  },
-  "surveyTitle": {
-    "min": 1,
-    "max": 100
-  },
-  "surveyOptionLabel": {
-    "min": 1,
-    "max": 100
-  },
-  "surveyComment": {
-    "max": 500
-  },
-  "consentReason": {
-    "max": 500
-  },
-  "documentTitle": {
-    "min": 1,
-    "max": 100
-  },
-  "documentDescription": {
-    "max": 2000
-  }
+	"email": {
+		"max": 255
+	},
+	"password": {
+		"min": 8,
+		"max": 72
+	},
+	"adminName": {
+		"min": 1,
+		"max": 20
+	},
+	"title": {
+		"min": 1,
+		"max": 50
+	},
+	"body": {
+		"min": 1,
+		"max": 2000
+	},
+	"category": {
+		"min": 1,
+		"max": 30
+	},
+	"inquiryName": {
+		"min": 1,
+		"max": 16
+	},
+	"trialName": {
+		"min": 1,
+		"max": 50
+	},
+	"furigana": {
+		"min": 1,
+		"max": 100
+	},
+	"schoolName": {
+		"min": 1,
+		"max": 100
+	},
+	"cramSchool": {
+		"max": 100
+	},
+	"phoneNumber": {
+		"min": 1,
+		"max": 20
+	},
+	"motivationOther": {
+		"min": 1,
+		"max": 200
+	},
+	"referrerName": {
+		"max": 100
+	},
+	"surveyTitle": {
+		"min": 1,
+		"max": 100
+	},
+	"surveyOptionLabel": {
+		"min": 1,
+		"max": 100
+	},
+	"surveyComment": {
+		"max": 500
+	},
+	"consentReason": {
+		"max": 500
+	},
+	"documentTitle": {
+		"min": 1,
+		"max": 100
+	},
+	"documentDescription": {
+		"max": 2000
+	}
 }

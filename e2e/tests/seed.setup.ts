@@ -6,9 +6,18 @@
 
 import { test as setup, expect } from "@playwright/test";
 import pg from "pg";
-import { API_ORIGIN, OWNER, TEST_DATABASE_URL, runCreateOwner } from "./fixtures.js";
+import {
+  API_ORIGIN,
+  OWNER,
+  TEST_DATABASE_URL,
+  assertTestDatabase,
+  runCreateOwner,
+} from "./fixtures.js";
 
 setup("owner アカウントを用意する", async ({ request }) => {
+  // この後の TRUNCATE の対象がテスト用DBであることを先に確かめる（開発用DBの破壊防止）
+  assertTestDatabase();
+
   // マイグレーション完了の確認（webServer の待機と二重だが、失敗時の原因を分かりやすくするため）
   const health = await request.get(`${API_ORIGIN}/health`);
   expect(health.status()).toBe(200);

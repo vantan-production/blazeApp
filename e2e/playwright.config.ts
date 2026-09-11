@@ -23,9 +23,14 @@ export const APP_ORIGIN = `http://localhost:${HARNESS_PORT}`;
 export const EVIL_ORIGIN = `http://evil.test:${HARNESS_PORT}`;
 export const API_ORIGIN = `http://localhost:${API_PORT}`;
 
+// tests/fixtures.ts と同じ優先順位で解決する（seed が TRUNCATE する先と、
+// ここで起動する API の接続先が食い違わないようにするため）
 const TEST_DATABASE_URL =
-  process.env.DATABASE_URL ?? "postgres://test:test@localhost:5433/test_db";
-const TEST_REDIS_URL = process.env.REDIS_URL ?? "redis://localhost:6380";
+  process.env.E2E_DATABASE_URL ??
+  process.env.DATABASE_URL ??
+  "postgres://test:test@localhost:5433/test_db";
+const TEST_REDIS_URL =
+  process.env.E2E_REDIS_URL ?? process.env.REDIS_URL ?? "redis://localhost:6380";
 
 export default defineConfig({
   testDir: "./tests",

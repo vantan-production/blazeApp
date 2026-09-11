@@ -16,9 +16,42 @@ export const OWNER = {
   password: "Test@Password1!",
 };
 
+// E2E 専用の接続先を優先する。DATABASE_URL は開発用DBを指していることがあり、
+// seed が TRUNCATE ... CASCADE を投げる先としては危険なため（assertTestDatabase 参照）
 export const TEST_DATABASE_URL =
-  process.env.DATABASE_URL ?? "postgres://test:test@localhost:5433/test_db";
-export const TEST_REDIS_URL = process.env.REDIS_URL ?? "redis://localhost:6380";
+  process.env.E2E_DATABASE_URL ??
+  process.env.DATABASE_URL ??
+  "postgres://test:test@localhost:5433/test_db";
+export const TEST_REDIS_URL =
+  process.env.E2E_REDIS_URL ?? process.env.REDIS_URL ?? "redis://localhost:6380";
+
+/**
+ * seed が users を CASCADE で空にする前に、接続先がテスト用DBであることを確かめる。
+ *
+ * TEST_DATABASE_URL は環境変数から来るため、開発用の DATABASE_URL が
+ * export されているだけで開発中のデータが消える。コメントでは防げないので
+ * 「ローカルホストかつDB名に test を含む」ことを条件として機械的に弾く。
+ */
+export function assertTestDatabase(url = TEST_DATABASE_URL): void {
+  let dbName: string;
+  let host: string;
+  try {
+    const parsed = new URL(url);
+    dbName = decodeURIComponent(parsed.pathname.replace(/^\//, ""));
+    host = parsed.hostname;
+  } catch {
+    throw new Error("TEST_DATABASE_URL を URL として解釈できませんでした。");
+  }
+
+  const isLocalHost = host === "localhost" || host === "127.0.0.1" || host === "::1";
+  if (!isLocalHost || !/(^|[_-])test(_|$)/.test(dbName)) {
+    throw new Error(
+      "E2E の seed は users を CASCADE で削除するため、ローカルのテスト用DBでしか実行できません。\n" +
+        `接続先: host=${host} db=${dbName}\n` +
+        "back/docker-compose.test.yml の DB を指すよう E2E_DATABASE_URL を設定してください。",
+    );
+  }
+}
 
 /** back の create:owner スクリプトを実行する（本番と同じ作成経路を使う） */
 export async function runCreateOwner(): Promise<void> {

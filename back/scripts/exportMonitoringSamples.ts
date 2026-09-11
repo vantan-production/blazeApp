@@ -35,7 +35,36 @@ app.get("/__sample/boom", () => {
 app.get("/__sample/forbidden", (c) => c.json({ success: false }, 403));
 app.get("/__sample/rate-limited", (c) => c.json({ success: false }, 429));
 
+// このスクリプトは users を CASCADE で空にする（users を参照する全テーブルが連鎖して消える）。
+// dotenv が .env を読むため、うっかり開発用・本番用の DATABASE_URL が入っていると
+// そのデータを破壊する。ヘッダーの「前提」をコメントで書くだけでは止められないので、
+// 接続先がテスト用であることをコードで確かめてから進む。
+function assertTestDatabase(): void {
+  const url = process.env.DATABASE_URL;
+  if (!url) throw new Error("DATABASE_URL が設定されていません。");
+
+  let dbName: string;
+  let host: string;
+  try {
+    const parsed = new URL(url);
+    dbName = decodeURIComponent(parsed.pathname.replace(/^\//, ""));
+    host = parsed.hostname;
+  } catch {
+    throw new Error("DATABASE_URL を URL として解釈できませんでした。");
+  }
+
+  const isLocalHost = host === "localhost" || host === "127.0.0.1" || host === "::1";
+  if (!isLocalHost || !/(^|[_-])test(_|$)/.test(dbName)) {
+    throw new Error(
+      "このスクリプトは users を CASCADE で削除するため、ローカルのテスト用DBでしか実行できません。\n" +
+        `接続先: host=${host} db=${dbName}\n` +
+        "back/docker-compose.test.yml の DB を指すよう DATABASE_URL を設定してください。",
+    );
+  }
+}
+
 async function main() {
+  assertTestDatabase();
   await db.execute(sql`TRUNCATE TABLE users RESTART IDENTITY CASCADE`);
   await createOwnerAccount({ name: "Sample Owner", email: EMAIL, password: PASSWORD });
 

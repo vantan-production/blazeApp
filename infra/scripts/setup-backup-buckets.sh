@@ -31,7 +31,17 @@ REPLICATION_ROLE="blazeapp-s3-replication-role"
 ROLE_ARN="arn:aws:iam::${ACCOUNT}:role/${REPLICATION_ROLE}"
 
 echo "== 実行者 =="
+CALLER_ACCOUNT="$(aws sts get-caller-identity --output text --query 'Account')"
 aws sts get-caller-identity --output text --query 'Arn'
+
+# ACCOUNT はバケット名とARNを組み立てるためだけの変数で、実際にどのアカウントを
+# 操作するかは認証情報で決まる。両者がずれていると、別アカウントのバケットに
+# 名前だけ一致したものがあれば黙ってそちらを書き換えてしまう。必ず突き合わせる。
+if [ "$CALLER_ACCOUNT" != "$ACCOUNT" ]; then
+  echo "認証情報のアカウント($CALLER_ACCOUNT)が、設定値 ACCOUNT($ACCOUNT)と一致しません。" >&2
+  echo "AWS_PROFILE を確認するか、ACCOUNT=<アカウントID> を指定して実行してください。" >&2
+  exit 1
+fi
 echo
 
 # ---------------------------------------------------------------------------
@@ -98,6 +108,13 @@ create_locked_bucket() {
   fi
 
   block_public "$bucket"
+
+  # Object Lock はバージョニングが有効なバケットにしか設定できない。
+  # 新規作成した場合は --object-lock-enabled-for-bucket が同時に有効化するが、
+  # 既存バケットを引き継いだ場合は無効のままのことがあり、その時は次の
+  # put-object-lock-configuration が失敗して set -e でライフサイクル設定ごと落ちる。
+  aws s3api put-bucket-versioning --bucket "$bucket" \
+    --versioning-configuration Status=Enabled
 
   # 既定の保持期間。hourly のダンプに合わせた最短値。
   # daily / weekly はアップロード時に個別に長い保持を指定する（T4 で実装）。

@@ -55,6 +55,21 @@ pairs = re.findall(
 if not pairs:
     sys.exit("!! 合成結果からフィルタパターンを取り出せなかった")
 
+# メトリクスごとに「一致していなければならないログ種別」。
+# ForbiddenRequests のように複数の kind をまとめて数えるフィルタは、
+# 片方だけ一致していても全体としては OK に見えてしまう（csrf_rejected 側が
+# 壊れていても forbidden が一致すれば通る）。だから全種別を個別に要求する。
+# ここは infra/lib/backend-stack.ts の logMetric 呼び出しと1対1で対応させること。
+EXPECTED = {
+    "AppErrors": {"APP_ERROR"},
+    "LoginFailures": {"login_failed"},
+    "InvalidTokens": {"token_invalid"},
+    "ForbiddenRequests": {"forbidden", "csrf_rejected"},
+    "RateLimited": {"rate_limited"},
+    "Probes": {"probe"},
+}
+
+covered = set()
 failed = []
 for pattern, metric in pairs:
     (work / "req.json").write_text(
@@ -75,13 +90,31 @@ for pattern, metric in pairs:
         line = json.loads(samples[int(m["eventNumber"]) - 1])
         kinds.append(line.get("kind") or line["type"])
 
-    if kinds:
-        print(f"  OK   {metric:20s} -> {', '.join(kinds)}")
-    else:
-        # 一致0件＝このアラームは本番で永久に鳴らない
-        print(f"  NG   {metric:20s} -> 一致するログ行が無い")
-        print(f"       pattern: {pattern}")
+    matched = set(kinds)
+    expected = EXPECTED.get(metric)
+
+    if expected is None:
+        # 期待値の登録漏れ。新しいアラームを足したのに検証対象に入っていない
+        print(f"  NG   {metric:20s} -> EXPECTED に未登録（このスクリプトを更新すること）")
         failed.append(metric)
+        continue
+
+    covered.add(metric)
+    missing = expected - matched
+
+    if missing:
+        # 一致しない種別＝その経路のアラームは本番で永久に鳴らない
+        print(f"  NG   {metric:20s} -> 一致しない種別: {', '.join(sorted(missing))}")
+        print(f"       pattern: {pattern}")
+        print(f"       matched: {', '.join(sorted(matched)) or '(なし)'}")
+        failed.append(metric)
+    else:
+        print(f"  OK   {metric:20s} -> {', '.join(sorted(matched))}")
+
+# 合成結果から消えたフィルタも検出する（アラームごと削除された場合）
+for metric in sorted(set(EXPECTED) - covered):
+    print(f"  NG   {metric:20s} -> 合成結果にフィルタが存在しない")
+    failed.append(metric)
 
 if failed:
     sys.exit(
@@ -89,5 +122,5 @@ if failed:
         "   infra/lib/backend-stack.ts のパターンと\n"
         "   back/src/utils/monitoring.ts の出力フィールドを突き合わせること"
     )
-print(f"\n全 {len(pairs)} 件のフィルタがログ行に一致した")
+print(f"\n全 {len(pairs)} 件のフィルタが期待する種別すべてに一致した")
 PY

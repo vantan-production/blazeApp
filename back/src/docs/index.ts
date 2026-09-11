@@ -13,7 +13,22 @@ export const isDocsEnabled =
   (process.env.ENABLE_API_DOCS !== "false" && process.env.NODE_ENV !== "production");
 
 // Scalar の API リファレンス（UI 本体は CDN から読み込む）
-const SCALAR_CDN = "https://cdn.jsdelivr.net/npm/@scalar/api-reference";
+//
+// バージョンを固定し、SRI（integrity）を付ける。
+// このページは管理者がログインした状態で開き、スクリプトは API と同一オリジンで動く。
+// バージョン無指定だと常に最新版が降ってくるため、上流が差し替われば
+// セッションCookieと全認証APIを持ったまま任意のコードが動いてしまう。
+// 固定 + ハッシュ検証にしておけば、内容が1バイトでも変われば読み込み自体が失敗する。
+//
+// 更新手順（バージョンを上げるときは integrity も必ず取り直す）:
+//   curl -sL "https://cdn.jsdelivr.net/npm/@scalar/api-reference@<版>/dist/browser/standalone.js" \
+//     | openssl dgst -sha384 -binary | openssl base64 -A
+// jsDelivr がその場で最小化する既定エントリ（@scalar/api-reference だけの URL）は
+// 出力が変わりうるため SRI に使えない。必ず dist/browser/standalone.js を直接指すこと。
+const SCALAR_VERSION = "1.68.0";
+const SCALAR_CDN = `https://cdn.jsdelivr.net/npm/@scalar/api-reference@${SCALAR_VERSION}/dist/browser/standalone.js`;
+const SCALAR_INTEGRITY =
+  "sha384-PhSzhE9ihf7z/cKeRSKAeP+oJMMzotyFv0EjvNYgL798a2ODBQVuJLTP4Klle6IB";
 
 const page = `<!doctype html>
 <html lang="ja">
@@ -25,7 +40,11 @@ const page = `<!doctype html>
   </head>
   <body>
     <div id="app"></div>
-    <script src="${SCALAR_CDN}"></script>
+    <script
+      src="${SCALAR_CDN}"
+      integrity="${SCALAR_INTEGRITY}"
+      crossorigin="anonymous"
+    ></script>
     <script>
       // 同一オリジンへのリクエストなので、fetch の既定（same-origin）で
       // ログイン後の HttpOnly Cookie がそのまま送信される

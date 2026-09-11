@@ -86,6 +86,16 @@ export class BackendStack extends cdk.Stack {
       .map((v) => v.trim())
       .filter((v) => v.length > 0);
     if (alertEmails.length === 0) {
+      // 本番は拒否する。通知先の無いアラームは「鳴っているのに誰も知らない」状態を作るだけで、
+      // 監視があるという誤った安心だけが残る。CDK の警告はデプロイのログに流れて見落とされるため、
+      // ここで止める（開発スタックは通知先無しでも困らないので警告のまま）。
+      if (stage === "prod") {
+        throw new Error(
+          "本番スタックには -c alertEmail=... が必須です。" +
+            "通知先が無いとアラームが鳴っても誰にも届きません。" +
+            "GitHub の Actions Variables に PROD_ALERT_EMAIL を設定してください（カンマ区切りで複数可）。",
+        );
+      }
       cdk.Annotations.of(this).addWarningV2(
         "blazeapp:alertEmail",
         "-c alertEmail=... が未指定です。アラームは作成されますが、鳴っても誰にも通知されません。",

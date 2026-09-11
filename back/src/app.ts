@@ -2,10 +2,13 @@
 
 import { Hono } from "hono";
 import { cors } from "hono/cors";
+import { csrf } from "hono/csrf";
 import { logger } from "hono/logger";
+import { requestId } from "hono/request-id";
 import { secureHeaders } from "hono/secure-headers";
 import { sql } from "drizzle-orm";
 import { db } from "./db/index.js";
+import { errorHandler, logAppError, securityMonitor } from "./utils/monitoring.js";
 
 // 管理者
 import registerApp from "./admin/register.js";
@@ -15,21 +18,37 @@ import meApp from "./admin/me.js";
 import accountDeleteApp from "./admin/accountDelete.js";
 import accountRecoverApp from "./admin/accountRecover.js";
 import userManagementApp from "./admin/userManagement.js";
+import invitationsApp from "./admin/invitations.js";
 import deleteRequestApp from "./admin/deleteRequest.js";
 import forgotPasswordApp from "./admin/forgotPassword.js";
 import resetPasswordApp from "./admin/resetPassword.js";
 
 // コンテンツ
 import newsApp from "./news/index.js";
+import noticeApp from "./notice/index.js";
+import surveyApp from "./survey/index.js";
+import membersApp from "./members/index.js";
+import consentApp from "./consent/index.js";
+import documentApp from "./document/index.js";
+import submissionApp from "./submission/index.js";
+import notificationApp from "./notification/index.js";
 import inquiryApp from "./inquiry/index.js";
+import trialApp from "./trial/index.js";
 import achievementApp from "./achievement/index.js";
 import gameImgApp from "./gameImg/index.js";
 import mediaApp from "./media/index.js";
 
+// APIドキュメント（Scalar UI）
+import docsApp, { isDocsEnabled } from "./docs/index.js";
+
 export const app = new Hono();
 
 // ヘルスチェック（ECS/ALBのターゲットグループ監視用）
+// ALB が数十秒ごとに叩くため、この下のミドルウェア（ログ・CORS等）より前に置いて素通しする
 app.get("/health", (c) => c.json({ success: true }));
+
+// リクエストID。1リクエストで出るログ同士を突き合わせるために全ログへ載せる
+app.use("*", requestId());
 
 // アクセスログ（テスト時は NODE_ENV=test で抑制）
 if (process.env.NODE_ENV !== "test") {
@@ -39,18 +58,35 @@ if (process.env.NODE_ENV !== "test") {
 // セキュリティヘッダー
 app.use("*", secureHeaders());
 
+// フロントのオリジン許可リスト（CORS・CSRF検証で共有）
+const allowedOrigins = process.env.CORS_ORIGIN
+  ? process.env.CORS_ORIGIN.split(",")
+  : ["http://localhost:3000"];
+
+// このサーバー自身のオリジン（/docs から自分自身のAPIを叩くときのCSRF検証で使う）
+const selfOrigin = `http://localhost:${process.env.PORT || 8080}`;
+
 // CORS
 app.use(
   "*",
   cors({
-    origin: process.env.CORS_ORIGIN
-      ? process.env.CORS_ORIGIN.split(",")
-      : ["http://localhost:3000"],
+    origin: allowedOrigins,
     credentials: true,
     allowMethods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
     allowHeaders: ["Content-Type", "Authorization"],
   }),
 );
+
+// CSRF対策（Cookie認証はSameSite=Strictのみに頼らず、Origin/Sec-Fetch-Siteヘッダーもサーバー側で検証する）
+// /docs（Scalar UI）を有効にしている間は、同一オリジンから送るフォーム形式のリクエストも許可する。
+// ※ hono/csrf が検証するのは HTML フォームで送れる content-type のみ（JSON は CORS プリフライトで守られる）
+const csrfOrigins = isDocsEnabled ? [...allowedOrigins, selfOrigin] : allowedOrigins;
+
+// 不正アクセス検知（csrf の外側に置き、CSRF拒否の403も記録対象にする）
+// 判定の詳細は src/utils/monitoring.ts を参照
+app.use("*", securityMonitor({ allowedOrigins: csrfOrigins }));
+
+app.use("*", csrf({ origin: csrfOrigins }));
 
 // ルーティング
 app.route("/", registerApp);
@@ -60,16 +96,33 @@ app.route("/", meApp);
 app.route("/", accountDeleteApp);
 app.route("/", accountRecoverApp);
 app.route("/", userManagementApp);
+app.route("/", invitationsApp);
 app.route("/", deleteRequestApp);
 app.route("/", forgotPasswordApp);
 app.route("/", resetPasswordApp);
 app.route("/", newsApp);
+app.route("/", noticeApp);
+app.route("/", surveyApp);
+app.route("/", membersApp);
+app.route("/", consentApp);
+app.route("/", documentApp);
+app.route("/", submissionApp);
+app.route("/", notificationApp);
 app.route("/", inquiryApp);
+app.route("/", trialApp);
 app.route("/", achievementApp);
 app.route("/", gameImgApp);
 app.route("/", mediaApp);
 
-// 30日超過アカウントの完全削除・期限切れパスワード再設定トークンの削除
+// APIドキュメント（本番では既定で無効。ENABLE_API_DOCS=true で明示的に有効化できる）
+if (isDocsEnabled) {
+  app.route("/", docsApp);
+}
+
+// 未捕捉例外の記録と、内部情報を含まない500の返却。ルート登録より後に置く必要がある
+app.onError(errorHandler);
+
+// 30日超過アカウントの完全削除・期限切れパスワード再設定トークン／招待の削除
 export const cleanupExpiredAccounts = async () => {
   try {
     await db.execute(sql`
@@ -78,7 +131,7 @@ export const cleanupExpiredAccounts = async () => {
         AND deleted_at < NOW() - INTERVAL '30 days'
     `);
   } catch (e) {
-    console.error("[cleanup] 削除済みアカウントのクリーンアップ失敗:", e);
+    logAppError("cleanup.deletedAccounts", e);
   }
 
   try {
@@ -87,6 +140,16 @@ export const cleanupExpiredAccounts = async () => {
       WHERE expires_at < NOW()
     `);
   } catch (e) {
-    console.error("[cleanup] パスワード再設定トークンのクリーンアップ失敗:", e);
+    logAppError("cleanup.passwordResetTokens", e);
+  }
+
+  // 使用済みの招待は「誰をいつ招待したか」の履歴として残し、未使用の期限切れのみ削除する
+  try {
+    await db.execute(sql`
+      DELETE FROM invitations
+      WHERE expires_at < NOW() AND used_at IS NULL
+    `);
+  } catch (e) {
+    logAppError("cleanup.expiredInvitations", e);
   }
 };

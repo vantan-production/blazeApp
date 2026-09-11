@@ -1,9 +1,8 @@
-// 問い合わせAPI（5エンドポイント）
+// 問い合わせAPI（6エンドポイント）
 
 import { randomUUID } from "node:crypto";
 import {
   Hono,
-  getConnInfo,
   rateLimiter,
   RedisStore,
 } from "../index.js";
@@ -12,8 +11,10 @@ import { requireAdmin } from "../db/roleGuard.js";
 import { getAll } from "./getAll.js";
 import { getById } from "./getById.js";
 import { create } from "./create.js";
+import { updateStatus } from "./updateStatus.js";
 import { createReply } from "./reply.js";
 import { deleteReply } from "./deleteReply.js";
+import { clientIp } from "../utils/monitoring.js";
 
 type Variables = {
   user: typeof admin.$inferSelect;
@@ -29,8 +30,11 @@ const inquiryLimiter =
         windowMs: 60 * 1000,
         limit: 1,
         message: "1分間に1回しか送信できません。",
+        // ALB配下では接続元IPが常にALBになるため、X-Forwarded-For から実IPを取る（monitoring.ts参照）。
+        // IPが判別できない場合は毎回別キーにして、無関係な送信者を巻き込まないようにする
         keyGenerator: (c) => {
-          try { return getConnInfo(c).remote.address ?? randomUUID(); } catch { return randomUUID(); }
+          const ip = clientIp(c);
+          return ip === "unknown" ? randomUUID() : ip;
         },
         store: new RedisStore({
           sendCommand: (...args: string[]) => redisClient.sendCommand(args),
@@ -45,6 +49,9 @@ app.get("/api/inquiry/:id", authToken, requireAdmin, (c) => getById(c));
 
 // POST /api/inquiry — お客様からの問い合わせ（認証不要）
 app.post("/api/inquiry", inquiryLimiter, (c) => create(c));
+
+// PATCH /api/inquiry/:id/status — 対応ステータスの更新（admin以上）
+app.patch("/api/inquiry/:id/status", authToken, requireAdmin, (c) => updateStatus(c));
 
 // POST /api/inquiry/:id/reply — 問い合わせへの返信（admin以上）
 app.post("/api/inquiry/:id/reply", authToken, requireAdmin, (c) => createReply(c));

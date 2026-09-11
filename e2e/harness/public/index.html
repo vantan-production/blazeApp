@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <title>blazeApp E2E harness</title>
+  </head>
+  <body>
+    <h1>blazeApp E2E harness</h1>
+    <p>
+      Cookie 往復の E2E 用ページ。テストはこのページのブラウザコンテキスト内で
+      fetch を実行し、Cookie の送受信をブラウザ自身に判断させる。
+      ページ自体に処理は持たない（e2e/tests/cookie-roundtrip.spec.ts 参照）。
+    </p>
+    <p id="origin"></p>
+    <script>
+      document.getElementById("origin").textContent = "origin: " + location.origin;
+    </script>
+  </body>
+</html>

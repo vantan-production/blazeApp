@@ -32,6 +32,14 @@ export async function cleanDb() {
   // DBクリーンアップ
   await testPool.query(`
     TRUNCATE TABLE
+      invitations,
+      news_reads,
+      notification_settings,
+      documents,
+      consent_requests,
+      survey_responses,
+      survey_options,
+      surveys,
       password_reset_tokens,
       deletion_approvals,
       deletion_requests,
@@ -43,6 +51,7 @@ export async function cleanDb() {
       achievement,
       game,
       inquiry,
+      trial_application,
       users
     RESTART IDENTITY CASCADE
   `);

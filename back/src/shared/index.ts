@@ -5,79 +5,118 @@ export { db } from "../db/index.js";
 
 // Redis接続
 export { redisClient } from "../db/redis.js";
-
-// テーブル定義
-export {
-  admin,
-  news,
-  inquiry,
-  reply,
-  achievement,
-  game,
-  images,
-  movies,
-  files,
-  deletionRequests,
-  deletionApprovals,
-  passwordResetTokens,
-} from "../db/schema.js";
-
-// バリデーションスキーマ
-export {
-  VALIDATION_LIMITS,
-  emailSchema,
-  passwordBaseSchema,
-  adminNameSchema,
-  titleSchema,
-  bodySchema,
-  inquiryNameSchema,
-  consentStatusSchema,
-  categorySchema,
-} from "../db/schema.js";
-
-// 認証ミドルウェア
-export { authToken, getOptionalUser } from "../db/token.js";
-
+export type { Role } from "../db/roleGuard.js";
 // ロールガード
-export { requireOwner, requireAdmin } from "../db/roleGuard.js";
-
+export {
+	isMemberOrAbove,
+	requireAdmin,
+	requireMember,
+	requireOwner,
+} from "../db/roleGuard.js";
 // S3ストレージ
 export {
-  uploadToS3,
-  deleteFromS3,
-  downloadFromS3,
-  getPresignedDownloadUrl,
-  generateS3Key,
+	deleteFromS3,
+	downloadFromS3,
+	generateS3Key,
+	getPresignedDownloadUrl,
+	uploadToS3,
 } from "../db/s3.js";
-
-// メディア処理ユーティリティ
+// テーブル定義
+// バリデーションスキーマ
 export {
-  isValidImageExtension,
-  isValidVideoExtension,
-  validateFileSize,
-  validateMultipleFiles,
-  validateFileExtension,
-  compressImage,
-  compressVideo,
-  sanitizeHtml,
-} from "../utils/media.js";
-
-// 汎用メディア処理ヘルパー
-export {
-  processImageUpload,
-  processVideoUpload,
-  processFileUpload,
-  replaceMediaOnS3,
-  deleteMediaFromS3,
-  toMediaUrl,
-  getRelatedMediaUrls,
-} from "../utils/mediaHandler.js";
-
+	achievement,
+	admin,
+	adminNameSchema,
+	birthDateSchema,
+	bodySchema,
+	categorySchema,
+	consentReasonSchema,
+	consentRequestStatusSchema,
+	consentRequests,
+	consentStatusSchema,
+	cramSchoolSchema,
+	deletionApprovals,
+	deletionRequests,
+	documentDescriptionSchema,
+	documents,
+	documentTitleSchema,
+	emailSchema,
+	files,
+	furiganaSchema,
+	game,
+	genderSchema,
+	INQUIRY_STATUS_LABELS,
+	images,
+	inquiry,
+	inquiryNameSchema,
+	inquiryStatusSchema,
+	invitationRoleSchema,
+	invitations,
+	invitationTokenSchema,
+	motivationOtherSchema,
+	motivationSchema,
+	movies,
+	news,
+	newsReads,
+	notificationSettings,
+	passwordBaseSchema,
+	passwordResetTokens,
+	phoneNumberSchema,
+	postStatusSchema,
+	referrerNameSchema,
+	reply,
+	schoolNameSchema,
+	surveyOptionLabelSchema,
+	surveyOptions,
+	surveyResponses,
+	surveys,
+	surveyTitleSchema,
+	titleSchema,
+	trialApplication,
+	trialDateSchema,
+	trialNameSchema,
+	VALIDATION_LIMITS,
+	visibilitySchema,
+} from "../db/schema.js";
+// 認証ミドルウェア
+export { authToken, getOptionalUser } from "../db/token.js";
 // 汎用CRUDルーター
 export { createCrudRouter } from "../utils/crudRouter.js";
-
-// ページネーション
-export { parsePage, buildPagination } from "../utils/pagination.js";
-
 // メール送信
-export { sendPasswordResetEmail } from "../utils/mail.js";
+export {
+	sendInquiryAutoReplyEmail,
+	sendInvitationEmail,
+	sendNoticeNotificationEmail,
+	sendPasswordResetEmail,
+	sendSurveyNotificationEmail,
+	sendTrialApplicationAdminNotification,
+	sendTrialApplicationConfirmationEmail,
+} from "../utils/mail.js";
+// メディア処理ユーティリティ
+export {
+	compressImage,
+	compressUploadedImage,
+	compressVideo,
+	extractRawPreview,
+	isRawImageExtension,
+	isValidImageExtension,
+	isValidVideoExtension,
+	sanitizeHtml,
+	validateFileExtension,
+	validateFileSize,
+	validateImageFileSize,
+	validateMultipleFiles,
+	validateRawFileSize,
+} from "../utils/media.js";
+// 汎用メディア処理ヘルパー
+export {
+	deleteMediaFromS3,
+	getRelatedMediaUrls,
+	processFileUpload,
+	processImageUpload,
+	processVideoUpload,
+	replaceMediaOnS3,
+	toMediaUrl,
+} from "../utils/mediaHandler.js";
+// ページネーション
+export { buildPagination, parsePage } from "../utils/pagination.js";

@@ -3,13 +3,34 @@ name: Continuous Deployment
 on:
   push:
     branches: [main, dev] # main または dev にpushされたら自動デプロイ
+  workflow_dispatch: # 手動実行用（環境変数だけ更新して再デプロイしたい場合など）
 
 permissions:
   contents: read
 
 jobs:
+  # 0. デプロイ対象の ref を検証する
+  #    workflow_dispatch では任意のブランチ・タグを選べてしまい、main 以外は
+  #    すべて dev 扱いになる（下の `ref_name == 'main'` 判定）。つまり作業ブランチを
+  #    手動実行するだけで dev スタックと nisio-blaze-dev.vercel.app のエイリアスを
+  #    未検証のコードに差し替えられる。対応している2本の「ブランチ」だけに絞る。
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Reject unsupported refs
+        env:
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          if [ "$REF_TYPE" != branch ] || { [ "$REF_NAME" != main ] && [ "$REF_NAME" != dev ]; }; then
+            echo "::error::デプロイできるのは main / dev ブランチのみです（指定: $REF_TYPE $REF_NAME）"
+            exit 1
+          fi
+          echo "デプロイ対象: $REF_NAME"
+
   # 1. 念のためデプロイ前にもう一度テストを通す
   ci:
+    needs: guard
     uses: ./.github/workflows/ci.yml
 
   # 2. フロントエンド（Next.js）を Vercel にデプロイ
@@ -17,9 +38,14 @@ jobs:
   deploy-frontend:
     needs: ci
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: front
+    # 同一refでの多重実行時、dev用エイリアスの付け替えが実行順の入れ替わりで
+    # 古いデプロイに戻ってしまわないよう直列化する
+    concurrency:
+      group: deploy-frontend-${{ github.ref_name }}
+      cancel-in-progress: false
+    # Vercelプロジェクト側のRoot Directory設定（front）が、Gitネイティブ連携によるPRプレビュー
+    # デプロイでも使われるため、CLI側でも working-directory: front と二重に適用しないよう
+    # 常にリポジトリルートから vercel コマンドを実行する（Root Directoryの解決はVercel側に任せる）
     env:
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
@@ -38,7 +64,19 @@ jobs:
         run: vercel build ${{ github.ref_name == 'main' && '--prod' || '' }} --token=${{ secrets.VERCEL_TOKEN }}
 
       - name: Deploy Project Artifacts to Vercel
-        run: vercel deploy --prebuilt ${{ github.ref_name == 'main' && '--prod' || '' }} --token=${{ secrets.VERCEL_TOKEN }}
+        id: deploy
+        run: |
+          url=$(vercel deploy --prebuilt ${{ github.ref_name == 'main' && '--prod' || '' }} --token=${{ secrets.VERCEL_TOKEN }})
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+
+      # dev への deploy はコミットごとにURLが変わるため、バックエンドのCORS_ORIGIN等に
+      # 固定で指定できるよう常に同じドメインへエイリアスする（main/production側はプロジェクトの
+      # 本番ドメインが自動で使われるため不要）
+      - name: Alias dev deployment to a stable domain
+        if: github.ref_name != 'main'
+        env:
+          DEPLOY_URL: ${{ steps.deploy.outputs.url }}
+        run: vercel alias set "$DEPLOY_URL" nisio-blaze-dev.vercel.app --token=${{ secrets.VERCEL_TOKEN }}
 
   # 3. バックエンド（Hono）を ECS Fargate にデプロイ（infra/lib/backend-stack.ts 参照）
   #    デプロイ前に Secrets Manager に `blazeapp/backend-prod` / `blazeapp/backend-dev` シークレットを作成しておくこと
@@ -73,20 +111,35 @@ jobs:
 
       # back/Dockerfile からビルドしてECS Fargateにデプロイ
       # main→prod、dev→dev の別スタックにデプロイされ、インフラが完全に分離される（infra/bin/infra.ts参照）
-      # corsOrigin/frontendUrl/mailFrom は Settings > Secrets and variables > Actions > Variables で
-      # PROD_CORS_ORIGIN / PROD_FRONTEND_URL / PROD_MAIL_FROM（dev用は DEV_ 接頭辞）を設定しておくこと。
-      # 未設定のままだと infra/lib/backend-stack.ts のガードによりここでデプロイが失敗する（意図的な挙動）。
+      #
+      # 各設定値は Settings > Secrets and variables > Actions > Variables に
+      # PROD_CORS_ORIGIN / DEV_CORS_ORIGIN のように「ステージ接頭辞 + 名前」で登録する。
+      # - corsOrigin / frontendUrl / mailFrom は必須。未設定だと
+      #   infra/lib/backend-stack.ts のガードによりここでデプロイが失敗する（意図的な挙動）。
+      # - alertEmail は監視アラートの通知先（カンマ区切りで複数可）。prod では必須。
+      #   初回デプロイ後、各アドレスに届く SNS の確認メールを承認するまで通知は始まらない。
+      # - trialNotificationEmail は任意。未設定でも通るが体験申し込みの管理者通知が送られない。
+      #
+      # 値の選択を `A && B || C` でやると、PROD 側が未設定のときに式全体が DEV 側へ落ちて、
+      # 本番の通知・アラートが黙って開発用アドレスに飛ぶ。そうならないよう、
+      # 「接頭辞を決めてからその名前の変数を読む」順序にしてシェル側で取り出す。
+      # （vars は秘匿情報ではないので、まとめて環境変数に渡して問題ない）
       - name: Deploy to AWS (ECS Fargate)
         working-directory: infra
-        run: |
-          npx cdk deploy --require-approval never \
-            --context stage=${{ github.ref_name == 'main' && 'prod' || 'dev' }} \
-            --context "corsOrigin=$CORS_ORIGIN" \
-            --context "frontendUrl=$FRONTEND_URL" \
-            --context "mailFrom=$MAIL_FROM"
         env:
           CDK_DEFAULT_ACCOUNT: ${{ secrets.AWS_ACCOUNT_ID }}
           CDK_DEFAULT_REGION: ap-northeast-1
-          CORS_ORIGIN: ${{ github.ref_name == 'main' && vars.PROD_CORS_ORIGIN || vars.DEV_CORS_ORIGIN }}
-          FRONTEND_URL: ${{ github.ref_name == 'main' && vars.PROD_FRONTEND_URL || vars.DEV_FRONTEND_URL }}
-          MAIL_FROM: ${{ github.ref_name == 'main' && vars.PROD_MAIL_FROM || vars.DEV_MAIL_FROM }}
+          STAGE: ${{ github.ref_name == 'main' && 'prod' || 'dev' }}
+          VAR_PREFIX: ${{ github.ref_name == 'main' && 'PROD' || 'DEV' }}
+          ALL_VARS: ${{ toJSON(vars) }}
+        run: |
+          # 該当ステージの変数だけを読む。未設定なら空文字を返し、他ステージの値は決して使わない
+          var() { printf '%s' "$ALL_VARS" | jq -r --arg k "${VAR_PREFIX}_$1" '.[$k] // ""'; }
+
+          npx cdk deploy --require-approval never \
+            --context "stage=$STAGE" \
+            --context "corsOrigin=$(var CORS_ORIGIN)" \
+            --context "frontendUrl=$(var FRONTEND_URL)" \
+            --context "mailFrom=$(var MAIL_FROM)" \
+            --context "trialNotificationEmail=$(var TRIAL_NOTIFICATION_EMAIL)" \
+            --context "alertEmail=$(var ALERT_EMAIL)"

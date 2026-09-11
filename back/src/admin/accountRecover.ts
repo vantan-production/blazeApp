@@ -1,8 +1,8 @@
 import { randomBytes } from "node:crypto";
+import { hashToken } from "../db/token.js";
 import {
   Hono,
   z,
-  getConnInfo,
   rateLimiter,
   RedisStore,
   bcrypt,
@@ -15,6 +15,7 @@ import {
   passwordBaseSchema,
   redisClient,
 } from "../shared/index.js";
+import { clientIp } from "../utils/monitoring.js";
 
 const app = new Hono();
 
@@ -26,9 +27,9 @@ const recoverLimiter =
         windowMs: 60 * 1000,
         limit: 3,
         message: "試行回数の上限に達しました。1分後に再試行してください。",
-        keyGenerator: (c) => {
-          try { return getConnInfo(c).remote.address ?? "unknown"; } catch { return "unknown"; }
-        },
+        // ALB配下では接続元IPが常にALBになるため、X-Forwarded-For から実IPを取る。
+        // 素の接続元IPで数えると、全利用者が1つのバケットを共有してしまう（monitoring.ts参照）
+        keyGenerator: (c) => clientIp(c),
         store: new RedisStore({
           sendCommand: (...args: string[]) => redisClient.sendCommand(args),
         }) as any,
@@ -116,17 +117,18 @@ app.post("/api/admin/account-recover", recoverLimiter, async (c) => {
   }
 
   // 復活：deleted_at をクリアして新しいトークンを発行
-  const token = randomBytes(32).toString("hex");
+  const rawToken = randomBytes(32).toString("hex");
+  const hashedToken = hashToken(rawToken);
   const tokenIssuedAt = new Date();
 
   await db
     .update(admin)
-    .set({ deleted_at: null, token, token_issued_at: tokenIssuedAt })
+    .set({ deleted_at: null, token: hashedToken, token_issued_at: tokenIssuedAt })
     .where(eq(admin.id, user.id));
 
   c.header(
     "Set-Cookie",
-    `token=${token}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=2592000`,
+    `token=${rawToken}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=2592000`,
   );
 
   return c.json(

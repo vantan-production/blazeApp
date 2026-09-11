@@ -4,6 +4,9 @@ export default defineConfig({
   test: {
     globals: true,
     environment: "node",
+    // テスト対象は src のみ。ビルド成果物の dist/ にも同じテストがコンパイルされて残るため、
+    // 明示的に除外しないと同じテストが二重に走り、古い dist 側が失敗する
+    include: ["src/**/*.test.ts"],
     testTimeout: 15000,
     hookTimeout: 30000,
     // テストファイルを直列実行（DB状態の競合を防ぐ）

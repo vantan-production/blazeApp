@@ -17,7 +17,8 @@
     "check": "biome check .",
     "check:fix": "biome check --write .",
     "mail:preview": "tsx scripts/sendTestMail.ts --dry-run",
-    "mail:send": "tsx scripts/sendTestMail.ts"
+    "mail:send": "tsx scripts/sendTestMail.ts",
+    "fixtures:media": "tsx scripts/fetchMediaFixtures.ts"
   },
   "keywords": [],
   "author": "",

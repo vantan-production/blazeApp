@@ -40,3 +40,5 @@ Thumbs.db
 !.vscode/extensions.json
 *.swp
 *.swo
+# 実メディアテストフィクスチャ（scripts/fetchMediaFixtures.ts で取得）
+back/src/__tests__/fixtures/media/

@@ -8,7 +8,6 @@ import {
   db,
   game,
   admin,
-  toMediaUrl,
   getOptionalUser,
   isMemberOrAbove,
 } from "../shared/index.js";
@@ -43,7 +42,8 @@ export const getById = async (c: Context) => {
     return c.json({ success: false, errors: "試合風景が見つかりません。" }, 404);
   }
 
-  const imgUrl = canViewAll ? await toMediaUrl(item.img) : (imageList[0]?.url ?? null);
+  // getAll と同じ理由で、メイン画像も images テーブル側の先頭（role に応じたキー）を使う
+  const imgUrl = imageList[0]?.url ?? null;
 
   return c.json(
     {

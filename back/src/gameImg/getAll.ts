@@ -9,7 +9,6 @@ import {
   game,
   admin,
   images,
-  toMediaUrl,
   getOptionalUser,
   isMemberOrAbove,
   parsePage,
@@ -55,8 +54,10 @@ export const getAll = async (c: Context) => {
     all.map(async (item) => {
       const imageList = await getVisibleGameImages(item.id, user);
 
-      // 一般ユーザーのメイン画像は最初の approved 画像を使用
-      const imgUrl = canViewAll ? await toMediaUrl(item.img) : (imageList[0]?.url ?? null);
+      // メイン画像は必ず images テーブル側の先頭から取る。
+      // game.img を直接署名すると pickImageKey を通らないため、member 以上でも
+      // 原本ではなく公開用（モザイク後）の画像が返り、掲載同意の取り下げも反映されない
+      const imgUrl = imageList[0]?.url ?? null;
 
       return {
         ...item,

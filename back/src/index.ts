@@ -18,6 +18,6 @@ export {
   timestamp,
   text,
 } from "drizzle-orm/pg-core";
-export { eq, desc, and, sql } from "drizzle-orm";
+export { eq, desc, asc, and, sql } from "drizzle-orm";
 export { default as bcrypt } from "bcryptjs";
 export { cors } from "hono/cors";

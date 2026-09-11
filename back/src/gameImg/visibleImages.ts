@@ -6,7 +6,7 @@
 // member に原本を見せるのは設計書（docs/role-design.md §9 C）の要件。
 // 未成年を含む肖像を扱うため、原本は「ログインした関係者」にだけ渡す。
 
-import { and, eq } from "../index.js";
+import { and, asc, eq } from "../index.js";
 import {
   db,
   images,
@@ -40,6 +40,8 @@ export async function getVisibleGameImages(
 ): Promise<VisibleGameImage[]> {
   const canViewAll = isMemberOrAbove(viewer);
 
+  // 並び順を固定する。呼び出し側は先頭をメイン画像として扱うため、
+  // ORDER BY 無しだと同じ投稿でも実行ごとにメイン画像が入れ替わりうる
   const records = await db
     .select()
     .from(images)
@@ -47,7 +49,8 @@ export async function getVisibleGameImages(
       canViewAll
         ? eq(images.game_id, gameId)
         : and(eq(images.game_id, gameId), eq(images.consent_status, "approved")),
-    );
+    )
+    .orderBy(asc(images.created_at), asc(images.id));
 
   return Promise.all(
     records.map(async (record) => ({

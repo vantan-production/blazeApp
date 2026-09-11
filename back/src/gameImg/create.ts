@@ -4,6 +4,7 @@ import type { Context } from "hono";
 import {
 	compressUploadedImage,
 	db,
+	deleteFromS3,
 	game,
 	images,
 	isValidImageExtension,
@@ -48,41 +49,67 @@ export const create = async (c: Context) => {
 		return c.json({ success: false, errors: sizeError }, 400);
 	}
 
-	// メイン画像（1枚目）を圧縮してS3にアップロード
-	// RAWは埋め込みプレビューの抽出、HEICはlibheifでの展開を経てWebPになる
-	const firstFile = imageFiles[0]!;
-	const firstBuffer = Buffer.from(await firstFile.arrayBuffer());
-	const firstCompressed = await compressUploadedImage(
-		firstBuffer,
-		firstFile.name,
-	);
-	const tempId = crypto.randomUUID();
-	const mainS3Key = `game/${tempId}/${Date.now()}.${firstCompressed.extension}`;
-	await uploadToS3(
-		firstCompressed.data,
-		mainS3Key,
-		firstCompressed.contentType,
-	);
+	// 変換とアップロードを**DBに書く前に**すべて終わらせる。
+	// compressUploadedImage は「埋め込みプレビューを持たないRAW」「libheifが展開できないHEIC」で
+	// 例外を投げる。gameレコードを作ってから途中で投げると、画像が一部しか無い投稿が残り、
+	// 呼び出し側にはメッセージの無い500だけが返る。
+	// 失敗時は mediaHandler.processImageUpload と同じく原因付きの400にし、
+	// 先にアップロード済みのオブジェクトはS3から消す。
+	const uploadPrefix = `game/${crypto.randomUUID()}`;
+	const uploadedKeys: string[] = [];
 
-	// DBにgameレコードを作成
-	const inserted = await db
-		.insert(game)
-		.values({ img: mainS3Key, admin_id: user.id })
-		.returning();
+	const rollbackUploads = async (): Promise<void> => {
+		// 後片付けの失敗で本来のエラーを潰さない（残っても孤児オブジェクトになるだけ）
+		await Promise.allSettled(uploadedKeys.map((key) => deleteFromS3(key)));
+	};
 
-	const gameId = inserted[0]!.id;
-
-	// 全画像をimagesテーブルに保存
-	for (const file of imageFiles) {
-		const buffer = Buffer.from(await file.arrayBuffer());
-		const compressed = await compressUploadedImage(buffer, file.name);
-		const s3Key = `game/${gameId}/${Date.now()}_${Math.random().toString(36).slice(2)}.${compressed.extension}`;
-		await uploadToS3(compressed.data, s3Key, compressed.contentType);
-		await db.insert(images).values({ path: s3Key, game_id: gameId });
+	try {
+		for (const file of imageFiles) {
+			const buffer = Buffer.from(await file.arrayBuffer());
+			const compressed = await compressUploadedImage(buffer, file.name);
+			const s3Key = `${uploadPrefix}/${Date.now()}_${Math.random().toString(36).slice(2)}.${compressed.extension}`;
+			await uploadToS3(compressed.data, s3Key, compressed.contentType);
+			uploadedKeys.push(s3Key);
+		}
+	} catch (err) {
+		await rollbackUploads();
+		return c.json(
+			{
+				success: false,
+				errors: err instanceof Error ? err.message : "画像の変換に失敗しました。",
+			},
+			400,
+		);
 	}
 
-	return c.json(
-		{ success: true, message: "試合風景を投稿しました。", data: inserted[0] },
-		200,
-	);
+	// メイン画像は1枚目。imagesテーブルの1行目と同じS3キーを指す。
+	// 別途アップロードした複製にすると、モザイク適用（applyMosaic）や掲載同意の取り下げが
+	// imagesテーブル側にしか効かず、game.img だけがモザイク前の画像を配り続けてしまう。
+	const mainS3Key = uploadedKeys[0]!;
+
+	try {
+		// 投稿本体と画像行は必ず揃って入る。片方だけ残ると画像の無い投稿になる
+		const inserted = await db.transaction(async (tx) => {
+			const rows = await tx
+				.insert(game)
+				.values({ img: mainS3Key, admin_id: user.id })
+				.returning();
+
+			const gameId = rows[0]!.id;
+			await tx
+				.insert(images)
+				.values(uploadedKeys.map((path) => ({ path, game_id: gameId })));
+
+			return rows[0]!;
+		});
+
+		return c.json(
+			{ success: true, message: "試合風景を投稿しました。", data: inserted },
+			200,
+		);
+	} catch (err) {
+		// DB側で落ちた場合もS3に孤児を残さない
+		await rollbackUploads();
+		throw err;
+	}
 };

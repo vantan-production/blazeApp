@@ -4,27 +4,22 @@
 import { eq } from "drizzle-orm";
 import type { AnyPgColumn, PgTable } from "drizzle-orm/pg-core";
 import { db } from "../db/index.js";
+import { deleteFromS3, getPresignedDownloadUrl, uploadToS3 } from "../db/s3.js";
 import {
-  uploadToS3,
-  deleteFromS3,
-  getPresignedDownloadUrl,
-} from "../db/s3.js";
-import {
-  isValidImageExtension,
-  isRawImageExtension,
-  isValidVideoExtension,
-  validateFileSize,
-  validateRawFileSize,
-  compressImage,
-  compressVideo,
-  extractRawPreview,
+	compressUploadedImage,
+	compressVideo,
+	isRawImageExtension,
+	isValidImageExtension,
+	isValidVideoExtension,
+	validateFileSize,
+	validateImageFileSize,
 } from "./media.js";
 
 // メディア処理の結果型
 // 成功時はS3パス、失敗時はエラーメッセージとステータスコードを返す
 type MediaResult =
-  | { success: true; path: string }
-  | { success: false; error: string; status: 400 };
+	| { success: true; path: string }
+	| { success: false; error: string; status: 400 };
 
 /**
  * 画像をバリデーション→圧縮→S3にアップロード
@@ -33,60 +28,46 @@ type MediaResult =
  * @returns 成功時はS3パス、失敗時はエラー情報
  */
 export async function processImageUpload(
-  file: File,
-  s3Prefix: string,
+	file: File,
+	s3Prefix: string,
 ): Promise<MediaResult> {
-  // 拡張子チェック
-  if (!isValidImageExtension(file.name)) {
-    return {
-      success: false,
-      error: "許可されていない画像形式です。",
-      status: 400,
-    };
-  }
+	// 拡張子チェック
+	if (!isValidImageExtension(file.name)) {
+		return {
+			success: false,
+			error: "許可されていない画像形式です。",
+			status: 400,
+		};
+	}
 
-  const isRaw = isRawImageExtension(file.name);
+	// サイズチェック（RAW形式は100MBまで、通常画像は10MBまで）
+	if (!validateImageFileSize(file.name, file.size)) {
+		return {
+			success: false,
+			error: isRawImageExtension(file.name)
+				? "RAW画像のファイルサイズは100MB以下にしてください。"
+				: "画像サイズは10MB以下にしてください。",
+			status: 400,
+		};
+	}
 
-  // サイズチェック（RAW形式は50MBまで、通常画像は10MBまで）
-  if (isRaw ? !validateRawFileSize(file.size) : !validateFileSize(file.size)) {
-    return {
-      success: false,
-      error: isRaw
-        ? "RAW画像のファイルサイズは50MB以下にしてください。"
-        : "画像サイズは10MB以下にしてください。",
-      status: 400,
-    };
-  }
+	const buffer: Buffer = Buffer.from(await file.arrayBuffer());
 
-  let buffer: Buffer = Buffer.from(await file.arrayBuffer());
+	// RAWは埋め込みプレビューの抽出、HEICはlibheifでの展開を経てWebPに変換される
+	let compressed: Awaited<ReturnType<typeof compressUploadedImage>>;
+	try {
+		compressed = await compressUploadedImage(buffer, file.name);
+	} catch (err) {
+		return {
+			success: false,
+			error: err instanceof Error ? err.message : "画像の変換に失敗しました。",
+			status: 400,
+		};
+	}
+	const s3Key = `${s3Prefix}/${Date.now()}.${compressed.extension}`;
+	await uploadToS3(compressed.data, s3Key, compressed.contentType);
 
-  // RAW形式は埋め込みJPEGプレビューを抽出してからWebPに変換
-  if (isRaw) {
-    try {
-      buffer = await extractRawPreview(buffer);
-    } catch (err) {
-      return {
-        success: false,
-        error: err instanceof Error ? err.message : "RAWファイルの処理に失敗しました。",
-        status: 400,
-      };
-    }
-  }
-
-  let compressed: Awaited<ReturnType<typeof compressImage>>;
-  try {
-    compressed = await compressImage(buffer);
-  } catch (err) {
-    return {
-      success: false,
-      error: err instanceof Error ? err.message : "画像の変換に失敗しました。",
-      status: 400,
-    };
-  }
-  const s3Key = `${s3Prefix}/${Date.now()}.${compressed.extension}`;
-  await uploadToS3(compressed.data, s3Key, compressed.contentType);
-
-  return { success: true, path: s3Key };
+	return { success: true, path: s3Key };
 }
 
 /**
@@ -96,33 +77,33 @@ export async function processImageUpload(
  * @returns 成功時はS3パス、失敗時はエラー情報
  */
 export async function processVideoUpload(
-  file: File,
-  s3Prefix: string,
+	file: File,
+	s3Prefix: string,
 ): Promise<MediaResult> {
-  // 拡張子チェック
-  if (!isValidVideoExtension(file.name)) {
-    return {
-      success: false,
-      error: "許可されていない動画形式です。mp4, movのみ対応しています。",
-      status: 400,
-    };
-  }
-  // サイズチェック
-  if (!validateFileSize(file.size)) {
-    return {
-      success: false,
-      error: "動画サイズは10MB以下にしてください。",
-      status: 400,
-    };
-  }
+	// 拡張子チェック
+	if (!isValidVideoExtension(file.name)) {
+		return {
+			success: false,
+			error: "許可されていない動画形式です。mp4, movのみ対応しています。",
+			status: 400,
+		};
+	}
+	// サイズチェック
+	if (!validateFileSize(file.size)) {
+		return {
+			success: false,
+			error: "動画サイズは10MB以下にしてください。",
+			status: 400,
+		};
+	}
 
-  // 動画を圧縮してS3にアップロード
-  const buffer = Buffer.from(await file.arrayBuffer());
-  const compressed = await compressVideo(buffer);
-  const s3Key = `${s3Prefix}/${Date.now()}.${compressed.extension}`;
-  await uploadToS3(compressed.data, s3Key, compressed.contentType);
+	// 動画を圧縮してS3にアップロード
+	const buffer = Buffer.from(await file.arrayBuffer());
+	const compressed = await compressVideo(buffer);
+	const s3Key = `${s3Prefix}/${Date.now()}.${compressed.extension}`;
+	await uploadToS3(compressed.data, s3Key, compressed.contentType);
 
-  return { success: true, path: s3Key };
+	return { success: true, path: s3Key };
 }
 
 /**
@@ -132,28 +113,24 @@ export async function processVideoUpload(
  * @returns 成功時はS3パス、失敗時はエラー情報
  */
 export async function processFileUpload(
-  file: File,
-  s3Prefix: string,
+	file: File,
+	s3Prefix: string,
 ): Promise<MediaResult> {
-  // サイズチェック
-  if (!validateFileSize(file.size)) {
-    return {
-      success: false,
-      error: "ファイルサイズは10MB以下にしてください。",
-      status: 400,
-    };
-  }
+	// サイズチェック
+	if (!validateFileSize(file.size)) {
+		return {
+			success: false,
+			error: "ファイルサイズは10MB以下にしてください。",
+			status: 400,
+		};
+	}
 
-  // そのままS3にアップロード
-  const fileBuffer = Buffer.from(await file.arrayBuffer());
-  const s3Key = `${s3Prefix}/${Date.now()}_${file.name}`;
-  await uploadToS3(
-    fileBuffer,
-    s3Key,
-    file.type || "application/octet-stream",
-  );
+	// そのままS3にアップロード
+	const fileBuffer = Buffer.from(await file.arrayBuffer());
+	const s3Key = `${s3Prefix}/${Date.now()}_${file.name}`;
+	await uploadToS3(fileBuffer, s3Key, file.type || "application/octet-stream");
 
-  return { success: true, path: s3Key };
+	return { success: true, path: s3Key };
 }
 
 /**
@@ -165,23 +142,23 @@ export async function processFileUpload(
  * @returns 成功時はS3パス、失敗時はエラー情報
  */
 export async function replaceMediaOnS3(
-  oldPath: string | null,
-  file: File,
-  s3Prefix: string,
-  type: "image" | "video" | "file",
+	oldPath: string | null,
+	file: File,
+	s3Prefix: string,
+	type: "image" | "video" | "file",
 ): Promise<MediaResult> {
-  // 古いファイルをS3から削除
-  if (oldPath) await deleteFromS3(oldPath);
+	// 古いファイルをS3から削除
+	if (oldPath) await deleteFromS3(oldPath);
 
-  // 種類に応じた処理を実行
-  switch (type) {
-    case "image":
-      return processImageUpload(file, s3Prefix);
-    case "video":
-      return processVideoUpload(file, s3Prefix);
-    case "file":
-      return processFileUpload(file, `${s3Prefix}/files`);
-  }
+	// 種類に応じた処理を実行
+	switch (type) {
+		case "image":
+			return processImageUpload(file, s3Prefix);
+		case "video":
+			return processVideoUpload(file, s3Prefix);
+		case "file":
+			return processFileUpload(file, `${s3Prefix}/files`);
+	}
 }
 
 /**
@@ -189,13 +166,13 @@ export async function replaceMediaOnS3(
  * @param records - S3パスを持つレコードの配列
  */
 export async function deleteMediaFromS3(
-  records: { path: string; original_path?: string | null }[],
+	records: { path: string; original_path?: string | null }[],
 ): Promise<void> {
-  for (const record of records) {
-    await deleteFromS3(record.path);
-    // モザイク適用時に退避した原本も一緒に消す（images のみ持つカラム）
-    if (record.original_path) await deleteFromS3(record.original_path);
-  }
+	for (const record of records) {
+		await deleteFromS3(record.path);
+		// モザイク適用時に退避した原本も一緒に消す（images のみ持つカラム）
+		if (record.original_path) await deleteFromS3(record.original_path);
+	}
 }
 
 /**
@@ -203,7 +180,7 @@ export async function deleteMediaFromS3(
  * @param path - S3パス（nullの場合はそのままnullを返す）
  */
 export async function toMediaUrl(path: string | null): Promise<string | null> {
-  return path ? getPresignedDownloadUrl(path) : null;
+	return path ? getPresignedDownloadUrl(path) : null;
 }
 
 /**
@@ -213,19 +190,19 @@ export async function toMediaUrl(path: string | null): Promise<string | null> {
  * @param id - 紐づけ先のID
  */
 export async function getRelatedMediaUrls(
-  table: PgTable,
-  fkColumn: AnyPgColumn,
-  id: string,
+	table: PgTable,
+	fkColumn: AnyPgColumn,
+	id: string,
 ): Promise<{ id: string; url: string }[]> {
-  const records = (await db
-    .select()
-    .from(table)
-    .where(eq(fkColumn, id))) as { id: string; path: string }[];
+	const records = (await db.select().from(table).where(eq(fkColumn, id))) as {
+		id: string;
+		path: string;
+	}[];
 
-  return Promise.all(
-    records.map(async (record) => ({
-      id: record.id,
-      url: await getPresignedDownloadUrl(record.path),
-    })),
-  );
+	return Promise.all(
+		records.map(async (record) => ({
+			id: record.id,
+			url: await getPresignedDownloadUrl(record.path),
+		})),
+	);
 }

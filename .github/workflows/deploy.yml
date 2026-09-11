@@ -97,6 +97,9 @@ jobs:
       # trialNotificationEmail（PROD_TRIAL_NOTIFICATION_EMAIL / DEV_TRIAL_NOTIFICATION_EMAIL）は任意。
       # 未設定でもデプロイは通るが、体験申し込みの管理者通知メールが送信されない。
       # ※ `A && B || C` 記法の都合上、PROD側だけ空にすると DEV 側の値が使われる。使う場合は両方設定すること。
+      # alertEmail（PROD_ALERT_EMAIL / DEV_ALERT_EMAIL）は監視アラートの通知先（カンマ区切りで複数可）。
+      # 未設定でもデプロイは通るが、エラー・不正アクセスのアラームが鳴っても誰にも通知されない。
+      # 初回デプロイ後、各アドレスに届く SNS の確認メールを承認するまで通知は始まらない。
       - name: Deploy to AWS (ECS Fargate)
         working-directory: infra
         run: |
@@ -105,7 +108,8 @@ jobs:
             --context "corsOrigin=$CORS_ORIGIN" \
             --context "frontendUrl=$FRONTEND_URL" \
             --context "mailFrom=$MAIL_FROM" \
-            --context "trialNotificationEmail=$TRIAL_NOTIFICATION_EMAIL"
+            --context "trialNotificationEmail=$TRIAL_NOTIFICATION_EMAIL" \
+            --context "alertEmail=$ALERT_EMAIL"
         env:
           CDK_DEFAULT_ACCOUNT: ${{ secrets.AWS_ACCOUNT_ID }}
           CDK_DEFAULT_REGION: ap-northeast-1
@@ -113,3 +117,4 @@ jobs:
           FRONTEND_URL: ${{ github.ref_name == 'main' && vars.PROD_FRONTEND_URL || vars.DEV_FRONTEND_URL }}
           MAIL_FROM: ${{ github.ref_name == 'main' && vars.PROD_MAIL_FROM || vars.DEV_MAIL_FROM }}
           TRIAL_NOTIFICATION_EMAIL: ${{ github.ref_name == 'main' && vars.PROD_TRIAL_NOTIFICATION_EMAIL || vars.DEV_TRIAL_NOTIFICATION_EMAIL }}
+          ALERT_EMAIL: ${{ github.ref_name == 'main' && vars.PROD_ALERT_EMAIL || vars.DEV_ALERT_EMAIL }}

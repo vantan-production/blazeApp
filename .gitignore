@@ -42,3 +42,7 @@ Thumbs.db
 *.swo
 # 実メディアテストフィクスチャ（scripts/fetchMediaFixtures.ts で取得）
 back/src/__tests__/fixtures/media/
+
+# CDK の合成結果・コンテキストキャッシュ（cdk synth / cdk deploy が生成する）
+infra/cdk.out/
+infra/cdk.context.json

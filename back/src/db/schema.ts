@@ -8,6 +8,7 @@ import {
   text,
   date,
   unique,
+  foreignKey,
   boolean,
   integer,
 } from "drizzle-orm/pg-core";
@@ -322,7 +323,10 @@ export const surveyOptions = pgTable("survey_options", {
   label: varchar("label", { length: 100 }).notNull(),
   // 表示順
   sort_order: integer("sort_order").notNull().default(0),
-});
+}, (t) => ({
+  // surveyResponses から複合外部キーで参照するための一意制約（id は元々一意）
+  idWithSurvey: unique("survey_options_id_survey_id_uniq").on(t.id, t.survey_id),
+}));
 
 // アンケートへの回答（1行 = 1人が選んだ1つの選択肢）
 export const surveyResponses = pgTable("survey_responses", {
@@ -330,9 +334,7 @@ export const surveyResponses = pgTable("survey_responses", {
   survey_id: uuid("survey_id")
     .references(() => surveys.id, { onDelete: "cascade" })
     .notNull(),
-  option_id: uuid("option_id")
-    .references(() => surveyOptions.id, { onDelete: "cascade" })
-    .notNull(),
+  option_id: uuid("option_id").notNull(),
   user_id: uuid("user_id")
     .references(() => admin.id, { onDelete: "cascade" })
     .notNull(),
@@ -342,6 +344,14 @@ export const surveyResponses = pgTable("survey_responses", {
   // 同じ選択肢を二重に選べないようにする。単一選択の検証はアプリ側で行う
   uniqueResponse: unique("survey_responses_survey_option_user_uniq")
     .on(t.survey_id, t.option_id, t.user_id),
+  // survey_id と option_id を別々のFKにすると「アンケートAに、アンケートBの選択肢を選んだ」
+  // 行が全ての制約を満たして入ってしまい、集計だけが静かに狂う。
+  // 複合FKにして、選択肢が同じアンケートのものであることをDBに保証させる。
+  optionBelongsToSurvey: foreignKey({
+    name: "survey_responses_option_survey_fk",
+    columns: [t.option_id, t.survey_id],
+    foreignColumns: [surveyOptions.id, surveyOptions.survey_id],
+  }).onDelete("cascade"),
 }));
 
 // パスワード再設定トークン（メールで送るのはtokenの生値、DBにはハッシュのみ保存）

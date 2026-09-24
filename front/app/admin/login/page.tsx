@@ -15,7 +15,7 @@ export default async function AdminLoginPage() {
 	if (user) redirect(adminRoutes.top);
 
 	return (
-		<AdminAuthCard>
+		<AdminAuthCard backHref={adminRoutes.welcome}>
 			<LoginForm />
 		</AdminAuthCard>
 	);

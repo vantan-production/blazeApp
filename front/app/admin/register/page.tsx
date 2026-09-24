@@ -1,5 +1,6 @@
 import { AdminAuthCard } from "@/components/admin/AdminAuthCard";
 import { RegisterForm } from "@/components/admin/login/RegisterForm";
+import { adminRoutes } from "@/lib/admin/routes";
 
 export const metadata = {
 	title: "新規登録 | 西尾ブレイズ 管理画面",
@@ -14,7 +15,7 @@ export default async function AdminRegisterPage({
 	const { token } = await searchParams;
 
 	return (
-		<AdminAuthCard>
+		<AdminAuthCard backHref={adminRoutes.welcome}>
 			<RegisterForm
 				invitationToken={typeof token === "string" ? token : null}
 			/>

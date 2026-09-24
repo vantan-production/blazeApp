@@ -16,21 +16,30 @@ export default async function AdminWelcomePage() {
 
 	return (
 		<AdminAuthCard>
+			<div className="mt-6 flex flex-col items-center gap-2 text-center">
+				<h1 className="text-[22px] leading-[22px] font-medium tracking-[1px] text-black">
+					管理画面
+				</h1>
+				<span
+					aria-hidden
+					className="mt-1 h-[3px] w-10 rounded-full bg-brand-red"
+				/>
+				<p className="mt-3 text-[13px] leading-[20px] text-black/60">
+					ニュースやお知らせの投稿・管理を行います。
+				</p>
+			</div>
 			<nav
 				aria-label="ログイン・新規登録"
-				className="mt-[76px] mb-[29px] flex w-[131px] flex-col gap-[30px]"
+				className="mt-8 flex w-full max-w-[240px] flex-col gap-4"
 			>
-				<AdminButtonLink href={adminRoutes.login} size="sm">
-					ログイン
-				</AdminButtonLink>
-				<AdminButtonLink
-					href={adminRoutes.register}
-					variant="outline"
-					size="sm"
-				>
+				<AdminButtonLink href={adminRoutes.login}>ログイン</AdminButtonLink>
+				<AdminButtonLink href={adminRoutes.register} variant="outline">
 					新規登録
 				</AdminButtonLink>
 			</nav>
+			<p className="mt-4 text-[12px] leading-[18px] text-black/50">
+				新規登録には管理者からの招待が必要です
+			</p>
 		</AdminAuthCard>
 	);
 }

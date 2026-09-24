@@ -35,7 +35,10 @@ export function PeekCarousel({ photos }: Props) {
 					<FramedImage src={at(-1).src} alt="" width={240} height={160} />
 				</button>
 			)}
-			<div className="shrink-0">
+			{/* 402px幅で左右の写真が10pxずつ覗く幅（280px）にし、狭い画面では中央の写真を縮めて左右を覗かせる */}
+			<div
+				className={`max-w-[280px] shrink-0 ${hasSides ? "w-[calc(100%-74px)]" : "w-full"}`}
+			>
 				<FramedImage
 					src={current.src}
 					alt={current.alt}

@@ -47,7 +47,7 @@ export function AchievementCarousel({ items }: Props) {
 						className="object-cover"
 					/>
 				</div>
-				<p className="min-w-0 flex-1 text-center text-[16px] leading-[1.3] whitespace-pre-line">
+				<p className="min-w-0 flex-1 text-center text-[clamp(12px,3.98vw,16px)] leading-[1.3] whitespace-pre-line">
 					{item.title}
 				</p>
 			</div>

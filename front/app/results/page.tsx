@@ -32,7 +32,7 @@ export default function ResultsPage() {
 				<div className="flex w-full items-center justify-center border-y-2 border-brand-white px-5 py-6">
 					<h1 className="text-[24px]">実績・試合結果</h1>
 				</div>
-				<div className="flex w-full flex-col px-6">
+				<div className="flex w-full flex-col px-[clamp(16px,5.97vw,24px)]">
 					<LastResultCard {...lastMatch} />
 					<ResultSection title="チーム目標">
 						<p className="w-full border-2 border-brand-white px-3 py-5 text-center text-[18px] leading-[22px] tracking-[1px] text-balance">

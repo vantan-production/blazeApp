@@ -131,7 +131,8 @@ export function buildInvitationEmail(
   token: string,
   role: InvitationRole,
 ): MailMessage {
-  const registerUrl = `${frontendUrl()}/register?token=${encodeURIComponent(token)}`;
+  // 新規登録画面は管理画面配下（フロントの adminRoutes.register）にあるため /admin/register を指す
+  const registerUrl = `${frontendUrl()}/admin/register?token=${encodeURIComponent(token)}`;
 
   return {
     from: mailFrom(),

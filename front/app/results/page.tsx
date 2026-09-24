@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { PageShell } from "@/components/layout/PageShell";
-import { SiteFooter } from "@/components/layout/SiteFooter";
 import { AchievementCarousel } from "@/components/results/AchievementCarousel";
 import {
 	achievements,
@@ -53,7 +52,6 @@ export default function ResultsPage() {
 					</ResultSection>
 				</div>
 			</main>
-			<SiteFooter />
 		</PageShell>
 	);
 }

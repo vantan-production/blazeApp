@@ -8,13 +8,13 @@ type Props = {
 	onNavigate: () => void;
 };
 
-/** ドロワーメニュー本体（Figma: 1511:458）。ヘッダーの下に全画面で重なる。 */
+/** ドロワーメニュー本体（Figma: 1511:458）。全画面を覆い、ヘッダー（ロゴ・×）だけが上に残る。 */
 export function DrawerMenu({ id, onNavigate }: Props) {
 	return (
 		<nav
 			id={id}
 			aria-label="メインメニュー"
-			className="fixed inset-x-0 top-[96px] bottom-0 z-40 overflow-y-auto bg-brand-blue pb-[105px]"
+			className="fixed inset-0 z-40 overflow-y-auto bg-brand-blue pt-[96px] pb-[105px]"
 		>
 			<div className="mx-auto flex w-full max-w-[402px] flex-col items-center px-[10px]">
 				<div className="w-full py-4">

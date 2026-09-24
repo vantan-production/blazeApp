@@ -1,42 +1,29 @@
-"use client";
-
-import { useMemo, useState } from "react";
 import { NewsCard } from "@/components/ui/NewsCard";
+import { Pagination } from "@/components/ui/Pagination";
 import { SortableHeading } from "@/components/ui/SortableHeading";
 import {
 	formatNewsDate,
 	type NewsItem,
 	newsDetailPath,
+	newsListHref,
+	newsListParams,
 	type SortOrder,
-	sortNewsByDate,
 } from "@/lib/news";
-import { Pagination } from "./Pagination";
-
-/** 1ページあたりの表示件数（Figma: 2134:1026 のカード数） */
-const PAGE_SIZE = 10;
+import type { PageInfo } from "@/lib/pagination";
+import { routes } from "@/lib/routes";
 
 type Props = {
+	/** 表示中のページの記事（backで並び替え・ページ分け済み） */
 	items: NewsItem[];
+	pagination: PageInfo;
+	order: SortOrder;
 };
 
-/** 並び替えボタン＋ニュースカード一覧＋ページ送り */
-export function NewsList({ items }: Props) {
-	const [order, setOrder] = useState<SortOrder>("desc");
-	const [page, setPage] = useState(1);
-
-	const sorted = useMemo(() => sortNewsByDate(items, order), [items, order]);
-	const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
-	const pageItems = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-
-	const toggleOrder = () => {
-		setOrder((prev) => (prev === "desc" ? "asc" : "desc"));
-		setPage(1);
-	};
-
-	const changePage = (next: number) => {
-		setPage(next);
-		window.scrollTo({ top: 0 });
-	};
+/** 並び替えリンク＋ニュースカード一覧＋ページ送り */
+export function NewsList({ items, pagination, order }: Props) {
+	// 並び順を変えると1ページ目の中身が別物になるため、ページは1に戻す
+	const toggledOrder = order === "desc" ? "asc" : "desc";
+	const sortHref = newsListHref(1, toggledOrder);
 
 	return (
 		<>
@@ -46,21 +33,21 @@ export function NewsList({ items }: Props) {
 					titleAs="h1"
 					align="center"
 					order={order}
-					onSort={toggleOrder}
+					sortHref={sortHref}
 				/>
-				<p className="sr-only" aria-live="polite">
+				<p className="sr-only">
 					{order === "desc" ? "新しい順" : "古い順"}に並んでいます
 				</p>
 			</div>
 			<div className="flex flex-col items-center gap-4 px-6 pb-6">
 				{/* back未接続や記事0件のときに、空白だけのページにならないようにする */}
-				{pageItems.length === 0 && (
+				{items.length === 0 && (
 					<p className="py-10 text-[14px] text-brand-white">
 						ニュースはまだありません
 					</p>
 				)}
 				<ul className="flex w-full flex-col gap-4">
-					{pageItems.map((news) => (
+					{items.map((news) => (
 						<li key={news.id}>
 							<NewsCard
 								href={newsDetailPath(news.id)}
@@ -72,9 +59,10 @@ export function NewsList({ items }: Props) {
 					))}
 				</ul>
 				<Pagination
-					currentPage={page}
-					totalPages={totalPages}
-					onChange={changePage}
+					currentPage={pagination.page}
+					totalPages={pagination.totalPages}
+					pathname={routes.news}
+					params={newsListParams(order)}
 				/>
 			</div>
 		</>

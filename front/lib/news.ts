@@ -1,5 +1,7 @@
+import { unstable_rethrow } from "next/navigation";
 import { cache } from "react";
 import { API_BASE_URL } from "./apiClient";
+import { fetchPaginatedList, type Paginated, pageHref } from "./pagination";
 import { routes } from "./routes";
 
 /** ニュース1件。APIのレスポンス（NewsApiItem）を画面で使う形に変換したもの */
@@ -32,13 +34,6 @@ type NewsApiItem = {
 	created_at: string;
 };
 
-type NewsListResponse = {
-	success: boolean;
-	data: NewsApiItem[];
-	// 旧版のbackはページネーション無しで全件を返すため、無い場合も考慮する
-	pagination?: { page: number; totalPages: number };
-};
-
 type NewsDetailResponse = {
 	success: boolean;
 	data: NewsApiItem;
@@ -46,10 +41,6 @@ type NewsDetailResponse = {
 
 // 画像が未登録の記事でもカードの見た目が崩れないよう、サイトのロゴで代用する
 const FALLBACK_IMAGE = "/images/logo.png";
-
-// back側は1ページ10件固定。一覧画面は並び替え・ページ送りを画面側で行うため全件取る必要があるが、
-// 想定外のレスポンスで無限ループしないよう取得ページ数に上限を設ける
-const MAX_PAGES = 50;
 
 // back の id は UUID。形式外の値を投げると back が 500 を返すため、事前に弾いて 404 扱いにする
 const UUID_PATTERN =
@@ -78,31 +69,38 @@ function toNewsItem(item: NewsApiItem): NewsItem {
 	};
 }
 
-// 画像URLは署名付きで1時間しか有効でないため、キャッシュせず毎回取得する
-async function fetchNewsPage(page: number): Promise<NewsListResponse> {
-	const res = await fetch(`${API_BASE_URL}/api/news-post?page=${page}`, {
-		cache: "no-store",
-	});
-	if (!res.ok)
-		throw new Error(`ニュース一覧の取得に失敗しました（${res.status}）`);
-	return (await res.json()) as NewsListResponse;
+/** クエリの ?order= を並び順にする。未指定・不正な値は新しい順（back の既定と同じ） */
+export function parseSortOrder(
+	value: string | string[] | undefined,
+): SortOrder {
+	return (Array.isArray(value) ? value[0] : value) === "asc" ? "asc" : "desc";
 }
 
-/** ニュース一覧を全件取得する。backに繋がらない場合は空配列（ページは空表示にする） */
-export async function fetchNews(): Promise<NewsItem[]> {
-	try {
-		const items: NewsApiItem[] = [];
-		for (let page = 1; page <= MAX_PAGES; page++) {
-			const body = await fetchNewsPage(page);
-			items.push(...body.data);
-			const totalPages = body.pagination?.totalPages;
-			if (totalPages === undefined || page >= totalPages) break;
-		}
-		return items.map(toNewsItem);
-	} catch (error) {
-		console.error(error);
-		return [];
-	}
+/** 一覧の並び順をURLに載せるときのクエリ。既定の新しい順は付けずにURLを短く保つ */
+export function newsListParams(order: SortOrder) {
+	return { order: order === "asc" ? "asc" : undefined };
+}
+
+/** ニュース一覧の指定ページ・並び順のURL */
+export function newsListHref(page: number, order: SortOrder): string {
+	return pageHref(routes.news, page, newsListParams(order));
+}
+
+/**
+ * ニュース一覧を1ページ分（back側で10件固定）取得する。並び替え・ページ送りはbackに任せる。
+ * 画像URLは署名付きで1時間しか有効でないため、キャッシュせず毎回取得する。
+ * backに繋がらない場合は空の結果（ページは空表示にする）
+ */
+export async function fetchNewsPage(
+	page: number,
+	order: SortOrder,
+): Promise<Paginated<NewsItem>> {
+	const result = await fetchPaginatedList<NewsApiItem>(
+		"/api/news-post",
+		{ page, order },
+		{ cache: "no-store" },
+	);
+	return { ...result, items: result.items.map(toNewsItem) };
 }
 
 /**
@@ -121,22 +119,13 @@ export const fetchNewsById = cache(
 			const body = (await res.json()) as NewsDetailResponse;
 			return toNewsItem(body.data);
 		} catch (error) {
+			// notFound や動的レンダリングの判定など、Next.js内部の例外は握りつぶさない
+			unstable_rethrow(error);
 			console.error(error);
 			return undefined;
 		}
 	},
 );
-
-/** 公開日で並び替えた新しい配列を返す */
-export function sortNewsByDate(
-	items: readonly NewsItem[],
-	order: SortOrder,
-): NewsItem[] {
-	const sign = order === "desc" ? -1 : 1;
-	return [...items].sort(
-		(a, b) => sign * a.publishedAt.localeCompare(b.publishedAt),
-	);
-}
 
 /** "2026-04-26" → "2026.4.26"（Figmaの表記に合わせる） */
 export function formatNewsDate(publishedAt: string): string {

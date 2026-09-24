@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 
 type Props = {
 	/** 省略時は見出しを出さず、並び替えボタンだけを右寄せで表示する */
@@ -10,6 +11,8 @@ type Props = {
 	/** 現在の並び順。ボタンの読み上げに使う */
 	order?: "asc" | "desc";
 	onSort?: () => void;
+	/** 指定するとボタンの代わりにリンクにする。並び順をURLで持つ一覧ページ用 */
+	sortHref?: string;
 };
 
 const orderLabel = { asc: "古い順", desc: "新しい順" } as const;
@@ -21,8 +24,23 @@ export function SortableHeading({
 	align = "left",
 	order,
 	onSort,
+	sortHref,
 }: Props) {
 	const centered = align === "center";
+	const sortLabel = order
+		? `並び替え（現在: ${orderLabel[order]}）`
+		: "並び替え";
+	const sortClassName =
+		"flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-[8px] bg-brand-white";
+	const sortIcon = (
+		<Image
+			src="/icons/sort.svg"
+			alt=""
+			width={30}
+			height={30}
+			className={order === "asc" ? "-scale-y-100" : ""}
+		/>
+	);
 	return (
 		<div
 			className={`flex w-full items-center justify-between gap-2 py-[10px] ${
@@ -42,22 +60,20 @@ export function SortableHeading({
 			) : (
 				<span />
 			)}
-			<button
-				type="button"
-				onClick={onSort}
-				aria-label={
-					order ? `並び替え（現在: ${orderLabel[order]}）` : "並び替え"
-				}
-				className="flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-[8px] bg-brand-white"
-			>
-				<Image
-					src="/icons/sort.svg"
-					alt=""
-					width={30}
-					height={30}
-					className={order === "asc" ? "-scale-y-100" : ""}
-				/>
-			</button>
+			{sortHref ? (
+				<Link href={sortHref} aria-label={sortLabel} className={sortClassName}>
+					{sortIcon}
+				</Link>
+			) : (
+				<button
+					type="button"
+					onClick={onSort}
+					aria-label={sortLabel}
+					className={sortClassName}
+				>
+					{sortIcon}
+				</button>
+			)}
 		</div>
 	);
 }

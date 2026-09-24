@@ -7,6 +7,10 @@ const nextConfig: NextConfig = {
 	turbopack: {
 		root: path.join(__dirname),
 	},
+	experimental: {
+		// app/unauthorized.tsx（401ページ）を unauthorized() で表示するために必要
+		authInterrupts: true,
+	},
 };
 
 export default nextConfig;

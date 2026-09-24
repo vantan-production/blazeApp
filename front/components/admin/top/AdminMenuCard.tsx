@@ -18,7 +18,7 @@ export function AdminMenuCard({ href, label, icon }: Props) {
 	return (
 		<Link
 			href={href}
-			className="flex h-[72px] w-full items-center justify-between rounded-[20px] bg-brand-white pr-[6px] pl-[10px] transition-opacity hover:opacity-80"
+			className="flex h-[60px] w-full items-center justify-between rounded-[20px] bg-brand-white pr-[6px] pl-[10px] transition-opacity"
 		>
 			<span className="flex items-center gap-[10px]">
 				<span className="flex size-6 items-center justify-center">

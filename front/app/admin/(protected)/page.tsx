@@ -33,10 +33,10 @@ export default function AdminTopPage() {
 	return (
 		<main className="flex w-full flex-1 flex-col items-center gap-[90px] px-[27px] pt-[54px] pb-12">
 			<h1 className="text-[36px] leading-[22px] tracking-[1.5px] text-brand-white">
-				TOP
+				管理者ページ
 			</h1>
 			<nav aria-label="管理メニュー" className="w-full">
-				<ul className="flex flex-col gap-8">
+				<ul className="flex flex-col gap-5">
 					{menuItems.map((item) => (
 						<li key={item.href}>
 							<AdminMenuCard {...item} />

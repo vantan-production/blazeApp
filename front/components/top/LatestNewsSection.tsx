@@ -1,6 +1,6 @@
 import { NewsListItem } from "@/components/ui/NewsListItem";
 import { API_BASE_URL } from "@/lib/apiClient";
-import { routes } from "@/lib/routes";
+import { newsDetailPath } from "@/lib/news";
 
 /** トップに並べるお知らせの件数（Figma: トップページ 978:348 の行数） */
 const LATEST_NEWS_COUNT = 3;
@@ -61,8 +61,7 @@ export async function LatestNewsSection() {
 					{items.map((item) => (
 						<NewsListItem
 							key={item.id}
-							// 詳細ページ未作成のためリンク先は一覧ページ
-							href={routes.news}
+							href={newsDetailPath(item.id)}
 							// サーバー(UTC)で整形すると日本時間の深夜投稿が前日になるため、JSTで "2025/10/26" 形式にする
 							date={jstDateFormatter.format(new Date(item.created_at))}
 							title={item.title}

@@ -12,7 +12,7 @@ export function CustomerInfoCard({ name, email }: Props) {
 	];
 
 	return (
-		<dl className="grid w-full grid-cols-[113px_1fr] gap-x-[10px] gap-y-[2px] rounded-[10px] border border-brand-white px-[10px] py-[5px] leading-[22px] tracking-[1px] text-white">
+		<dl className="grid w-full grid-cols-[88px_1fr] gap-x-[10px] gap-y-[2px] rounded-[10px] border border-brand-white px-[10px] py-[5px] leading-[22px] tracking-[1px] text-white">
 			{rows.map((row) => (
 				<div key={row.label} className="contents">
 					<dt className="text-[10px]">{row.label}</dt>

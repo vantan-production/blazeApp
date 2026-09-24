@@ -14,7 +14,7 @@ export function InquiryListItem({ inquiry }: Props) {
 		<li>
 			<Link
 				href={adminInquiryDetailPath(inquiry.id)}
-				className="flex h-20 w-full items-center gap-[25px] border border-brand-white px-[17px] transition-opacity hover:opacity-80"
+				className="flex h-20 w-full items-center gap-4 border border-brand-white px-3 transition-opacity hover:opacity-80"
 			>
 				<InquiryStatusBadge status={inquiry.status} />
 				<span className="flex min-w-0 flex-1 flex-col text-white">

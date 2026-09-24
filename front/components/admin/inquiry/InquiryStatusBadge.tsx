@@ -20,7 +20,7 @@ type Props = {
 export function InquiryStatusBadge({ status, handlerName }: Props) {
 	return (
 		<span
-			className={`inline-flex shrink-0 flex-col items-center justify-center rounded-[6px] px-2 py-1 whitespace-nowrap ${statusClass[status]}`}
+			className={`inline-flex min-w-[67px] shrink-0 flex-col items-center justify-center rounded-[6px] px-2 py-1 whitespace-nowrap ${statusClass[status]}`}
 		>
 			<span className="text-[16px] leading-[22px] tracking-[1.5px]">
 				{INQUIRY_STATUS_LABELS[status]}

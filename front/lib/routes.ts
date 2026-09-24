@@ -4,6 +4,8 @@ export const routes = {
 	team: "/about/team",
 	coaches: "/about/coaches",
 	activities: "/activities",
+	// 活動内容ページの「主な活動場所」パネル
+	access: "/activities#access",
 	results: "/results",
 	news: "/news",
 	contact: "/contact",
@@ -27,6 +29,7 @@ export const drawerNavColumns: NavItem[][] = [
 		{ label: "ニュース", href: routes.news },
 		{ label: "活動内容", href: routes.activities },
 		{ label: "実績・試合結果", href: routes.results },
+		{ label: "アクセス", href: routes.access },
 	],
 ];
 
@@ -38,5 +41,5 @@ export const footerNavItems: NavItem[] = [
 	{ label: "実績", href: routes.results },
 	{ label: "ギャラリー", href: routes.gallery },
 	{ label: "体験案内", href: routes.trial },
-	{ label: "アクセス", href: routes.contact },
+	{ label: "アクセス", href: routes.access },
 ];

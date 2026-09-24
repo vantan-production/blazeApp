@@ -17,7 +17,7 @@ type Props = {
 };
 
 const chipClass =
-	"inline-flex h-6 items-center gap-[6px] rounded-[10px] border-[0.3px] border-black px-[6px] text-[12px] leading-[22px] font-medium";
+	"inline-flex h-6 max-w-full items-center gap-[6px] rounded-[10px] border-[0.3px] border-black px-[6px] text-[12px] leading-[22px] font-medium";
 
 /**
  * ニュースのカテゴリー選択（Figma: Frame 188 2430:1094）。
@@ -79,9 +79,9 @@ export function CategorySelector({ value, onChange }: Props) {
 								alt=""
 								width={12}
 								height={12}
-								className={selected ? "rotate-45" : ""}
+								className={`shrink-0 ${selected ? "rotate-45" : ""}`}
 							/>
-							{option}
+							<span className="min-w-0 truncate">{option}</span>
 						</button>
 					);
 				})}
@@ -120,12 +120,12 @@ export function CategorySelector({ value, onChange }: Props) {
 							}
 						}}
 						placeholder="カテゴリー名"
-						className="h-6 w-40 rounded-[10px] border-[0.3px] border-black bg-brand-white px-2 text-[12px] text-brand-black outline-none placeholder:text-[rgba(80,80,80,0.4)]"
+						className="h-6 w-40 min-w-0 rounded-[10px] border-[0.3px] border-black bg-brand-white px-2 text-[12px] text-brand-black outline-none placeholder:text-[rgba(80,80,80,0.4)]"
 					/>
 					<button
 						type="button"
 						onClick={addCategory}
-						className={`${chipClass} bg-brand-white text-brand-black`}
+						className={`${chipClass} shrink-0 bg-brand-white text-brand-black`}
 					>
 						追加
 					</button>
@@ -136,7 +136,7 @@ export function CategorySelector({ value, onChange }: Props) {
 							setDraft("");
 							setError(null);
 						}}
-						className="text-[12px] text-brand-white underline"
+						className="shrink-0 text-[12px] whitespace-nowrap text-brand-white underline"
 					>
 						キャンセル
 					</button>

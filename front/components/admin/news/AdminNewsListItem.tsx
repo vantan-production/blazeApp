@@ -11,14 +11,14 @@ export function AdminNewsListItem({ category, date, title }: Props) {
 	return (
 		<li className="flex flex-col gap-6 after:h-px after:w-full after:bg-white">
 			<div className="flex flex-col gap-1 text-brand-white">
-				<div className="flex items-center gap-1">
+				<div className="flex min-w-0 items-center gap-1">
 					{category && (
 						// ui/Tag は固定のカテゴリーしか受け取れないため、同じ見た目で自由入力のカテゴリーを表示する
-						<span className="inline-flex items-center justify-center rounded-[200px] bg-white px-[10px] text-[12px] leading-[22px] tracking-[1px] whitespace-nowrap text-brand-blue">
+						<span className="min-w-0 truncate rounded-[200px] bg-white px-[10px] text-[12px] leading-[22px] tracking-[1px] text-brand-blue">
 							{category}
 						</span>
 					)}
-					<time className="px-[2px] text-[14px] leading-[22px] tracking-[1px]">
+					<time className="shrink-0 px-[2px] text-[14px] leading-[22px] tracking-[1px]">
 						{date}
 					</time>
 				</div>

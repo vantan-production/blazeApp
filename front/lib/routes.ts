@@ -13,18 +13,19 @@ export const routes = {
 
 export type NavItem = { label: string; href: string };
 
-/** ドロワーメニューのナビ項目（Figma: ドロワーメニュー 1511:458） */
-export const drawerNavItems: NavItem[] = [
-	{ label: "TOP", href: routes.top },
-	{ label: "紹介", href: routes.team },
-	{ label: "活動内容", href: routes.activities },
-	{ label: "実績", href: routes.results },
-	{ label: "お問い合わせ", href: routes.contact },
-	{ label: "おしらせ", href: routes.news },
+/** ドロワーメニューのナビ項目。2列に分けて表示する（Figma: ドロワーメニュー 1511:458） */
+export const drawerNavColumns: NavItem[][] = [
+	[
+		{ label: "トップ", href: routes.top },
+		{ label: "チーム紹介", href: routes.team },
+		{ label: "監督コーチ紹介", href: routes.coaches },
+	],
+	[
+		{ label: "ニュース", href: routes.news },
+		{ label: "活動内容", href: routes.activities },
+		{ label: "実績・試合結果", href: routes.results },
+	],
 ];
-
-/** ドロワーメニュー右列のナビ項目（Figmaでは左列の一部と同じ内容） */
-export const drawerSubNavItems: NavItem[] = drawerNavItems.slice(0, 4);
 
 /** ページ下部フッターのナビ項目（Figma: Frame 145 1028:311） */
 export const footerNavItems: NavItem[] = [

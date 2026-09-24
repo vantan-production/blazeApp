@@ -11,7 +11,7 @@ import "./globals.css";
 const notoSansJp = Noto_Sans_JP({
 	variable: "--font-next-noto-sans-jp",
 	subsets: ["latin"],
-	weight: ["400", "500", "700"],
+	weight: ["400", "500", "700", "900"],
 });
 
 const savate = Savate({

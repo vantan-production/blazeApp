@@ -1,5 +1,5 @@
 import { TrialBanner } from "@/components/ui/TrialBanner";
-import { drawerNavItems, drawerSubNavItems } from "@/lib/routes";
+import { drawerNavColumns } from "@/lib/routes";
 import { NavLinkList } from "./NavLinkList";
 import { SnsShare } from "./SnsShare";
 
@@ -22,8 +22,13 @@ export function DrawerMenu({ id, onNavigate }: Props) {
 				</div>
 				<div className="flex flex-col items-center gap-[37px]">
 					<div className="flex justify-center gap-9 px-[10px] py-5">
-						<NavLinkList items={drawerNavItems} onNavigate={onNavigate} />
-						<NavLinkList items={drawerSubNavItems} onNavigate={onNavigate} />
+						{drawerNavColumns.map((items) => (
+							<NavLinkList
+								key={items[0].href}
+								items={items}
+								onNavigate={onNavigate}
+							/>
+						))}
 					</div>
 					<SnsShare />
 				</div>

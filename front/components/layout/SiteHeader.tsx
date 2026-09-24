@@ -55,7 +55,7 @@ export function SiteHeader({ withBackground = false }: Props) {
 							alt="西尾ブレイズ"
 							width={109}
 							height={64}
-							priority
+							preload
 						/>
 					</Link>
 					<button
@@ -64,7 +64,7 @@ export function SiteHeader({ withBackground = false }: Props) {
 						aria-expanded={isOpen}
 						aria-controls={drawerId}
 						aria-label={isOpen ? "メニューを閉じる" : "メニューを開く"}
-						className="size-11 cursor-pointer"
+						className="size-11 cursor-pointer md:fixed md:top-[50px] md:right-[50px]"
 					>
 						<Image
 							src={isOpen ? "/icons/close.svg" : "/icons/menu.svg"}

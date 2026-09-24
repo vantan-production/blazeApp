@@ -143,6 +143,65 @@ describe("POST /api/gameImg/images/:imageId/mosaic（領域の保存）", () => 
   });
 });
 
+describe("POST …/mosaic で公開用画像のアップロードに失敗したとき", () => {
+  /** 公開用キー（images.path）への書き込みだけ失敗させる */
+  const failPublicUpload = async (publicKey: string) => {
+    const { uploadToS3 } = await s3();
+    vi.mocked(uploadToS3).mockImplementation(async (_body, key) => {
+      if (key === publicKey) throw new Error("S3 down");
+    });
+  };
+
+  it("初回適用なら未適用のまま残り、退避しかけた原本を消す", async () => {
+    const cookie = await setupOwner();
+    const { imageId } = await postGameImg(cookie);
+    const before = await getRow(imageId);
+    await failPublicUpload(before.path);
+
+    try {
+      const res = await postMosaic(cookie, imageId, { x: 0, y: 0, width: 20, height: 20 });
+      expect(res.status).toBe(500);
+
+      const row = await getRow(imageId);
+      expect(row.original_path).toBeNull();
+      expect(row.mosaic_regions).toBeNull();
+
+      const { uploadToS3, deleteFromS3 } = await s3();
+      const backupKey = vi
+        .mocked(uploadToS3)
+        .mock.calls.map(([, key]) => key)
+        .find((key) => key.startsWith("originals/"));
+      expect(backupKey).toBeTruthy();
+      expect(vi.mocked(deleteFromS3)).toHaveBeenCalledWith(backupKey);
+    } finally {
+      vi.mocked((await s3()).uploadToS3).mockImplementation(async () => {});
+    }
+  });
+
+  it("再編集なら前の領域と原本パスのまま残る", async () => {
+    const cookie = await setupOwner();
+    const { imageId } = await postGameImg(cookie);
+    await postMosaic(cookie, imageId, { regions: [{ x: 0, y: 0, width: 20, height: 20 }] });
+    const applied = await getRow(imageId);
+    await failPublicUpload(applied.path);
+
+    try {
+      const res = await postMosaic(cookie, imageId, {
+        regions: [{ x: 10, y: 10, width: 40, height: 40 }],
+      });
+      expect(res.status).toBe(500);
+
+      const row = await getRow(imageId);
+      expect(row.original_path).toBe(applied.original_path);
+      expect(row.mosaic_regions).toEqual(applied.mosaic_regions);
+      // 使い続ける原本は消さない
+      expect(vi.mocked((await s3()).deleteFromS3)).not.toHaveBeenCalledWith(applied.original_path);
+    } finally {
+      vi.mocked((await s3()).uploadToS3).mockImplementation(async () => {});
+    }
+  });
+});
+
 describe("GET /api/gameImg/images/:imageId/mosaic", () => {
   it("未適用なら has_mosaic=false・領域は空で、原本URLは公開用と同じ", async () => {
     const cookie = await setupOwner();

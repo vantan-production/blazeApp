@@ -14,6 +14,7 @@ import { eq } from "../index.js";
 import {
   db,
   images,
+  deleteFromS3,
   downloadFromS3,
   uploadToS3,
   getPresignedDownloadUrl,
@@ -103,18 +104,39 @@ export const applyMosaic = async (c: Context) => {
       .webp({ quality: 80 })
       .toBuffer();
 
-    // 初回のモザイク適用時だけ、原本を別キーへ退避する
-    if (!image.original_path) {
-      const originalKey = generateS3Key("originals", imageId, "original.webp");
-      await uploadToS3(originalBuffer, originalKey, "image/webp");
+    // 初回のモザイク適用時だけ、原本を別キーへ退避する（この時点ではまだどこからも参照しない）
+    const newOriginalKey = image.original_path
+      ? null
+      : generateS3Key("originals", imageId, "original.webp");
+    if (newOriginalKey) await uploadToS3(originalBuffer, newOriginalKey, "image/webp");
+
+    // 退避先と領域一覧を1回の UPDATE でまとめて記録してから、公開用画像を差し替える。
+    // 先に S3 を書き換えると、DB 更新に失敗したとき「公開中の画像」と「記録した領域」が
+    // 食い違い、しかも公開用画像は前の状態に戻せない（再編集時は前の画像を持っていない）。
+    // DB は前の値を手元に持っているので、失敗したらこちらを戻す
+    try {
       await db
         .update(images)
-        .set({ original_path: originalKey })
+        .set({ original_path: newOriginalKey ?? image.original_path, mosaic_regions: regions })
         .where(eq(images.id, imageId));
-    }
 
-    // 公開用画像を差し替える（原本は originals/ 側に残る）
-    await uploadToS3(result, s3Key, "image/webp");
+      // 公開用画像を差し替える（原本は originals/ 側に残る）
+      await uploadToS3(result, s3Key, "image/webp");
+    } catch (e) {
+      await db
+        .update(images)
+        .set({ original_path: image.original_path, mosaic_regions: image.mosaic_regions })
+        .where(eq(images.id, imageId))
+        .catch((revertError) =>
+          console.error("[applyMosaic] DBの巻き戻しに失敗:", revertError),
+        );
+      if (newOriginalKey) {
+        await deleteFromS3(newOriginalKey).catch((cleanupError) =>
+          console.error("[applyMosaic] 退避した原本の削除に失敗:", cleanupError),
+        );
+      }
+      throw e;
+    }
   } catch (e) {
     console.error("[applyMosaic] 画像処理に失敗:", e);
     return c.json(
@@ -122,12 +144,6 @@ export const applyMosaic = async (c: Context) => {
       500,
     );
   }
-
-  // 公開用画像の差し替えが済んでから領域を記録する（途中で失敗したら前の領域のまま）
-  await db
-    .update(images)
-    .set({ mosaic_regions: regions })
-    .where(eq(images.id, imageId));
 
   const updatedUrl = await getPresignedDownloadUrl(s3Key);
 

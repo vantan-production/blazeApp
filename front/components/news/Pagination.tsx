@@ -41,7 +41,7 @@ export function Pagination({ currentPage, totalPages, onChange }: Props) {
 			>
 				<Image src="/icons/chevron-left.svg" alt="" width={32} height={32} />
 			</button>
-			<ul className="flex min-w-0 flex-1 items-center justify-between px-[clamp(4px,2.5vw,10px)]">
+			<ul className="flex min-w-0 flex-1 items-center justify-around px-[clamp(4px,2.5vw,10px)]">
 				{items.map((item, i) =>
 					item === "ellipsis" ? (
 						<li

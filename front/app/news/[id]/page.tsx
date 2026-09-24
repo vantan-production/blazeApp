@@ -1,7 +1,9 @@
+import { ChevronLeft } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageShell } from "@/components/layout/PageShell";
+import { ActivityGallery } from "@/components/top/ActivityGallery";
 import { FramedImage } from "@/components/ui/FramedImage";
 import { Tag } from "@/components/ui/Tag";
 import { fetchNewsById, formatNewsDate } from "@/lib/news";
@@ -33,6 +35,13 @@ export default async function NewsDetailPage({ params }: Props) {
 	return (
 		<PageShell>
 			<main className="flex flex-col items-center gap-6 px-6 py-5 text-brand-white">
+				<Link
+					href={routes.news}
+					className="-ml-2 flex items-center self-start py-1 pr-2 text-[14px] leading-[22px] tracking-[1px]"
+				>
+					<ChevronLeft aria-hidden size={24} strokeWidth={2} />
+					ニュース一覧へ戻る
+				</Link>
 				<article className="flex w-full flex-col items-center gap-6">
 					<header className="flex w-full flex-col gap-1">
 						<div className="flex items-center gap-1">
@@ -48,17 +57,21 @@ export default async function NewsDetailPage({ params }: Props) {
 							{news.title}
 						</h1>
 					</header>
-					<FramedImage src={news.imageSrc} alt="" width={354} height={236} />
+					{news.images.length > 1 ? (
+						<ActivityGallery
+							label="ニュースの写真"
+							photos={news.images.map((src, i) => ({
+								src,
+								alt: `${i + 1}枚目の写真`,
+							}))}
+						/>
+					) : (
+						<FramedImage src={news.images[0]} alt="" width={354} height={236} />
+					)}
 					<p className="w-full text-[16px] leading-[22px] tracking-[1.5px] break-all">
 						{news.body}
 					</p>
 				</article>
-				<Link
-					href={routes.news}
-					className="rounded-[8px] bg-brand-white px-6 py-2 text-[14px] text-brand-blue"
-				>
-					ニュース一覧へ戻る
-				</Link>
 			</main>
 		</PageShell>
 	);

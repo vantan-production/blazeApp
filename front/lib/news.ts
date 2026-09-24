@@ -10,7 +10,10 @@ export type NewsItem = {
 	publishedAt: string;
 	/** カテゴリー。back側は自由入力で未設定もあり得る */
 	tag: string | null;
+	/** 一覧のサムネイル */
 	imageSrc: string;
+	/** 詳細ページの写真（1枚以上） */
+	images: string[];
 	body: string;
 };
 
@@ -24,6 +27,8 @@ type NewsApiItem = {
 	category: string | null;
 	/** S3の署名付きURL（1時間で失効）。画像なしなら null */
 	img_url: string | null;
+	/** 詳細APIだけが返す、記事に添付された写真（署名付きURL） */
+	images?: { id: string; url: string }[];
 	created_at: string;
 };
 
@@ -58,13 +63,17 @@ const jstDateFormatter = new Intl.DateTimeFormat("en-CA", {
 });
 
 function toNewsItem(item: NewsApiItem): NewsItem {
+	const imageSrc = item.img_url ?? FALLBACK_IMAGE;
+	// 詳細ページは写真が1枚以上ある前提のため、添付写真が無ければメイン画像（無ければロゴ）1枚にする
+	const attached = (item.images ?? []).map((image) => image.url);
 	return {
 		id: item.id,
 		title: item.title,
 		// サーバー(UTC)で日付を切り出すと日本時間の深夜投稿が前日扱いになるため、JSTで整形する
 		publishedAt: jstDateFormatter.format(new Date(item.created_at)),
 		tag: item.category,
-		imageSrc: item.img_url ?? FALLBACK_IMAGE,
+		imageSrc,
+		images: attached.length > 0 ? attached : [imageSrc],
 		body: item.body,
 	};
 }

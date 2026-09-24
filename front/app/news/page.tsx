@@ -14,7 +14,6 @@ export default async function NewsPage() {
 	return (
 		<PageShell>
 			<main className="flex flex-col">
-				<h1 className="sr-only">ニュース</h1>
 				<NewsList items={news} />
 			</main>
 		</PageShell>

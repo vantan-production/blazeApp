@@ -41,8 +41,13 @@ export function NewsList({ items }: Props) {
 	return (
 		<>
 			<div className="px-5 py-5">
-				{/* Figmaでは見出し文字が空のため、ボタンのみ表示する */}
-				<SortableHeading title="" onSort={toggleOrder} />
+				<SortableHeading
+					title="ニュース"
+					titleAs="h1"
+					align="center"
+					order={order}
+					onSort={toggleOrder}
+				/>
 				<p className="sr-only" aria-live="polite">
 					{order === "desc" ? "新しい順" : "古い順"}に並んでいます
 				</p>

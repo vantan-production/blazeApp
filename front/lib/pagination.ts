@@ -1,6 +1,9 @@
 import { redirect, unstable_rethrow } from "next/navigation";
 import { API_BASE_URL } from "./apiClient";
 
+/** back の一覧APIの1ページあたりの件数（back/src/utils/pagination.ts の PAGE_SIZE。固定値） */
+export const PAGE_SIZE = 10;
+
 /** 一覧のページ情報。back/src/utils/pagination.ts の buildPagination に対応する */
 export type PageInfo = {
 	page: number;

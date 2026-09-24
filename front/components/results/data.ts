@@ -16,9 +16,29 @@ export const lastMatch = {
 /** チーム目標。backに対応するデータが無いため固定文言 */
 export const teamGoal = "勝利を目指して挑戦し続けるチームへ";
 
-export type Achievement = { id: string; imageSrc: string; title: string };
+export type Achievement = {
+	id: string;
+	imageSrc: string;
+	title: string;
+	/** 表示用の登録日（例: 2023/5/6） */
+	date: string;
+	/** <time dateTime> 用のISO日時 */
+	dateTime: string;
+};
 
 export type Photo = { id: string; src: string; alt: string };
+
+/**
+ * 試合風景の投稿1件。back の game にはタイトルが無いため、投稿日と写真だけを持つ
+ */
+export type MatchPost = {
+	id: string;
+	/** 表示用の投稿日（例: 2023/5/6） */
+	date: string;
+	/** <time dateTime> 用のISO日時 */
+	dateTime: string;
+	photos: Photo[];
+};
 
 /**
  * 選手たちの名場面集（Figma: gallery 1250:344）。

@@ -1,7 +1,7 @@
 "use client";
 
-import Image from "next/image";
 import { useState } from "react";
+import { AchievementCard } from "./AchievementCard";
 import { CarouselDots } from "./CarouselDots";
 import type { Achievement } from "./data";
 
@@ -21,27 +21,12 @@ export function AchievementCarousel({ items }: Props) {
 
 	return (
 		<div className="flex w-full flex-col items-center gap-4">
-			<div
-				aria-live="polite"
-				className="flex w-full items-stretch gap-3 rounded-[20px] bg-brand-white p-3 text-brand-blue"
-			>
-				<div className="relative aspect-[3/4] w-[45%] shrink-0 overflow-hidden rounded-[12px] bg-brand-black">
-					<Image
-						src={item.imageSrc}
-						alt=""
-						fill
-						sizes="180px"
-						className="object-cover"
-					/>
-				</div>
-				<div className="flex min-w-0 flex-1 flex-col justify-center gap-3">
-					<span className="self-start rounded-full bg-brand-red px-3 py-1 font-savate text-[12px] leading-none tracking-[2px] text-brand-white">
-						{String(index + 1).padStart(2, "0")}
-					</span>
-					<p className="text-[clamp(13px,4vw,16px)] leading-[1.5] font-bold whitespace-pre-line">
-						{item.title}
-					</p>
-				</div>
+			<div aria-live="polite" className="w-full">
+				<AchievementCard
+					imageSrc={item.imageSrc}
+					title={item.title}
+					number={index + 1}
+				/>
 			</div>
 			<div className="flex items-center gap-4">
 				<ArrowButton

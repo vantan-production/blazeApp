@@ -7,6 +7,10 @@ export const routes = {
 	// 活動内容ページの「主な活動場所」パネル
 	access: "/activities#access",
 	results: "/results",
+	// 実績・試合結果ページの各「もっと見る」の遷移先（一覧ページ）
+	resultsAchievements: "/results/achievements",
+	resultsMatchPhotos: "/results/match-photos",
+	resultsMedia: "/results/media",
 	news: "/news",
 	contact: "/contact",
 	// Figma注記「体験フォームページが必要」: デザイン未作成のため仮のパス

@@ -11,6 +11,7 @@ import {
 	lastMatch,
 	teamGoal,
 } from "@/components/results/data";
+import { EmptyNote } from "@/components/results/EmptyNote";
 import { LastResultCard } from "@/components/results/LastResultCard";
 import { MediaList } from "@/components/results/MediaList";
 import { PeekCarousel } from "@/components/results/PeekCarousel";
@@ -22,14 +23,6 @@ import { routes } from "@/lib/routes";
 export const metadata: Metadata = {
 	title: "実績・試合結果 | 西尾ブレイズ",
 };
-
-// TODO: 各「もっと見る」の一覧ページが決まったら遷移先を差し替える
-const moreHref = routes.news;
-
-/** 未登録・API停止中でセクションが空のときの表示 */
-function EmptyNote({ children }: { children: React.ReactNode }) {
-	return <p className="py-5 text-center text-[16px]">{children}</p>;
-}
 
 /** 実績・試合結果ページ（ベース: Figma 実績・試合結果 1030:334） */
 export default async function ResultsPage() {
@@ -70,7 +63,9 @@ export default async function ResultsPage() {
 					{/* 空のときは遷移先にも何も無いので「もっと見る」を出さない */}
 					<ResultSection
 						title="実績"
-						moreHref={achievements.length > 0 ? moreHref : undefined}
+						moreHref={
+							achievements.length > 0 ? routes.resultsAchievements : undefined
+						}
 					>
 						{achievements.length > 0 ? (
 							<AchievementCarousel items={achievements} />
@@ -80,7 +75,9 @@ export default async function ResultsPage() {
 					</ResultSection>
 					<ResultSection
 						title="試合風景"
-						moreHref={matchPhotos.length > 0 ? moreHref : undefined}
+						moreHref={
+							matchPhotos.length > 0 ? routes.resultsMatchPhotos : undefined
+						}
 					>
 						{matchPhotos.length > 0 ? (
 							<StaggeredGallery photos={matchPhotos} />
@@ -88,12 +85,13 @@ export default async function ResultsPage() {
 							<EmptyNote>試合風景は準備中です</EmptyNote>
 						)}
 					</ResultSection>
-					<ResultSection title="選手たちの名場面集" moreHref={moreHref}>
+					{/* TODO: 名場面の一覧ページ（とbackのデータ）ができたら「もっと見る」を付ける */}
+					<ResultSection title="選手たちの名場面集">
 						<PeekCarousel photos={highlightPhotos} />
 					</ResultSection>
 					<ResultSection
 						title="メディア情報"
-						moreHref={mediaItems.length > 0 ? moreHref : undefined}
+						moreHref={mediaItems.length > 0 ? routes.resultsMedia : undefined}
 					>
 						{mediaItems.length > 0 ? (
 							<MediaList items={mediaItems} />

@@ -1,6 +1,6 @@
 // モザイク系エンドポイント共通：対象画像の取得と「試合風景の画像か」の確認
 
-import { eq } from "../index.js";
+import { eq, z } from "../index.js";
 import { db, images } from "../shared/index.js";
 import type { Context } from "hono";
 
@@ -15,6 +15,14 @@ export async function findGameImage(c: Context): Promise<FindResult> {
     return {
       ok: false,
       response: c.json({ success: false, errors: "IDが指定されていません。" }, 400),
+    };
+  }
+
+  // UUID でない値をそのまま渡すと Postgres が型エラーを返し、500 になるため先に弾く
+  if (!z.string().uuid().safeParse(imageId).success) {
+    return {
+      ok: false,
+      response: c.json({ success: false, errors: "画像IDの形式が正しくありません。" }, 400),
     };
   }
 

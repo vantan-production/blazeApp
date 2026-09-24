@@ -90,6 +90,11 @@ describe("mosaicRequestSchema", () => {
     expect(mosaicRequestSchema.safeParse(region).success).toBe(true);
   });
 
+  it("regions と単体指定が混ざったボディは、regions が上限超えなら単体指定としても通さない", () => {
+    const tooMany = Array.from({ length: MAX_MOSAIC_REGIONS + 1 }, () => region);
+    expect(mosaicRequestSchema.safeParse({ ...region, regions: tooMany }).success).toBe(false);
+  });
+
   it("空配列と上限超えは失敗する", () => {
     expect(mosaicRequestSchema.safeParse({ regions: [] }).success).toBe(false);
     const tooMany = Array.from({ length: MAX_MOSAIC_REGIONS + 1 }, () => region);

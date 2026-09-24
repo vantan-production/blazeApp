@@ -44,17 +44,23 @@ export const update = async (c: Context) => {
     );
   }
 
-  // 差し替え前の画像にモザイクをかけていた場合、退避していた原本も破棄する。
-  // 残すと member に古い原本が配られ、次のモザイクも古い原本を起点にしてしまう
-  const previousOriginalPath = existingImage[0]!.original_path;
-  if (previousOriginalPath) await deleteFromS3(previousOriginalPath);
-
   // imagesテーブルのパスを更新（新しい画像はモザイク未適用の状態に戻す）
   const updated = await db
     .update(images)
     .set({ path: imageResult.path, original_path: null, mosaic_regions: null })
     .where(eq(images.id, imageId))
     .returning();
+
+  // 差し替え前の画像にモザイクをかけていた場合、退避していた原本も破棄する。
+  // 残すと member に古い原本が配られ、次のモザイクも古い原本を起点にしてしまう。
+  // DB更新が済んでから消す（更新に失敗したら原本は残る）。参照はもう外れているので、
+  // 削除に失敗しても差し替え自体は成功として返す
+  const previousOriginalPath = existingImage[0]!.original_path;
+  if (previousOriginalPath) {
+    await deleteFromS3(previousOriginalPath).catch((e) =>
+      console.error("[gameImg/update] 退避した原本の削除に失敗:", e),
+    );
+  }
 
   return c.json({ success: true, message: "画像を差し替えました。", data: updated[0] }, 200);
 };

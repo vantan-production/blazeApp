@@ -27,14 +27,16 @@ export type MosaicRegion = z.infer<typeof mosaicSchema>;
 // - { x, y, width, height } … 領域1つだけの従来形式（後方互換）
 export const mosaicRequestSchema = z.union([
   z.object({ regions: z.array(mosaicSchema).min(1).max(MAX_MOSAIC_REGIONS) }),
-  mosaicSchema,
+  // regions 付きのリクエストが上限超えなどで1つ目に落ちたとき、
+  // 同じボディの x, y… だけ拾って通ってしまわないよう、regions があれば弾く
+  mosaicSchema.extend({ regions: z.never().optional() }),
 ]);
 
 // リクエストボディを「pixel_size 補完済みの領域配列」に正規化する（DB保存・sharp処理で使う形）
 export function normalizeMosaicRegions(
   input: z.infer<typeof mosaicRequestSchema>,
 ): MosaicRegionRecord[] {
-  const regions = "regions" in input ? input.regions : [input];
+  const regions = input.regions ?? [input];
   return regions.map((region) => ({
     x: region.x,
     y: region.y,

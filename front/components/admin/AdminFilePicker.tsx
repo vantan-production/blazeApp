@@ -44,7 +44,11 @@ export function AdminFilePicker({
 		() =>
 			files
 				.filter((file) => file.type.startsWith("image/"))
-				.map((file) => ({ key: file.name, url: URL.createObjectURL(file) })),
+				.map((file, index) => ({
+					// 同名ファイルを複数選んでも key が重複しないよう番号を付ける
+					key: `${index}-${file.name}`,
+					url: URL.createObjectURL(file),
+				})),
 		[files],
 	);
 	useEffect(

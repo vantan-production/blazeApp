@@ -127,6 +127,86 @@ describe("GET /api/gameImg/:id", () => {
   });
 });
 
+describe("GET /api/gameImg — 公開状態（status）", () => {
+  // 画像は承認済みにしておき、consent_status ではなく status の違いだけを検証する
+  async function seedGame(ownerCookie: string, status: "draft" | "pending" | "published") {
+    const postRes = await postGameImg(ownerCookie);
+    const postBody = await postRes.json() as { data: { id: string } };
+    await testPool.query(`UPDATE images SET consent_status = 'approved' WHERE game_id = $1`, [
+      postBody.data.id,
+    ]);
+    await testPool.query(`UPDATE game SET status = $1 WHERE id = $2`, [status, postBody.data.id]);
+    return postBody.data.id;
+  }
+
+  it("一覧: 下書き・承認待ちは一般公開と member には出ない", async () => {
+    const ownerCookie = await registerAndLogin("Owner", `owner-st1${D}`);
+    const memberCookie = await registerAndLogin("Member", `member-st1${D}`);
+    const publishedId = await seedGame(ownerCookie, "published");
+    await seedGame(ownerCookie, "draft");
+    await seedGame(ownerCookie, "pending");
+
+    for (const headers of [{}, { Cookie: memberCookie }]) {
+      const res = await app.request("/api/gameImg", { headers });
+      const body = await res.json() as {
+        data: Array<{ id: string }>;
+        pagination: { total: number };
+      };
+      expect(body.data.map((g) => g.id)).toEqual([publishedId]);
+      // 件数もフィルタ後の値になっていること
+      expect(body.pagination.total).toBe(1);
+    }
+  });
+
+  it("一覧: admin 以上には下書き・承認待ちも出る", async () => {
+    const ownerCookie = await registerAndLogin("Owner", `owner-st2${D}`);
+    const adminCookie = await registerAndLogin("Admin", `admin-st2${D}`, undefined, "admin");
+    await seedGame(ownerCookie, "published");
+    await seedGame(ownerCookie, "draft");
+    await seedGame(ownerCookie, "pending");
+
+    for (const cookie of [ownerCookie, adminCookie]) {
+      const res = await app.request("/api/gameImg", { headers: { Cookie: cookie } });
+      const body = await res.json() as { data: unknown[] };
+      expect(body.data).toHaveLength(3);
+    }
+  });
+
+  it("詳細: 下書き・承認待ちは一般公開と member には404", async () => {
+    const ownerCookie = await registerAndLogin("Owner", `owner-st3${D}`);
+    const memberCookie = await registerAndLogin("Member", `member-st3${D}`);
+    const draftId = await seedGame(ownerCookie, "draft");
+    const pendingId = await seedGame(ownerCookie, "pending");
+
+    for (const id of [draftId, pendingId]) {
+      expect((await app.request(`/api/gameImg/${id}`)).status).toBe(404);
+      expect(
+        (await app.request(`/api/gameImg/${id}`, { headers: { Cookie: memberCookie } })).status,
+      ).toBe(404);
+    }
+  });
+
+  it("詳細: admin 以上は下書き・承認待ちも取得できる", async () => {
+    const ownerCookie = await registerAndLogin("Owner", `owner-st4${D}`);
+    const adminCookie = await registerAndLogin("Admin", `admin-st4${D}`, undefined, "admin");
+    const draftId = await seedGame(ownerCookie, "draft");
+    const pendingId = await seedGame(ownerCookie, "pending");
+
+    for (const id of [draftId, pendingId]) {
+      for (const cookie of [ownerCookie, adminCookie]) {
+        const res = await app.request(`/api/gameImg/${id}`, { headers: { Cookie: cookie } });
+        expect(res.status).toBe(200);
+      }
+    }
+  });
+
+  it("詳細: 公開済みは一般公開でも取得できる", async () => {
+    const ownerCookie = await registerAndLogin("Owner", `owner-st5${D}`);
+    const publishedId = await seedGame(ownerCookie, "published");
+    expect((await app.request(`/api/gameImg/${publishedId}`)).status).toBe(200);
+  });
+});
+
 describe("PATCH /api/gameImg/images/:imageId/consent", () => {
   it("owner は承認ステータスを更新できる", async () => {
     const cookie = await registerAndLogin("Owner", `owner9${D}`);

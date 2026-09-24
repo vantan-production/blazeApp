@@ -22,7 +22,7 @@ export const gameImgPaths: Paths = {
       tags: [TAG],
       summary: "試合風景一覧",
       description:
-        "未認証時は掲載同意済み（approved）の画像のみを、モザイク適用後の状態で返す。member 以上は全画像を原本（モザイクなし）で確認できる。",
+        "未認証時は掲載同意済み（approved）の画像のみを、モザイク適用後の状態で返す。member 以上は全画像を原本（モザイクなし）で確認できる。status が published 以外（下書き・承認待ち）の投稿は admin 以上にのみ返す。",
       security: [],
       parameters: [pageParam],
       responses: {
@@ -55,6 +55,8 @@ export const gameImgPaths: Paths = {
     get: {
       tags: [TAG],
       summary: "試合風景詳細",
+      description:
+        "status が published 以外（下書き・承認待ち）の投稿は admin 未満には 404 を返す。",
       security: [],
       parameters: [pathParam("id", "試合風景ID")],
       responses: {

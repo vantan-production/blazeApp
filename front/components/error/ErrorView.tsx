@@ -36,7 +36,8 @@ export function ErrorView({
 						))}
 					</h1>
 				</div>
-				<p className="text-center text-[22px] leading-[22px] tracking-[1px] text-white">
+				{/* 最長行（14文字）が狭いスマホ幅でも1行に収まるよう、402px幅で22pxになるように縮める */}
+				<p className="text-center text-[clamp(18px,5.48vw,22px)] leading-[22px] tracking-[1px] text-white">
 					{messages.map((line) => (
 						<span key={line} className="block">
 							{line}

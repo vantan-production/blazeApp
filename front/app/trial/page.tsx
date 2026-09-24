@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { Copyright } from "@/components/layout/Copyright";
 import { PageShell } from "@/components/layout/PageShell";
 import { TrialForm } from "@/components/trial/TrialForm";
 import { ContentPanel } from "@/components/ui/ContentPanel";
@@ -25,7 +24,6 @@ export default function TrialPage() {
 				<ContentPanel title="お申し込み" titleAs="h2">
 					<TrialForm />
 				</ContentPanel>
-				<Copyright />
 			</main>
 		</PageShell>
 	);

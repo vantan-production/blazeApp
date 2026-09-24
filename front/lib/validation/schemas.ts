@@ -77,3 +77,99 @@ export const INQUIRY_STATUS_LABELS: Record<InquiryStatus, string> = {
 	in_progress: "対応中",
 	resolved: "対応済み",
 };
+
+// ---- 体験申し込み（back/src/db/schema.ts の「体験申し込み用バリデーション」と同じ制約） ----
+// 文字数は VALIDATION_LIMITS から取るが、正規表現・選択肢は limits.generated.json に含まれないため
+// back と同じ値をここに書いている。back 側を変えたらこちらも合わせること。
+
+// 任意項目。空欄は undefined として扱う（back の optionalStringField と同じ）
+const optionalStringField = (max: number, label: string) =>
+	z
+		.string()
+		.trim()
+		.max(max, `${label}は${max}文字以内で入力してください。`)
+		.optional()
+		.transform((v) => (v === "" ? undefined : v));
+
+const dateOnlySchema = (label: string) =>
+	z
+		.string()
+		.trim()
+		.regex(/^\d{4}-\d{2}-\d{2}$/, `${label}を入力してください。`)
+		.refine(
+			(v) => !Number.isNaN(Date.parse(v)),
+			`${label}の日付が正しくありません。`,
+		);
+
+export const trialNameSchema = stringField(
+	VALIDATION_LIMITS.trialName.min,
+	VALIDATION_LIMITS.trialName.max,
+	"名前",
+);
+
+export const furiganaSchema = stringField(
+	VALIDATION_LIMITS.furigana.min,
+	VALIDATION_LIMITS.furigana.max,
+	"フリガナ",
+).regex(/^[ァ-ヶー\s]+$/, "フリガナは全角カタカナで入力してください。");
+
+export const schoolNameSchema = stringField(
+	VALIDATION_LIMITS.schoolName.min,
+	VALIDATION_LIMITS.schoolName.max,
+	"学校名",
+);
+
+export const cramSchoolSchema = optionalStringField(
+	VALIDATION_LIMITS.cramSchool.max,
+	"塾",
+);
+
+export const phoneNumberSchema = stringField(
+	VALIDATION_LIMITS.phoneNumber.min,
+	VALIDATION_LIMITS.phoneNumber.max,
+	"電話番号",
+).regex(
+	/^0[0-9]{1,4}-?[0-9]{1,4}-?[0-9]{3,4}$/,
+	"電話番号の形式が正しくありません。",
+);
+
+export const motivationOtherSchema = optionalStringField(
+	VALIDATION_LIMITS.motivationOther.max,
+	"体験のきっかけ（その他）",
+);
+
+export const referrerNameSchema = optionalStringField(
+	VALIDATION_LIMITS.referrerName.max,
+	"紹介者名",
+);
+
+export const trialDateSchema = dateOnlySchema("体験日");
+export const birthDateSchema = dateOnlySchema("生年月日");
+
+// 性別（DBには英語キーが入る。ラベルは back/src/utils/mail.ts の確認メールと同じ）
+export const genderSchema = z.enum(["male", "female", "other"], {
+	error: "性別を選択してください。",
+});
+
+export type Gender = z.infer<typeof genderSchema>;
+
+export const GENDER_LABELS: Record<Gender, string> = {
+	male: "男性",
+	female: "女性",
+	other: "その他",
+};
+
+// 体験のきっかけ（ラベルは back/src/utils/mail.ts の確認メールと同じ）
+export const motivationSchema = z.enum(
+	["flyer", "instagram", "referral", "other"],
+	{ error: "体験のきっかけを選択してください。" },
+);
+
+export type Motivation = z.infer<typeof motivationSchema>;
+
+export const MOTIVATION_LABELS: Record<Motivation, string> = {
+	flyer: "学校で配布されたチラシ",
+	instagram: "インスタグラム",
+	referral: "西尾ブレイズの選手、スタッフからの紹介",
+	other: "その他",
+};

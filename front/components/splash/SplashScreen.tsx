@@ -76,16 +76,19 @@ export function SplashScreen({
 			}`}
 			style={{ transitionDuration: `${fadeMs}ms` }}
 		>
-			{/* デザインはSP幅（402px）前提のため、サイト本体と同じ幅の列に収めて切り抜く */}
-			<span className="relative flex h-full w-full max-w-[402px] items-center justify-center overflow-hidden">
+			{/*
+				デザインはSP幅（402px）前提。サイト本体と同じ幅（max-w-sp）の列に収めて切り抜き、
+				中身は列の幅（cqw）を基準に拡大縮小する（列幅402pxでFigmaと同じ寸法になる）
+			*/}
+			<span className="@container relative flex h-full w-full max-w-sp items-center justify-center overflow-hidden">
 				{/* ボール型に切り抜いたチーム写真（Figma: bg 385:740） */}
-				<span className="relative h-[712px] w-[713px] shrink-0 overflow-hidden rounded-[340px]">
+				<span className="relative h-[177.11cqw] w-[177.38cqw] shrink-0 overflow-hidden rounded-[84.58cqw]">
 					<Image
 						src="/images/splash-team.jpg"
 						alt=""
 						width={2500}
 						height={744}
-						sizes="1970px"
+						sizes="(max-width: 430px) 490vw, 2110px"
 						preload
 						className="absolute top-[-0.84%] left-[21.63%] h-full w-[276.05%] max-w-none"
 					/>
@@ -94,7 +97,7 @@ export function SplashScreen({
 				{/* 薄く敷いたロゴと全体の暗幕（Figma: group02 385:741） */}
 				<span
 					aria-hidden
-					className="pointer-events-none absolute top-1/2 left-1/2 h-[874px] w-[402px] -translate-1/2 overflow-hidden opacity-10"
+					className="pointer-events-none absolute top-1/2 left-1/2 h-[217.41cqw] w-full -translate-1/2 overflow-hidden opacity-10"
 				>
 					<Image
 						src="/images/splash-logo.jpg"
@@ -112,7 +115,7 @@ export function SplashScreen({
 					alt=""
 					width={713.057}
 					height={712}
-					className="absolute top-1/2 left-1/2 max-w-none -translate-1/2"
+					className="absolute top-1/2 left-1/2 h-auto w-[177.38cqw] max-w-none -translate-1/2"
 				/>
 			</span>
 		</button>

@@ -4,7 +4,7 @@ import { footerNavItems } from "@/lib/routes";
 import { Copyright } from "./Copyright";
 
 /**
- * ページ下部のフッター（Figma: Frame 145 1028:311）。チームロゴの下にナビを縦に並べ、最後にコピーライトを置く。
+ * ページ下部のフッター（Figma: Frame 145 1028:311）。チームロゴ（本文と同じ左右24pxの余白で横幅いっぱい）の下にナビを縦に並べ、最後にコピーライトを置く。
  * PageShell から全ページ共通で表示される。
  */
 export function SiteFooter() {
@@ -13,9 +13,10 @@ export function SiteFooter() {
 			<Image
 				src="/img/nishioBlaze.jpg"
 				alt="西尾ブレイズ Aichi Dodge Ball Club Team"
-				width={280}
-				height={131}
-				className="h-auto w-[min(280px,75vw)]"
+				width={1873}
+				height={874}
+				sizes="(max-width: 430px) 100vw, 430px"
+				className="h-auto w-full"
 			/>
 			<nav aria-label="フッターメニュー">
 				<ul className="flex flex-col items-center gap-6 text-center font-mincho text-[16px] leading-[22px] tracking-[1.5px] whitespace-nowrap text-white">

@@ -7,12 +7,12 @@ type Props = {
 	height?: number;
 };
 
-/** 白枠付きの角丸画像（Figma: image 2116:1224） */
+/** 白枠付きの角丸画像（Figma: image 2116:1224）。狭い画面では比率を保って縮む */
 export function FramedImage({ src, alt, width = 260, height = 173 }: Props) {
 	return (
 		<div
 			className="relative overflow-hidden rounded-[12px] border-4 border-brand-white"
-			style={{ width, height }}
+			style={{ width, maxWidth: "100%", aspectRatio: `${width} / ${height}` }}
 		>
 			<Image
 				src={src}

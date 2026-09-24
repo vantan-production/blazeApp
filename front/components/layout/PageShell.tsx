@@ -6,13 +6,13 @@ type Props = {
 	offsetHeader?: boolean;
 };
 
-/** SP幅（402px）で中央寄せにし、共通ヘッダーを載せるページ枠 */
+/** スマホ幅（最大 max-w-sp）で中央寄せにし、共通ヘッダーを載せるページ枠 */
 export function PageShell({ children, offsetHeader = true }: Props) {
 	return (
 		<>
 			<SiteHeader />
 			<div
-				className={`mx-auto flex w-full max-w-[402px] flex-1 flex-col bg-brand-blue ${
+				className={`mx-auto flex w-full max-w-sp flex-1 flex-col bg-brand-blue ${
 					offsetHeader ? "pt-[96px]" : ""
 				}`}
 			>

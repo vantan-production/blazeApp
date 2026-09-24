@@ -7,7 +7,7 @@ type Props = {
 	imageSrc?: string;
 };
 
-/** 背景写真にタイトルを重ねたリンクカード（Figma: card 978:569） */
+/** 背景写真にタイトルを重ねたリンクカード（Figma: card 978:569）。幅は親に合わせ、比率172:120を保つ */
 export function PhotoCard({
 	title,
 	href,
@@ -16,7 +16,7 @@ export function PhotoCard({
 	return (
 		<Link
 			href={href}
-			className="relative flex h-[120px] w-[172px] items-center justify-center overflow-hidden rounded-[4px] p-[10px]"
+			className="relative flex aspect-[172/120] w-full items-center justify-center overflow-hidden rounded-[4px] p-[10px]"
 		>
 			<Image
 				src={imageSrc}
@@ -25,7 +25,7 @@ export function PhotoCard({
 				sizes="172px"
 				className="object-cover"
 			/>
-			<span className="relative w-full text-center font-mincho text-[22px] leading-[26px] tracking-[1.5px] text-black">
+			<span className="relative w-full text-center font-mincho text-[clamp(18px,5.5vw,22px)] leading-[26px] tracking-[1.5px] text-black">
 				{title}
 			</span>
 		</Link>

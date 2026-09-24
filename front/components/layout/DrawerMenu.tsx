@@ -16,7 +16,7 @@ export function DrawerMenu({ id, onNavigate }: Props) {
 			aria-label="メインメニュー"
 			className="fixed inset-0 z-40 overflow-y-auto bg-brand-blue pt-[96px] pb-[105px]"
 		>
-			<div className="mx-auto flex w-full max-w-[402px] flex-col items-center px-[10px]">
+			<div className="mx-auto flex w-full max-w-sp flex-col items-center px-[10px]">
 				<div className="w-full py-4">
 					<TrialBanner onNavigate={onNavigate} />
 				</div>

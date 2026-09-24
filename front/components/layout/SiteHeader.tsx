@@ -25,7 +25,7 @@ export function SiteHeader() {
 
 	return (
 		<>
-			<header className="fixed inset-x-0 top-0 z-50 mx-auto w-full max-w-[402px]">
+			<header className="fixed inset-x-0 top-0 z-50 mx-auto w-full max-w-sp">
 				<div className="flex items-center justify-between py-4 pr-[25px] pl-[21px]">
 					<Link
 						href={routes.top}

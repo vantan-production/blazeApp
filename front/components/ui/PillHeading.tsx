@@ -7,8 +7,9 @@ type Props = {
 
 const variantClass = {
 	section:
-		"px-[52px] py-6 text-[22px] font-medium leading-[22px] tracking-[1px]",
-	label: "px-[46px] py-3 font-savate text-[20px] leading-[22px]",
+		"px-[clamp(24px,13vw,52px)] py-6 text-[clamp(18px,5.5vw,22px)] font-medium leading-[22px] tracking-[1px]",
+	label:
+		"px-[clamp(20px,11.5vw,46px)] py-3 font-savate text-[clamp(16px,5vw,20px)] leading-[22px]",
 } as const;
 
 /** 黄色のピル型見出し */
@@ -20,7 +21,7 @@ export function PillHeading({
 	const Tag = as;
 	return (
 		<Tag
-			className={`inline-flex items-center justify-center rounded-[1000px] bg-brand-yellow text-center whitespace-nowrap text-brand-blue ${variantClass[variant]}`}
+			className={`inline-flex max-w-full items-center justify-center rounded-[1000px] bg-brand-yellow text-center whitespace-nowrap text-brand-blue ${variantClass[variant]}`}
 		>
 			{children}
 		</Tag>

@@ -10,6 +10,8 @@
 }
 
 @theme inline {
+	/* スマホ表示の最大幅。320px〜この幅まで伸縮する（PC・タブレットは対象外） */
+	--container-sp: 430px;
 	--color-brand-blue: var(--brand-blue);
 	--color-brand-white: var(--brand-white);
 	--color-brand-black: var(--brand-black);

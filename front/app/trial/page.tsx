@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 /** ドッジボール体験の申し込みページ（Figma注記「体験フォームページが必要」に基づく仮デザイン） */
 export default function TrialPage() {
 	return (
-		<PageShell headerWithBackground>
+		<PageShell>
 			<main className="flex flex-col items-center gap-8 px-6 pt-6 pb-10">
 				<PillHeading as="h1">ドッジボール体験</PillHeading>
 				<ContentPanel title="体験について" titleAs="h2" align="center">

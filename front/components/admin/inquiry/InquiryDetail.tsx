@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
-import type { ApiSuccess } from "@/lib/admin/api";
+import { type ApiSuccess, toErrorMessage } from "@/lib/admin/api";
 import { apiClient } from "@/lib/apiClient";
 import { useToastStore } from "@/lib/store/useToastStore";
 import {
@@ -67,10 +67,12 @@ export function InquiryDetail({ inquiryId }: Props) {
 		try {
 			const res = await apiClient<ApiSuccess<InquiryDetailData>>(
 				`/api/inquiry/${inquiryId}`,
+				// 当面はログインなしでも管理画面を表示するため、401 でも公開サイトの /login へ飛ばさない
+				{ skipAuthRedirect: true },
 			);
 			setInquiry(res.data);
-		} catch {
-			setError("問い合わせの取得に失敗しました。");
+		} catch (err) {
+			setError(toErrorMessage(err, "問い合わせの取得に失敗しました。"));
 		}
 	}, [inquiryId]);
 
@@ -84,13 +86,17 @@ export function InquiryDetail({ inquiryId }: Props) {
 			await apiClient(`/api/inquiry/${inquiryId}/status`, {
 				method: "PATCH",
 				body: JSON.stringify({ status }),
+				skipAuthRedirect: true,
 			});
 			setInquiry((prev) => (prev ? { ...prev, status } : prev));
 			showToast(
 				`対応ステータスを「${INQUIRY_STATUS_LABELS[status]}」に更新しました。`,
 			);
-		} catch {
-			showToast("対応ステータスの更新に失敗しました。", "error");
+		} catch (err) {
+			showToast(
+				toErrorMessage(err, "対応ステータスの更新に失敗しました。"),
+				"error",
+			);
 		} finally {
 			setUpdating(false);
 			setConfirmOpen(false);

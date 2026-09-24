@@ -118,24 +118,53 @@ export const gameImgPaths: Paths = {
   },
 
   "/api/gameImg/images/{imageId}/mosaic": {
+    get: {
+      tags: [TAG],
+      summary: "モザイクの適用状態の取得（admin 以上）",
+      description:
+        "適用中の領域一覧と原本の URL を返す。編集画面で原本の上に現在の領域を並べて表示するために使う。",
+      parameters: [pathParam("imageId", "画像ID")],
+      responses: {
+        "200": itemResponse("取得成功", "#/components/schemas/MosaicState"),
+        ...errors("BadRequest", "Unauthorized", "Forbidden", "NotFound"),
+      },
+    },
     post: {
       tags: [TAG],
-      summary: "画像へのモザイク適用（admin 以上）",
+      summary: "画像へのモザイク適用・再編集（admin 以上）",
       description:
-        "指定した矩形領域をピクセル化し、公開用の画像を差し替える。初回適用時に原本を originals/ 配下へ退避するため、やり直しても劣化せず、member 向けの原本閲覧も維持される。座標は元画像のピクセル基準。",
+        "送った領域一覧で原本からモザイク画像を作り直し、公開用の画像を差し替える（一覧は全置き換え。領域の追加・移動・削除・粗さ変更はすべてこの形で行う）。初回適用時に原本を originals/ 配下へ退避するため、何度やり直しても劣化せず、member 向けの原本閲覧も維持される。従来の単体指定（x, y, width, height）も受け付ける。",
       parameters: [pathParam("imageId", "画像ID")],
       requestBody: jsonBody({
-        type: "object",
-        required: ["x", "y", "width", "height"],
-        properties: {
-          x: { type: "integer", minimum: 0, description: "左上のX座標" },
-          y: { type: "integer", minimum: 0, description: "左上のY座標" },
-          width: { type: "integer", minimum: 1, description: "領域の幅" },
-          height: { type: "integer", minimum: 1, description: "領域の高さ" },
-        },
+        oneOf: [
+          {
+            type: "object",
+            required: ["regions"],
+            properties: {
+              regions: {
+                type: "array",
+                minItems: 1,
+                maxItems: 20,
+                items: { $ref: "#/components/schemas/MosaicRegion" },
+              },
+            },
+          },
+          { $ref: "#/components/schemas/MosaicRegion" },
+        ],
       }),
       responses: {
-        "200": mutationResponse("適用成功", "#/components/schemas/StoredImage"),
+        "200": mutationResponse("適用成功", "#/components/schemas/MosaicState"),
+        ...errors("BadRequest", "Unauthorized", "Forbidden", "NotFound"),
+      },
+    },
+    delete: {
+      tags: [TAG],
+      summary: "モザイクの解除（admin 以上）",
+      description:
+        "公開用の画像を原本に戻し、退避していた原本と領域一覧を削除する。モザイク未適用の画像は 400。",
+      parameters: [pathParam("imageId", "画像ID")],
+      responses: {
+        "200": mutationResponse("解除成功", "#/components/schemas/MosaicState"),
         ...errors("BadRequest", "Unauthorized", "Forbidden", "NotFound"),
       },
     },

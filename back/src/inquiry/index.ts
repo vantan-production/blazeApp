@@ -1,12 +1,8 @@
 // 問い合わせAPI（6エンドポイント）
 
 import { randomUUID } from "node:crypto";
-import {
-  Hono,
-  rateLimiter,
-  RedisStore,
-} from "../index.js";
-import { admin, authToken, redisClient } from "../shared/index.js";
+import { Hono } from "../index.js";
+import { admin, authToken } from "../shared/index.js";
 import { requireAdmin } from "../db/roleGuard.js";
 import { getAll } from "./getAll.js";
 import { getById } from "./getById.js";
@@ -15,6 +11,7 @@ import { updateStatus } from "./updateStatus.js";
 import { createReply } from "./reply.js";
 import { deleteReply } from "./deleteReply.js";
 import { clientIp } from "../utils/monitoring.js";
+import { createFormRateLimiter } from "../utils/formRateLimit.js";
 
 type Variables = {
   user: typeof admin.$inferSelect;
@@ -22,23 +19,18 @@ type Variables = {
 
 const app = new Hono<{ Variables: Variables }>();
 
-// 問い合わせ送信のレートリミット（1分に1回まで・テスト環境ではスキップ）
+// 問い合わせ送信のレートリミット（1分に1回まで・失敗した送信は数えない・テスト環境ではスキップ）
 const inquiryLimiter =
   process.env.NODE_ENV === "test"
     ? (_c: unknown, next: () => Promise<void>) => next()
-    : rateLimiter({
-        windowMs: 60 * 1000,
-        limit: 1,
-        message: "1分間に1回しか送信できません。",
+    : createFormRateLimiter({
+        prefix: "rl:inquiry:",
         // ALB配下では接続元IPが常にALBになるため、X-Forwarded-For から実IPを取る（monitoring.ts参照）。
         // IPが判別できない場合は毎回別キーにして、無関係な送信者を巻き込まないようにする
         keyGenerator: (c) => {
           const ip = clientIp(c);
           return ip === "unknown" ? randomUUID() : ip;
         },
-        store: new RedisStore({
-          sendCommand: (...args: string[]) => redisClient.sendCommand(args),
-        }) as any,
       });
 
 // GET /api/inquiry — 全ての問い合わせを取得（admin以上）

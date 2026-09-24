@@ -9,6 +9,8 @@ export const routes = {
 	contact: "/contact",
 	// Figma注記「体験フォームページが必要」: デザイン未作成のため仮のパス
 	trial: "/trial",
+	// ギャラリーページは未定のため仮のパス
+	gallery: "/gallery",
 } as const;
 
 export type NavItem = { label: string; href: string };
@@ -19,6 +21,7 @@ export const drawerNavColumns: NavItem[][] = [
 		{ label: "トップ", href: routes.top },
 		{ label: "チーム紹介", href: routes.team },
 		{ label: "監督コーチ紹介", href: routes.coaches },
+		{ label: "ギャラリー", href: routes.gallery },
 	],
 	[
 		{ label: "ニュース", href: routes.news },
@@ -33,7 +36,7 @@ export const footerNavItems: NavItem[] = [
 	{ label: "紹介", href: routes.team },
 	{ label: "活動内容", href: routes.activities },
 	{ label: "実績", href: routes.results },
-	{ label: "ギャラリー", href: routes.news },
+	{ label: "ギャラリー", href: routes.gallery },
 	{ label: "体験案内", href: routes.trial },
 	{ label: "アクセス", href: routes.contact },
 ];

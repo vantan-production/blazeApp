@@ -45,16 +45,31 @@ const registerErrorMessage = (error: unknown) => {
 	return "登録に失敗しました。時間をおいて再度お試しください。";
 };
 
+/** GET /api/admin/invitations/verify が返す招待内容（back/src/admin/invitations.ts） */
+export type Invitation = {
+	email: string;
+	role: "admin" | "member";
+};
+
 type Props = {
-	/** 招待メールのリンクに付いている招待トークン（?token=...） */
+	/** 招待メールのリンクに付いている招待トークン（?token=...）。確認が取れたものだけ渡す */
 	invitationToken: string | null;
+	/** 確認済みの招待内容。メール欄の初期値に使う */
+	invitation?: Invitation | null;
+	/** 招待リンクが無効・期限切れのときに出す文言 */
+	invitationError?: string | null;
 };
 
 /** 招待リンクからの新規登録フォーム（Figma: login 2424:984） */
-export function RegisterForm({ invitationToken }: Props) {
+export function RegisterForm({
+	invitationToken,
+	invitation = null,
+	invitationError = null,
+}: Props) {
 	const router = useRouter();
 	const [values, setValues] = useState<RegisterValues>({
-		email: "",
+		// back は招待先と同じアドレスでしか登録させないため、招待のアドレスを入れておく
+		email: invitation?.email ?? "",
 		password: "",
 		passwordConfirmation: "",
 		name: "",
@@ -105,7 +120,12 @@ export function RegisterForm({ invitationToken }: Props) {
 			className="flex w-full flex-col items-center gap-[19px]"
 		>
 			{!invitationToken && (
-				<AdminFieldError message="新規登録は招待メールのリンクから行ってください。" />
+				<AdminFieldError
+					message={
+						invitationError ??
+						"新規登録は招待メールのリンクから行ってください。"
+					}
+				/>
 			)}
 			<div className="flex w-full flex-col gap-2 py-[10px]">
 				<AdminTextField
@@ -115,6 +135,8 @@ export function RegisterForm({ invitationToken }: Props) {
 					placeholder="メールアドレス"
 					value={values.email}
 					onChange={handleChange("email")}
+					// 招待先以外のアドレスでは登録できないため、招待が確認できたら変更させない
+					readOnly={invitation !== null}
 					error={errors.email}
 				/>
 				<AdminTextField

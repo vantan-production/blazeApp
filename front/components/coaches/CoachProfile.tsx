@@ -1,8 +1,11 @@
 import Image from "next/image";
 import { ContentPanel } from "@/components/ui/ContentPanel";
+import { type CoachRole, CoachRoleBadge } from "./CoachRoleBadge";
 
 export type Coach = {
 	name: string;
+	/** 役職（監督／コーチ）。名前の横にバッジで表示する */
+	role: CoachRole;
 	/** 写真（本人に限らずペットなどの写真やアイコンでもよい） */
 	photoSrc: string;
 	/** 一言コメント */
@@ -35,9 +38,12 @@ export function CoachProfile({ coach }: Props) {
 					/>
 				</div>
 				<div className="flex min-w-0 flex-1 flex-col gap-2 self-stretch pt-3 text-white">
-					<h2 className="font-savate text-[22px] leading-[22px] tracking-[1.5px] whitespace-nowrap">
-						{coach.name}
-					</h2>
+					<div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+						<h2 className="font-savate text-[22px] leading-[22px] tracking-[1.5px] whitespace-nowrap">
+							{coach.name}
+						</h2>
+						<CoachRoleBadge role={coach.role} />
+					</div>
 					<p className="max-w-[208px] text-[16px] leading-[22px] tracking-[1px]">
 						{coach.comment}
 					</p>

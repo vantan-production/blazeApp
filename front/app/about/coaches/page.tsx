@@ -8,13 +8,14 @@ export const metadata: Metadata = {
 	title: "コーチ紹介 | 西尾ブレイズ",
 };
 
-// TODO: 写真・本文はFigma上のサンプル。確定した内容に差し替える
+// TODO: 写真・本文・役職はFigma上のサンプル。確定した内容に差し替える
 const sampleText =
 	"西尾市のクラブという意味の西尾と燃え盛る炎という意味のブレイズを合わせて、西尾の熱血的なチームとして輝けるようにと願いを込めたのが由来です。";
 
 const coaches: Coach[] = [
 	{
 		name: "勝山 拓郎",
+		role: "director",
 		photoSrc: "/images/coach-sample-1.png",
 		comment: "全員で大会に向けて、切磋琢磨していきましょう！",
 		policy: sampleText,
@@ -22,6 +23,7 @@ const coaches: Coach[] = [
 	},
 	{
 		name: "花尾 智也",
+		role: "coach",
 		photoSrc: "/images/coach-sample-2.jpg",
 		comment: "全国まで行けるチームになれるよう、話し合いながら成長していこう！",
 		policy: sampleText,

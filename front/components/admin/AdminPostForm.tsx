@@ -21,9 +21,12 @@ type PostValues = z.input<typeof postSchema>;
 type Props = {
 	/** 送信先のAPI（multipart/form-data で POST する） */
 	endpoint: string;
-	/** 添付欄の設定。name は back が受け取るフィールド名（image / file など） */
+	/**
+	 * 添付欄の設定。name は back が受け取るフィールド名（image / file など）。
+	 * 選んだファイルの種類で送り先を変えたい場合（実績の画像/動画/ファイル）は関数を渡す
+	 */
 	attachment: {
-		name: string;
+		name: string | ((file: File) => string);
 		placeholder: string;
 		accept?: string;
 	};
@@ -86,7 +89,14 @@ export function AdminPostForm({
 		for (const [key, value] of Object.entries(extraValues ?? {})) {
 			if (value !== undefined) formData.append(key, value);
 		}
-		if (files[0]) formData.append(attachment.name, files[0]);
+		const file = files[0];
+		if (file) {
+			const fieldName =
+				typeof attachment.name === "function"
+					? attachment.name(file)
+					: attachment.name;
+			formData.append(fieldName, file);
+		}
 
 		setPending(true);
 		try {
@@ -152,7 +162,6 @@ export function AdminPostForm({
 				<div className={insetAttachment ? "px-5" : ""}>
 					<AdminFilePicker
 						id={attachmentId}
-						name={attachment.name}
 						placeholder={attachment.placeholder}
 						accept={attachment.accept}
 						files={files}

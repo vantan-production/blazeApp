@@ -6,9 +6,11 @@ type Props = {
 	opponentTeam: string;
 };
 
+const outcomeLabel = { win: "WIN", lose: "LOSE", draw: "DRAW" } as const;
+
 /**
- * 前回の試合結果カード（Figma: last time results 1031:551）。
- * 402px幅でFigma通り、狭い画面ではチーム名・VS・余白をclamp()で縮めてカードに収める
+ * 前回の試合結果のスコアボード。上部の黄帯・勝敗バッジ・両チームのスコアを並べる。
+ * 狭い画面ではスコア・チーム名・余白をclamp()で縮めてカードに収める
  */
 export function LastResultCard({
 	ourScore,
@@ -16,24 +18,68 @@ export function LastResultCard({
 	ourTeam,
 	opponentTeam,
 }: Props) {
+	const outcome =
+		ourScore > opponentScore
+			? "win"
+			: ourScore < opponentScore
+				? "lose"
+				: "draw";
+
 	return (
-		<section className="flex w-full flex-col items-center gap-6">
-			<h2 className="px-[10px] py-[30px] text-[26px]">前回の試合結果</h2>
-			<div className="flex w-full flex-col items-center gap-[10px] overflow-hidden rounded-[16px] bg-white p-[clamp(4px,2.49vw,10px)] font-black text-black">
-				<p className="px-[10px] py-1 text-[40px]">
-					{ourScore} - {opponentScore}
-				</p>
-				<span aria-hidden className="h-[2px] w-[60px] rounded-full bg-black" />
-				<div className="flex w-full items-center justify-center gap-[clamp(4px,2.49vw,10px)] px-[clamp(4px,2.49vw,10px)] py-4">
-					<p className="flex-1 p-[clamp(4px,2.49vw,10px)] text-center text-[clamp(12px,3.98vw,16px)] whitespace-pre">
-						{ourTeam}
-					</p>
-					<span className="text-[clamp(24px,7.96vw,32px)]">VS</span>
-					<p className="flex-1 p-[clamp(4px,2.49vw,10px)] text-center text-[clamp(12px,3.98vw,16px)] whitespace-pre">
-						{opponentTeam}
-					</p>
+		<div className="relative w-full overflow-hidden rounded-[20px] bg-brand-white text-brand-blue shadow-[0_8px_0_0_var(--brand-yellow)]">
+			<div className="flex items-center justify-center bg-brand-yellow py-2 font-savate text-[16px] leading-none tracking-[4px]">
+				FINAL SCORE
+			</div>
+			<div className="flex flex-col items-center gap-3 px-[clamp(8px,3vw,16px)] pt-5 pb-6">
+				<span
+					className={`rounded-full px-4 py-1 font-savate text-[14px] leading-none tracking-[2px] text-brand-white ${
+						outcome === "win" ? "bg-brand-red" : "bg-brand-blue"
+					}`}
+				>
+					{outcomeLabel[outcome]}
+				</span>
+				<div className="grid w-full grid-cols-[1fr_auto_1fr] items-center gap-[clamp(4px,2vw,8px)]">
+					<TeamScore
+						score={ourScore}
+						team={ourTeam}
+						highlight={outcome === "win"}
+					/>
+					<span className="font-savate text-[clamp(18px,5.5vw,22px)] text-brand-blue/50">
+						VS
+					</span>
+					<TeamScore
+						score={opponentScore}
+						team={opponentTeam}
+						highlight={outcome === "lose"}
+					/>
 				</div>
 			</div>
-		</section>
+		</div>
+	);
+}
+
+function TeamScore({
+	score,
+	team,
+	highlight,
+}: {
+	score: number;
+	team: string;
+	highlight: boolean;
+}) {
+	return (
+		<div className="flex min-w-0 flex-col items-center gap-2">
+			<span
+				className={`font-inter text-[clamp(48px,16vw,64px)] leading-none font-black tabular-nums ${
+					highlight ? "text-brand-red" : ""
+				}`}
+			>
+				{score}
+			</span>
+			<span aria-hidden className="h-[2px] w-8 rounded-full bg-brand-blue/20" />
+			<p className="text-center text-[clamp(12px,3.7vw,15px)] leading-[1.3] font-bold whitespace-pre">
+				{team}
+			</p>
+		</div>
 	);
 }

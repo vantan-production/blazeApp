@@ -14,6 +14,7 @@ import { MediaList } from "@/components/results/MediaList";
 import { PeekCarousel } from "@/components/results/PeekCarousel";
 import { ResultSection } from "@/components/results/ResultSection";
 import { StaggeredGallery } from "@/components/results/StaggeredGallery";
+import { PageTitle } from "@/components/ui/PageTitle";
 import { routes } from "@/lib/routes";
 
 export const metadata: Metadata = {
@@ -23,20 +24,34 @@ export const metadata: Metadata = {
 // TODO: 各「もっと見る」の一覧ページが決まったら遷移先を差し替える
 const moreHref = routes.news;
 
-/** 実績・試合結果ページ（Figma: 実績・試合結果 1030:334） */
+/** 実績・試合結果ページ（ベース: Figma 実績・試合結果 1030:334） */
 export default function ResultsPage() {
 	return (
 		<PageShell>
 			<main className="flex w-full flex-col items-center">
-				<div className="flex w-full items-center justify-center border-y-2 border-brand-white px-5 py-6">
-					<h1 className="text-[24px]">実績・試合結果</h1>
-				</div>
+				<PageTitle>実績・試合結果</PageTitle>
 				<div className="flex w-full flex-col px-[clamp(16px,5.97vw,24px)]">
-					<LastResultCard {...lastMatch} />
+					<ResultSection title="前回の試合結果">
+						<LastResultCard {...lastMatch} />
+					</ResultSection>
 					<ResultSection title="チーム目標">
-						<p className="w-full border-2 border-brand-white px-3 py-5 text-center text-[18px] leading-[22px] tracking-[1px] text-balance">
-							{teamGoal}
-						</p>
+						<div className="relative w-full rounded-[20px] bg-brand-yellow px-6 py-8 text-brand-blue">
+							<span
+								aria-hidden
+								className="absolute top-2 left-4 font-savate text-[56px] leading-none text-brand-red"
+							>
+								“
+							</span>
+							<p className="text-center font-mincho text-[clamp(18px,5.5vw,22px)] leading-[1.6] font-bold tracking-[1px] text-balance">
+								{teamGoal}
+							</p>
+							<span
+								aria-hidden
+								className="absolute right-4 bottom-[-12px] font-savate text-[56px] leading-none text-brand-red"
+							>
+								”
+							</span>
+						</div>
 					</ResultSection>
 					<ResultSection title="実績" moreHref={moreHref}>
 						<AchievementCarousel items={achievements} />

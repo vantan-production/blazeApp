@@ -8,7 +8,10 @@ export type NewsItem = {
 	/** 公開日（YYYY-MM-DD） */
 	publishedAt: string;
 	tag: TagKind;
+	/** 一覧のサムネイル */
 	imageSrc: string;
+	/** 詳細ページの写真（1枚以上） */
+	images: string[];
 	body: string;
 };
 
@@ -23,6 +26,15 @@ const sampleTitles = [
 
 const sampleTags: TagKind[] = ["tournaments", "event", "join trial", "media"];
 
+const sampleImages = [
+	"/images/news-card-sample.jpg",
+	"/images/top-hero.jpg",
+	"/images/top-about.png",
+	"/images/card-bg.png",
+	"/images/top-hero-overlay.png",
+	"/images/news-card-sample.jpg",
+];
+
 // TODO: API 実装後はダミーデータを削除し、fetchNews / fetchNewsById の中身を API 呼び出しに置き換える
 const dummyNews: NewsItem[] = Array.from({ length: 24 }, (_, i) => {
 	const date = new Date(Date.UTC(2026, 3, 26 - i * 7));
@@ -32,6 +44,8 @@ const dummyNews: NewsItem[] = Array.from({ length: 24 }, (_, i) => {
 		publishedAt: date.toISOString().slice(0, 10),
 		tag: sampleTags[i % sampleTags.length],
 		imageSrc: "/images/news-card-sample.jpg",
+		// 枚数ごとの表示を確認できるよう、1枚・3枚・6枚の記事を混ぜておく
+		images: sampleImages.slice(0, [6, 1, 3, 1][i % 4]),
 		body: "あああああああああああああああああああああああああああああああああああああああああああああああああああああああああああ",
 	};
 });

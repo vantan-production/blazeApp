@@ -13,8 +13,12 @@ import { type FieldErrors, validateForm } from "@/lib/admin/form";
 import { useToastStore } from "@/lib/store/useToastStore";
 
 const gameImageSchema = z.object({
-	// back/src/gameImg/create.ts は画像1枚以上が必須（複数枚まとめて投稿できる）
-	images: z.array(z.instanceof(File)).min(1, "画像を選択してください。"),
+	// back/src/gameImg/create.ts は画像1枚以上が必須（複数枚まとめて投稿できる）。
+	// 1回に送れるのは最大10枚（back/src/utils/media.ts の validateMultipleFiles）なので、送信前に止める
+	images: z
+		.array(z.instanceof(File))
+		.min(1, "画像を選択してください。")
+		.max(10, "画像は最大10枚までです。"),
 	message: z.string().trim(),
 });
 

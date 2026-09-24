@@ -6,6 +6,7 @@ import type { Context } from "hono";
 import { admin } from "../db/schema.js";
 import { authToken } from "../db/token.js";
 import { requireAdmin } from "../db/roleGuard.js";
+import { requireUuidParams } from "./uuidParam.js";
 
 type Variables = {
   user: typeof admin.$inferSelect;
@@ -32,10 +33,11 @@ export function createCrudRouter(config: {
   const app = new Hono<{ Variables: Variables }>();
 
   app.get(basePath, (c) => getAll(c));
-  app.get(`${basePath}/:id`, (c) => getById(c));
+  // :id を含むルートは不正な形式のIDを 404 で弾く（DBの uuid キャスト失敗で 500 にしないため）
+  app.get(`${basePath}/:id`, requireUuidParams, (c) => getById(c));
   app.post(basePath, authToken, requireAdmin, (c) => create(c));
-  app.patch(updatePath, authToken, requireAdmin, (c) => update(c));
-  app.delete(`${basePath}/:id`, authToken, requireAdmin, (c) => remove(c));
+  app.patch(updatePath, authToken, requireAdmin, requireUuidParams, (c) => update(c));
+  app.delete(`${basePath}/:id`, authToken, requireAdmin, requireUuidParams, (c) => remove(c));
 
   return app;
 }

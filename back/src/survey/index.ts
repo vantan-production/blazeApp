@@ -16,6 +16,7 @@ import { getAllSurveys, getSurveyById } from "./read.js";
 import { respondToSurvey } from "./respond.js";
 import { getSurveyResults, getPendingRespondents } from "./results.js";
 import { createSurvey, updateSurvey, removeSurvey } from "./manage.js";
+import { requireUuidParams } from "../utils/uuidParam.js";
 
 const app = new Hono();
 
@@ -23,18 +24,18 @@ app.get("/api/surveys", authToken, requireMember, (c) => getAllSurveys(c));
 app.post("/api/surveys", authToken, requireAdmin, (c) => createSurvey(c));
 
 // :id 単体より先に、サブパスを持つルートを登録する
-app.post("/api/surveys/:id/responses", authToken, requireMember, (c) =>
+app.post("/api/surveys/:id/responses", authToken, requireMember, requireUuidParams, (c) =>
   respondToSurvey(c),
 );
-app.get("/api/surveys/:id/results", authToken, requireAdmin, (c) =>
+app.get("/api/surveys/:id/results", authToken, requireAdmin, requireUuidParams, (c) =>
   getSurveyResults(c),
 );
-app.get("/api/surveys/:id/pending", authToken, requireAdmin, (c) =>
+app.get("/api/surveys/:id/pending", authToken, requireAdmin, requireUuidParams, (c) =>
   getPendingRespondents(c),
 );
 
-app.get("/api/surveys/:id", authToken, requireMember, (c) => getSurveyById(c));
-app.patch("/api/surveys/:id", authToken, requireAdmin, (c) => updateSurvey(c));
-app.delete("/api/surveys/:id", authToken, requireAdmin, (c) => removeSurvey(c));
+app.get("/api/surveys/:id", authToken, requireMember, requireUuidParams, (c) => getSurveyById(c));
+app.patch("/api/surveys/:id", authToken, requireAdmin, requireUuidParams, (c) => updateSurvey(c));
+app.delete("/api/surveys/:id", authToken, requireAdmin, requireUuidParams, (c) => removeSurvey(c));
 
 export default app;

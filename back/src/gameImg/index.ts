@@ -11,6 +11,7 @@ import { update } from "./update.js";
 import { remove } from "./delete.js";
 import { updateConsent } from "./updateConsent.js";
 import { applyMosaic } from "./applyMosaic.js";
+import { requireUuidParams } from "../utils/uuidParam.js";
 
 const crudApp = createCrudRouter({
   basePath: "/api/gameImg",
@@ -30,6 +31,7 @@ app.patch(
   "/api/gameImg/images/:imageId/consent",
   authToken,
   requireAdmin,
+  requireUuidParams,
   (c) => updateConsent(c),
 );
 
@@ -38,6 +40,7 @@ app.post(
   "/api/gameImg/images/:imageId/mosaic",
   authToken,
   requireAdmin,
+  requireUuidParams,
   (c) => applyMosaic(c),
 );
 

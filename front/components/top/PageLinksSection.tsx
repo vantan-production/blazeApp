@@ -14,7 +14,7 @@ const pageLinks: {
 		title: "チーム紹介",
 		subtitle: "TEAM",
 		href: routes.team,
-		imageSrc: "/images/nishio-blaze.jpg",
+		imageSrc: "/images/nishioBlaze.jpg",
 	},
 	{
 		title: "監督コーチ紹介",

@@ -50,7 +50,7 @@ export function ScheduleCalendar() {
 		});
 
 	return (
-		<div className="flex min-h-[240px] w-full max-w-[362px] flex-col gap-2 rounded-[8px] bg-brand-white p-3 text-brand-blue">
+		<div className="flex min-h-[240px] w-full max-w-[362px] flex-col gap-2 rounded-[20px] bg-brand-white p-4 text-brand-blue">
 			<div className="flex items-center justify-between">
 				<button
 					type="button"

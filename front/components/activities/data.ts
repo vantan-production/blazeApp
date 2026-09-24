@@ -5,6 +5,9 @@ export type ActivitySlot = {
 	time: string;
 };
 
+/** 対象学年（Figma: Frame 78） */
+export const activityGrade = "小学1年生〜小学6年生";
+
 /** 活動日時（Figma: Frame 38 980:338）。カレンダーの練習日表示にも使う */
 export const activitySlots: ActivitySlot[] = [
 	{ label: "火曜、木曜", days: [2, 4], time: "18:30~21:00" },
@@ -16,8 +19,8 @@ export const activityPlace = {
 	name: "XXX学校",
 	// TODO: 地図・施設情報のURLが決まったら差し替える
 	links: [
-		{ label: "地図urlxxxxxxxxxxxxxxxxxxxx", href: "#" },
-		{ label: "施設情報urlxxxxxxxxxxxxxxxxxxxx", href: "#" },
+		{ label: "地図を見る", href: "#" },
+		{ label: "施設情報を見る", href: "#" },
 	],
 };
 

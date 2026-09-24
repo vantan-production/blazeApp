@@ -19,6 +19,10 @@ const nextConfig: NextConfig = {
 			},
 		],
 	},
+	experimental: {
+		// app/unauthorized.tsx（401ページ）を unauthorized() で表示するために必要
+		authInterrupts: true,
+	},
 };
 
 export default nextConfig;

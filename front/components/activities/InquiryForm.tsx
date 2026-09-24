@@ -12,10 +12,10 @@ function RequiredLabel({ htmlFor, children }: LabelProps) {
 	return (
 		<label
 			htmlFor={htmlFor}
-			className="flex items-center gap-[10px] py-[5px] text-[14px] font-medium"
+			className="flex items-center gap-[10px] py-[5px] text-[clamp(13px,3.48vw,14px)] font-medium"
 		>
 			{children}
-			<span className="rounded-[4px] bg-[#e53935] px-[7px] py-[5px] text-[12px] leading-none font-normal text-[#f2f2f2]">
+			<span className="shrink-0 rounded-[4px] bg-[#e53935] px-[7px] py-[5px] text-[12px] leading-none font-normal text-[#f2f2f2]">
 				必須
 			</span>
 		</label>
@@ -44,7 +44,7 @@ export function InquiryForm() {
 			className="flex w-full flex-col items-center gap-9 px-[10px]"
 		>
 			<div className="flex w-full flex-col gap-5">
-				<div className="flex flex-col gap-2 px-5 py-[7.5px]">
+				<div className="flex flex-col gap-2 px-[clamp(10px,calc(12.2vw-29px),20px)] py-[7.5px]">
 					<RequiredLabel htmlFor={emailId}>メールアドレス</RequiredLabel>
 					<input
 						id={emailId}
@@ -56,7 +56,7 @@ export function InquiryForm() {
 						className={`h-[45px] ${fieldClass}`}
 					/>
 				</div>
-				<div className="flex flex-col gap-2 px-5 py-[7.5px]">
+				<div className="flex flex-col gap-2 px-[clamp(10px,calc(12.2vw-29px),20px)] py-[7.5px]">
 					<RequiredLabel htmlFor={messageId}>
 						お問い合わせ内容を書いてください
 					</RequiredLabel>
@@ -68,10 +68,10 @@ export function InquiryForm() {
 					/>
 				</div>
 			</div>
-			<div className="px-[10px] pt-[15px] pb-[10px]">
+			<div className="flex w-full justify-center px-[10px] pt-[15px] pb-[10px]">
 				<button
 					type="submit"
-					className="h-[47px] w-[342px] cursor-pointer rounded-[30px] bg-brand-yellow text-[14px] font-medium text-[#222]"
+					className="h-[47px] w-full max-w-[342px] cursor-pointer rounded-[30px] bg-brand-yellow text-[14px] font-medium text-[#222]"
 				>
 					確認
 				</button>

@@ -7,7 +7,7 @@ export function Schedule() {
 			<h2 className="px-[10px] py-5 text-[22px] leading-[22px] tracking-[1.5px]">
 				スケジュール
 			</h2>
-			<div className="flex w-full justify-center py-5">
+			<div className="flex w-full justify-center p-5">
 				<ScheduleCalendar />
 			</div>
 		</section>

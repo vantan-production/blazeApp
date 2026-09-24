@@ -1,17 +1,17 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ActivityOverview } from "@/components/activities/ActivityOverview";
-import { BelongingsPanel } from "@/components/activities/BelongingsPanel";
+import { ActivityOverview } from "@/components/features/activities/ActivityOverview";
+import { BelongingsPanel } from "@/components/features/activities/BelongingsPanel";
 import {
 	activityGrade,
 	activityPlace,
 	activitySlots,
 	belongings,
 	notices,
-} from "@/components/activities/data";
-import { InquiryForm } from "@/components/activities/InquiryForm";
-import { PageTabs } from "@/components/activities/PageTabs";
-import { ScheduleCalendar } from "@/components/activities/ScheduleCalendar";
+} from "@/components/features/activities/data";
+import { InquiryForm } from "@/components/features/activities/InquiryForm";
+import { PageTabs } from "@/components/features/activities/PageTabs";
+import { ScheduleCalendar } from "@/components/features/activities/ScheduleCalendar";
 import { PageShell } from "@/components/layout/PageShell";
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import { NewsListItem } from "@/components/ui/NewsListItem";

@@ -11,6 +11,7 @@ import {
   foreignKey,
   boolean,
   integer,
+  index,
 } from "drizzle-orm/pg-core";
 import { z } from "zod";
 
@@ -148,6 +149,50 @@ export const trialApplication = pgTable("trial_application", {
   // motivation が 'referral' の場合の紹介者名（任意）
   referrer_name: varchar("referrer_name", { length: 100 }),
 });
+
+// 体験申込者への連絡（メール送信の履歴）
+// 保護者向けの連絡事項を公開ページに載せず、管理者が選んだ体験申込者にだけメールで届けるためのもの。
+// 送信に成功した宛先があったときだけ保存する（誰にも届いていない連絡を「送信済み」と誤解させないため）。
+export const trialNotice = pgTable("trial_notice", {
+  ...withUpdatedAt,
+  title: varchar("title", { length: 100 }).notNull(),
+  body: text("body").notNull(),
+  // 送信に成功した宛先の数（重複アドレスを除いた数）
+  recipient_count: integer("recipient_count").notNull(),
+  // 送信した管理者のID（アカウント削除時はNULLになる）
+  admin_id: uuid("admin_id").references(() => admin.id, {
+    onDelete: "set null",
+  }),
+});
+
+// 体験申込者への連絡の宛先（送信に成功した分だけ）
+// 名前・アドレス・体験日は送信時点の写しを持つ。申込データが削除・修正されても
+// 「いつ誰に何を送ったか」を後から確認できるようにするため。
+export const trialNoticeRecipient = pgTable(
+  "trial_notice_recipient",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    notice_id: uuid("notice_id")
+      .references(() => trialNotice.id, { onDelete: "cascade" })
+      .notNull(),
+    // 元の申込（削除されたら NULL。写しの name / email で履歴は残る）
+    trial_application_id: uuid("trial_application_id"),
+    name: varchar("name", { length: 100 }).notNull(),
+    email: varchar("email", { length: 255 }).notNull(),
+    trial_date: date("trial_date").notNull(),
+    sent_at: timestamp("sent_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    // 履歴詳細で連絡ごとの宛先を引くため
+    noticeIdx: index("trial_notice_recipient_notice_id_idx").on(t.notice_id),
+    // 既定の制約名は Postgres の識別子上限（63文字）を超えて切り詰められるため、短い名前を付ける
+    application: foreignKey({
+      name: "trial_notice_recipient_application_id_fk",
+      columns: [t.trial_application_id],
+      foreignColumns: [trialApplication.id],
+    }).onDelete("set null"),
+  }),
+);
 
 // 実績テーブル
 export const achievement = pgTable("achievement", {

@@ -43,7 +43,12 @@ export function ActivityOverview({ grade, slots, place }: Props) {
 				</ul>
 			</ContentPanel>
 
-			<ContentPanel title="活動場所" titleAs="h2" align="center">
+			<ContentPanel
+				id="access"
+				title="主な活動場所"
+				titleAs="h2"
+				align="center"
+			>
 				<div className="flex flex-col items-center gap-4">
 					<p className="text-[20px] font-medium">{place.name}</p>
 					<ul className="flex w-full flex-col gap-2">

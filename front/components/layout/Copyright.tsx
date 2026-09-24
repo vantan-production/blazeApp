@@ -2,7 +2,7 @@
 export function Copyright() {
 	return (
 		<p className="text-center text-[11px] leading-4 font-semibold tracking-[0.5px] text-brand-white">
-			©Copyright
+			©Copyright Nishio Blaze
 		</p>
 	);
 }

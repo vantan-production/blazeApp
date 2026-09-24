@@ -87,7 +87,7 @@ export function ReplyComposer({
 		<form
 			onSubmit={handleSubmit}
 			noValidate
-			className="fixed inset-x-0 bottom-0 z-20 mx-auto flex w-full max-w-[402px] flex-col gap-1 bg-brand-blue px-[35px] pt-2 pb-[10px]"
+			className="fixed inset-x-0 bottom-0 z-20 mx-auto flex w-full max-w-sp flex-col gap-1 bg-brand-blue px-[35px] pt-2 pb-[10px]"
 		>
 			{error && <AdminFieldError message={error} tone="dark" />}
 			{image && (

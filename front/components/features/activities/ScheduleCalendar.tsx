@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { activitySlots } from "./data";
 import { PracticeDayDialog } from "./PracticeDayDialog";
 
@@ -29,6 +29,20 @@ function buildCells({ year, month }: YearMonth): Cell[] {
 	];
 }
 
+/** 今日は外部から変化を通知しないため購読は不要 */
+const subscribeNothing = () => () => {};
+
+/** 同じ日なら同じ値を返す（useSyncExternalStore のスナップショットとして安定させる） */
+function getTodayKey(): string {
+	const now = new Date();
+	return `${now.getFullYear()}-${now.getMonth()}-${now.getDate()}`;
+}
+
+function parseTodayKey(key: string): YearMonth & { date: number } {
+	const [year, month, date] = key.split("-").map(Number);
+	return { year, month, date };
+}
+
 /**
  * 月表示の練習カレンダー（Figma: calendar 1030:376）。
  * Figmaでは362x240のグレー枠のみのため、活動日時の曜日に印を付ける仮実装。
@@ -36,29 +50,25 @@ function buildCells({ year, month }: YearMonth): Cell[] {
  * TODO: 大会・休みなどの予定データが決まったらAPIから取得して表示する
  */
 export function ScheduleCalendar() {
-	// 表示月はビルド時と閲覧時でずれるため、マウント後に今月をセットする
-	const [current, setCurrent] = useState<YearMonth | null>(null);
-	const [selected, setSelected] = useState<Date | null>(null);
-	const [today, setToday] = useState<(YearMonth & { date: number }) | null>(
-		null,
+	// 表示月はビルド時と閲覧時でずれるため、今日はクライアントでのみ取得する（サーバーでは null）
+	const todayKey = useSyncExternalStore(
+		subscribeNothing,
+		getTodayKey,
+		() => null,
 	);
+	const today = todayKey ? parseTodayKey(todayKey) : null;
+	// 今月からの表示月のずれ
+	const [offset, setOffset] = useState(0);
+	const [selected, setSelected] = useState<Date | null>(null);
 
-	useEffect(() => {
-		const now = new Date();
-		setCurrent({ year: now.getFullYear(), month: now.getMonth() });
-		setToday({
-			year: now.getFullYear(),
-			month: now.getMonth(),
-			date: now.getDate(),
-		});
-	}, []);
+	const current: YearMonth | null = today
+		? (() => {
+				const date = new Date(today.year, today.month + offset, 1);
+				return { year: date.getFullYear(), month: date.getMonth() };
+			})()
+		: null;
 
-	const move = (diff: number) =>
-		setCurrent((prev) => {
-			if (!prev) return prev;
-			const date = new Date(prev.year, prev.month + diff, 1);
-			return { year: date.getFullYear(), month: date.getMonth() };
-		});
+	const move = (diff: number) => setOffset((prev) => prev + diff);
 
 	return (
 		<div className="flex w-full flex-col gap-3 rounded-[20px] bg-brand-white p-4 text-brand-blue">

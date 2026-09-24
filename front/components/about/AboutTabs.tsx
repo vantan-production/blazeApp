@@ -40,7 +40,7 @@ function AboutTab({
 		<Link
 			href={tab.href}
 			aria-current={isCurrent ? "page" : undefined}
-			className={`flex min-w-0 flex-1 items-center justify-center rounded-[1000px] border-2 border-brand-white px-6 py-3 text-[16px] whitespace-nowrap ${
+			className={`flex min-w-0 flex-1 items-center justify-center rounded-[1000px] border-2 border-brand-white px-[clamp(12px,6vw,24px)] py-3 text-[16px] whitespace-nowrap ${
 				isCurrent
 					? "bg-brand-white text-brand-black"
 					: "bg-brand-blue text-brand-white"

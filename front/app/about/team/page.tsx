@@ -38,17 +38,18 @@ export default function TeamPage() {
 			<main className="flex flex-col items-center gap-6 pb-[111px]">
 				<AboutTabs current="team" />
 				<AboutPageTitle>チーム紹介</AboutPageTitle>
-				<div className="flex w-full max-w-[348px] flex-col items-center gap-10">
+				{/* 402px幅で左右27px（パネル幅348px）。狭い画面では余白も少し縮める */}
+				<div className="flex w-full max-w-[402px] flex-col items-center gap-10 px-[clamp(16px,6.7vw,27px)]">
 					{upperSections.map((section) => (
 						<TeamSectionPanel key={section.title} section={section} />
 					))}
 					{/* パネル列の幅を超えて画面幅いっぱいに敷く写真 */}
-					<div className="relative h-[210px] w-screen max-w-[402px] shrink-0">
+					<div className="relative h-[210px] w-screen max-w-sp shrink-0">
 						<Image
 							src="/images/team-banner.png"
 							alt=""
 							fill
-							sizes="402px"
+							sizes="(max-width: 430px) 100vw, 430px"
 							className="object-cover opacity-30"
 						/>
 					</div>

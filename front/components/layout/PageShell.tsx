@@ -1,3 +1,4 @@
+import { SiteFooter } from "./SiteFooter";
 import { SiteHeader } from "./SiteHeader";
 
 type Props = {
@@ -6,7 +7,7 @@ type Props = {
 	offsetHeader?: boolean;
 };
 
-/** スマホ幅（最大 max-w-sp）で中央寄せにし、共通ヘッダーを載せるページ枠 */
+/** スマホ幅（最大 max-w-sp）で中央寄せにし、共通ヘッダーとフッターを載せるページ枠 */
 export function PageShell({ children, offsetHeader = true }: Props) {
 	return (
 		<>
@@ -17,6 +18,7 @@ export function PageShell({ children, offsetHeader = true }: Props) {
 				}`}
 			>
 				{children}
+				<SiteFooter />
 			</div>
 		</>
 	);

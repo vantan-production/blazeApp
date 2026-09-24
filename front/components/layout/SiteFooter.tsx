@@ -1,8 +1,12 @@
 import Image from "next/image";
 import Link from "next/link";
 import { footerNavItems } from "@/lib/routes";
+import { Copyright } from "./Copyright";
 
-/** ページ下部のフッター（Figma: Frame 145 1028:311）。チームロゴの下にナビを縦に並べる。 */
+/**
+ * ページ下部のフッター（Figma: Frame 145 1028:311）。チームロゴの下にナビを縦に並べ、最後にコピーライトを置く。
+ * PageShell から全ページ共通で表示される。
+ */
 export function SiteFooter() {
 	return (
 		<footer className="flex w-full flex-col items-center gap-10 px-6 pt-20 pb-6">
@@ -22,6 +26,7 @@ export function SiteFooter() {
 					))}
 				</ul>
 			</nav>
+			<Copyright />
 		</footer>
 	);
 }

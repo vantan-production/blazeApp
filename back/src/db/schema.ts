@@ -11,6 +11,7 @@ import {
   foreignKey,
   boolean,
   integer,
+  jsonb,
 } from "drizzle-orm/pg-core";
 import { z } from "zod";
 
@@ -179,6 +180,16 @@ export const game = pgTable("game", {
   }),
 });
 
+// 画像に適用したモザイク領域（images.mosaic_regions にjsonb配列として保存）
+export type MosaicRegionRecord = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  // モザイクの粗さ（1マスあたりのピクセル数）
+  pixel_size: number;
+};
+
 // 画像ストレージテーブル（複数画像対応）
 export const images = pgTable("images", {
   ...baseFields,
@@ -187,6 +198,8 @@ export const images = pgTable("images", {
   // 原本のS3パス。モザイク適用時に初回のみ退避先をセットする。
   // モザイク前は null（path がそのまま原本）。
   original_path: varchar("original_path", { length: 500 }),
+  // 適用中のモザイク領域一覧（未適用なら null）。再編集時は原本にこの一覧をかけ直す
+  mosaic_regions: jsonb("mosaic_regions").$type<MosaicRegionRecord[]>(),
   // 掲載同意ステータス（試合風景画像のみ使用）
   // 'pending': 未確認（デフォルト）, 'approved': 同意済み, 'rejected': 拒否
   consent_status: varchar("consent_status", { length: 10 }).notNull().default("pending"),

@@ -25,7 +25,7 @@ export const activityPlace = {
 };
 
 /** 持ち物（Figma: Frame 91 980:365） */
-export const belongings = ["上履き", "水筒", "タオル", "動きやすい服"];
+export const belongings = ["シューズ", "水筒", "タオル", "動きやすい服"];
 
 export type Notice = { id: string; date: string; text: string };
 

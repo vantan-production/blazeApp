@@ -1,6 +1,21 @@
 import Image from "next/image";
 import { ContentPanel } from "@/components/ui/ContentPanel";
 
+/**
+ * 持ち物のイメージ画像
+ * - シューズ: ジャパクリップ https://japaclip.com/sneakers/
+ * - 水筒: ちょこなす https://choconasu.com/images/e0afc10b792f3016e6c1e9768dd0d12858ecfe5a4493cce8bdfbc7a94bf60185 （無料は1ページ5点まで）
+ * - タオル: パブリックドメインQ https://publicdomainq.net/towel-0058613/
+ * - 動きやすい服: イラストAC https://www.ac-illust.com/main/search_result.php?search_word=%E8%B5%B0%E8%80%85
+ */
+const belongingImages = [
+	{ src: "/images/belongings-shoes.png" },
+	{ src: "/images/belongings-bottle.png" },
+	{ src: "/images/belongings-towel.png" },
+	// 素材の余白が大きく他より小さく見えるため、少し拡大する
+	{ src: "/images/belongings-clothes.png", className: "scale-[1.2]" },
+];
+
 type Props = {
 	items: string[];
 };
@@ -20,15 +35,23 @@ export function BelongingsPanel({ items }: Props) {
 						</li>
 					))}
 				</ul>
-				{/* TODO: 持ち物のイメージ画像が用意できたら差し替える（Figmaも仮置きの画像アイコン） */}
-				<div className="flex aspect-[137/108] w-[min(137px,40%)] items-center justify-center rounded-[12px] bg-[#d9d9d9]">
-					<Image
-						src="/icons/image-placeholder.svg"
-						alt=""
-						width={53}
-						height={37}
-					/>
-				</div>
+				{/* 1枚の幅は常に4等分にして、枚数が少なくても中央寄せで横一列に並べる */}
+				<ul className="flex w-full max-w-[460px] justify-center gap-2 sm:gap-3">
+					{belongingImages.map((image) => (
+						<li
+							key={image.src}
+							className="relative aspect-square w-[calc((100%-1.5rem)/4)] sm:w-[calc((100%-2.25rem)/4)]"
+						>
+							<Image
+								src={image.src}
+								alt=""
+								fill
+								sizes="(min-width: 640px) 115px, 25vw"
+								className={`object-contain ${image.className ?? ""}`}
+							/>
+						</li>
+					))}
+				</ul>
 			</div>
 		</ContentPanel>
 	);

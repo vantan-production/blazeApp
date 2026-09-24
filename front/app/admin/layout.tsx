@@ -7,12 +7,12 @@ export const metadata: Metadata = {
 	robots: { index: false, follow: false },
 };
 
-/** 管理画面（SPのみ）の共通枠。公開サイトのヘッダー・フッターは出さず、402px幅で中央寄せにする */
+/** 管理画面（SPのみ）の共通枠。公開サイトのヘッダー・フッターは出さず、スマホ幅（最大430px）で中央寄せにする */
 export default function AdminLayout({
 	children,
 }: Readonly<{ children: React.ReactNode }>) {
 	return (
-		<div className="mx-auto flex w-full max-w-[402px] flex-1 flex-col bg-brand-blue">
+		<div className="mx-auto flex w-full max-w-sp flex-1 flex-col bg-brand-blue">
 			{children}
 			<AdminToaster />
 		</div>

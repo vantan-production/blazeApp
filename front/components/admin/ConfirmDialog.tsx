@@ -46,7 +46,7 @@ export function ConfirmDialog({
 				role="alertdialog"
 				aria-modal="true"
 				aria-labelledby={messageId}
-				className="flex w-[296px] flex-col items-center gap-[19px] rounded-[20px] bg-brand-white px-[2px] py-[13px]"
+				className="flex w-full max-w-[296px] flex-col items-center gap-[19px] rounded-[20px] bg-brand-white px-[2px] py-[13px]"
 			>
 				<p
 					id={messageId}

@@ -48,6 +48,12 @@ export function NewsList({ items }: Props) {
 				</p>
 			</div>
 			<div className="flex flex-col items-center gap-4 px-6 pb-6">
+				{/* back未接続や記事0件のときに、空白だけのページにならないようにする */}
+				{pageItems.length === 0 && (
+					<p className="py-10 text-[14px] text-brand-white">
+						ニュースはまだありません
+					</p>
+				)}
 				<ul className="flex w-full flex-col gap-4">
 					{pageItems.map((news) => (
 						<li key={news.id}>

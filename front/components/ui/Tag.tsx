@@ -2,7 +2,8 @@
 export type TagKind = "event" | "tournaments" | "media" | "join trial";
 
 type Props = {
-	kind: TagKind;
+	// back のカテゴリーは自由入力のため、Figmaのバリアント以外の文字列もそのまま表示できるようにする
+	kind: TagKind | (string & {});
 };
 
 /** 白地のカテゴリタグ */

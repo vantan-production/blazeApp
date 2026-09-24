@@ -24,7 +24,7 @@ type Props = {
 export function CoachProfile({ coach }: Props) {
 	return (
 		<article className="flex w-full flex-col gap-5">
-			<div className="flex h-[150px] items-center gap-3">
+			<div className="flex min-h-[150px] items-center gap-3">
 				<div className="relative h-[150px] w-[120px] shrink-0 overflow-hidden rounded-[20px]">
 					<Image
 						src={coach.photoSrc}
@@ -34,11 +34,11 @@ export function CoachProfile({ coach }: Props) {
 						className="object-cover object-top"
 					/>
 				</div>
-				<div className="flex h-full w-[216px] flex-col gap-2 pt-3 text-white">
+				<div className="flex min-w-0 flex-1 flex-col gap-2 self-stretch pt-3 text-white">
 					<h2 className="font-savate text-[22px] leading-[22px] tracking-[1.5px] whitespace-nowrap">
 						{coach.name}
 					</h2>
-					<p className="w-[208px] text-[16px] leading-[22px] tracking-[1px]">
+					<p className="max-w-[208px] text-[16px] leading-[22px] tracking-[1px]">
 						{coach.comment}
 					</p>
 				</div>

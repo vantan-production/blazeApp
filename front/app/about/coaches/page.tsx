@@ -36,7 +36,8 @@ export default function CoachesPage() {
 			<main className="flex flex-col items-center gap-8 pb-[111px]">
 				<AboutTabs current="coaches" />
 				<AboutPageTitle>コーチ紹介</AboutPageTitle>
-				<div className="flex w-full max-w-[348px] flex-col gap-16">
+				{/* 402px幅で左右27px（列幅348px）。狭い画面では余白も少し縮める */}
+				<div className="flex w-full max-w-[402px] flex-col gap-16 px-[clamp(16px,6.7vw,27px)]">
 					{coaches.map((coach) => (
 						<CoachProfile key={coach.name} coach={coach} />
 					))}

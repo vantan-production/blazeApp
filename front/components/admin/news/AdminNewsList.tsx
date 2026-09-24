@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import type { ApiSuccess } from "@/lib/admin/api";
+import { type ApiSuccess, toErrorMessage } from "@/lib/admin/api";
 import { apiClient } from "@/lib/apiClient";
 import { AdminNewsListItem } from "./AdminNewsListItem";
 
@@ -33,12 +33,14 @@ export function AdminNewsList() {
 		try {
 			const res = await apiClient<ApiSuccess<NewsPost[]>>("/api/news-post", {
 				params: { page: nextPage },
+				// 当面はログインなしでも管理画面を表示するため、401 でもログインへ飛ばさない
+				skipAuthRedirect: true,
 			});
 			setPosts((prev) => (nextPage === 1 ? res.data : [...prev, ...res.data]));
 			setPage(nextPage);
 			setTotalPages(res.pagination?.totalPages ?? 1);
-		} catch {
-			setError("ニュースの取得に失敗しました。");
+		} catch (error) {
+			setError(toErrorMessage(error, "ニュースの取得に失敗しました。"));
 		} finally {
 			setLoading(false);
 		}

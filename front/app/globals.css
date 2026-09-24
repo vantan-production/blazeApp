@@ -1,26 +1,30 @@
 @import "tailwindcss";
 
+/* Figma「西尾ブレイズ」のカラートークン */
 :root {
-	--background: #ffffff;
-	--foreground: #171717;
+	--brand-blue: #132e5d;
+	--brand-white: #f3f3f3;
+	--brand-black: #050505;
+	--brand-red: #a3181b;
+	--brand-yellow: #e8df43;
 }
 
 @theme inline {
-	--color-background: var(--background);
-	--color-foreground: var(--foreground);
-	--font-sans: var(--font-geist-sans);
-	--font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-	:root {
-		--background: #0a0a0a;
-		--foreground: #ededed;
-	}
+	--color-brand-blue: var(--brand-blue);
+	--color-brand-white: var(--brand-white);
+	--color-brand-black: var(--brand-black);
+	--color-brand-red: var(--brand-red);
+	--color-brand-yellow: var(--brand-yellow);
+	--font-sans: var(--font-next-noto-sans-jp), sans-serif;
+	--font-savate:
+		var(--font-next-savate), var(--font-next-noto-sans-jp), sans-serif;
+	--font-mincho: var(--font-next-sawarabi-mincho), serif;
+	--font-rounded:
+		var(--font-next-mplus-rounded), var(--font-next-noto-sans-jp), sans-serif;
+	--font-inter: var(--font-next-inter), sans-serif;
 }
 
 body {
-	background: var(--background);
-	color: var(--foreground);
-	font-family: Arial, Helvetica, sans-serif;
+	background: var(--brand-blue);
+	color: var(--brand-white);
 }

@@ -10,7 +10,7 @@ type Props = {
 /** 矢印付きのナビリンク縦並び（Figma: Frame 170 1700:1883） */
 export function NavLinkList({ items, onNavigate }: Props) {
 	return (
-		<ul className="flex w-[164px] flex-col gap-[9px]">
+		<ul className="flex w-full max-w-[164px] flex-col gap-[9px]">
 			{items.map((item) => (
 				<li key={item.label}>
 					<Link

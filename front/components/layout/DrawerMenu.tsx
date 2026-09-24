@@ -20,8 +20,8 @@ export function DrawerMenu({ id, onNavigate }: Props) {
 				<div className="w-full py-4">
 					<TrialBanner onNavigate={onNavigate} />
 				</div>
-				<div className="flex flex-col items-center gap-[37px]">
-					<div className="flex justify-center gap-9 px-[10px] py-5">
+				<div className="flex w-full flex-col items-center gap-[37px]">
+					<div className="grid w-full grid-cols-2 justify-items-center gap-9 px-[10px] py-5">
 						{drawerNavColumns.map((items) => (
 							<NavLinkList
 								key={items[0].href}

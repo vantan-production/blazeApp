@@ -2,11 +2,13 @@ import type { Metadata } from "next";
 import { PageShell } from "@/components/layout/PageShell";
 import { AchievementCarousel } from "@/components/results/AchievementCarousel";
 import {
-	achievements,
+	getAchievements,
+	getMatchPhotos,
+	getMediaItems,
+} from "@/components/results/api";
+import {
 	highlightPhotos,
 	lastMatch,
-	matchPhotos,
-	mediaItems,
 	teamGoal,
 } from "@/components/results/data";
 import { LastResultCard } from "@/components/results/LastResultCard";
@@ -23,8 +25,20 @@ export const metadata: Metadata = {
 // TODO: 各「もっと見る」の一覧ページが決まったら遷移先を差し替える
 const moreHref = routes.news;
 
+/** 未登録・API停止中でセクションが空のときの表示 */
+function EmptyNote({ children }: { children: React.ReactNode }) {
+	return <p className="py-5 text-center text-[16px]">{children}</p>;
+}
+
 /** 実績・試合結果ページ（Figma: 実績・試合結果 1030:334） */
-export default function ResultsPage() {
+export default async function ResultsPage() {
+	// 互いに依存しないので並列に取得する
+	const [achievements, matchPhotos, mediaItems] = await Promise.all([
+		getAchievements(),
+		getMatchPhotos(),
+		getMediaItems(),
+	]);
+
 	return (
 		<PageShell>
 			<main className="flex w-full flex-col items-center">
@@ -38,17 +52,39 @@ export default function ResultsPage() {
 							{teamGoal}
 						</p>
 					</ResultSection>
-					<ResultSection title="実績" moreHref={moreHref}>
-						<AchievementCarousel items={achievements} />
+					{/* 空のときは遷移先にも何も無いので「もっと見る」を出さない */}
+					<ResultSection
+						title="実績"
+						moreHref={achievements.length > 0 ? moreHref : undefined}
+					>
+						{achievements.length > 0 ? (
+							<AchievementCarousel items={achievements} />
+						) : (
+							<EmptyNote>実績は準備中です</EmptyNote>
+						)}
 					</ResultSection>
-					<ResultSection title="試合風景" moreHref={moreHref}>
-						<StaggeredGallery photos={matchPhotos} />
+					<ResultSection
+						title="試合風景"
+						moreHref={matchPhotos.length > 0 ? moreHref : undefined}
+					>
+						{matchPhotos.length > 0 ? (
+							<StaggeredGallery photos={matchPhotos} />
+						) : (
+							<EmptyNote>試合風景は準備中です</EmptyNote>
+						)}
 					</ResultSection>
 					<ResultSection title="選手たちの名場面集" moreHref={moreHref}>
 						<PeekCarousel photos={highlightPhotos} />
 					</ResultSection>
-					<ResultSection title="メディア情報" moreHref={moreHref}>
-						<MediaList items={mediaItems} />
+					<ResultSection
+						title="メディア情報"
+						moreHref={mediaItems.length > 0 ? moreHref : undefined}
+					>
+						{mediaItems.length > 0 ? (
+							<MediaList items={mediaItems} />
+						) : (
+							<EmptyNote>メディア情報は準備中です</EmptyNote>
+						)}
 					</ResultSection>
 				</div>
 			</main>

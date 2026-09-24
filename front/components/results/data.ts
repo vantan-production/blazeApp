@@ -1,4 +1,11 @@
-/** 前回の試合結果（Figma: last time results 1031:551）。API接続までの仮データ */
+// 実績・試合風景・メディア情報はAPIから取得する（./api.ts）。
+// ここにはbackに対応するデータが無く、静的に持つしかないものだけを置く
+
+/**
+ * 前回の試合結果（Figma: last time results 1031:551）。
+ * TODO: backに試合結果（スコア・対戦相手）を持つAPIができたら接続する。
+ * 実績API（/api/achievement）はタイトル・本文のみで、スコアを構造化して持っていないため仮データのまま
+ */
 export const lastMatch = {
 	ourScore: 9,
 	opponentScore: 8,
@@ -6,29 +13,17 @@ export const lastMatch = {
 	opponentTeam: "元江別レッド・\nソルジャー",
 };
 
+/** チーム目標。backに対応するデータが無いため固定文言 */
 export const teamGoal = "勝利を目指して挑戦し続けるチームへ";
 
 export type Achievement = { id: string; imageSrc: string; title: string };
 
-/** 実績（Figma: achievements 1360:343） */
-export const achievements: Achievement[] = [
-	{
-		id: "spring-28",
-		imageSrc: "/images/results-trophy.jpg",
-		title: "第28回春の全国\n小学生\nドッジボール\n選手権\n全国大会ベスト８",
-	},
-];
-
 export type Photo = { id: string; src: string; alt: string };
 
-/** 試合風景（Figma: gallery 1145:381）。写真が用意できるまでは仮画像 */
-export const matchPhotos: Photo[] = [
-	{ id: "match-1", src: "/images/photo-placeholder.png", alt: "試合風景" },
-	{ id: "match-2", src: "/images/photo-placeholder.png", alt: "試合風景" },
-	{ id: "match-3", src: "/images/photo-placeholder.png", alt: "試合風景" },
-];
-
-/** 選手たちの名場面集（Figma: gallery 1250:344）。写真が用意できるまでは仮画像 */
+/**
+ * 選手たちの名場面集（Figma: gallery 1250:344）。
+ * TODO: backに「名場面」を区別するデータが無いため、写真が用意できるまでは仮画像
+ */
 export const highlightPhotos: Photo[] = [
 	{ id: "highlight-1", src: "/images/photo-placeholder.png", alt: "名場面" },
 	{ id: "highlight-2", src: "/images/photo-placeholder.png", alt: "名場面" },
@@ -37,24 +32,14 @@ export const highlightPhotos: Photo[] = [
 
 export type MediaItem = {
 	id: string;
+	/** 表示用の掲載日（例: 2023/5/6） */
 	date: string;
+	/** <time dateTime> 用のISO日時 */
+	dateTime?: string;
 	title: string;
-	/** 掲載画像。無い場合（動画など）は白い枠を表示する */
+	/**
+	 * 掲載画像。無い場合（動画など）は白い枠を表示する。
+	 * TODO: 紹介動画のURLが決まったら埋め込みにする（メディアAPIは画像のみで動画URLを持たない）
+	 */
 	imageSrc?: string;
 };
-
-/** メディア情報（Figma: gallery 1250:357） */
-export const mediaItems: MediaItem[] = [
-	{
-		id: "youtube-2023-02-21",
-		date: "2023/2/21",
-		// TODO: 紹介動画のURLが決まったら埋め込みにする
-		title: "youtubeチャンネルの〇〇で紹介されました",
-	},
-	{
-		id: "aisan-2023-05-06",
-		date: "2023/5/6",
-		title: "愛三時報で取り上げられました",
-		imageSrc: "/images/results-media-newspaper.jpg",
-	},
-];

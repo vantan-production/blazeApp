@@ -11,7 +11,9 @@ export function MediaList({ items }: Props) {
 		<ul className="flex w-full flex-col gap-8 px-[26px] py-5">
 			{items.map((item) => (
 				<li key={item.id} className="flex flex-col gap-2">
-					<time className="text-[20px]">{item.date}</time>
+					<time dateTime={item.dateTime} className="text-[20px]">
+						{item.date}
+					</time>
 					<p className="text-[16px]">{item.title}</p>
 					<div className="relative aspect-video w-full overflow-hidden rounded-[8px] bg-white">
 						{item.imageSrc && (

@@ -1,6 +1,7 @@
 import { Copyright } from "@/components/layout/Copyright";
 import { PageShell } from "@/components/layout/PageShell";
 import { HeroSection } from "@/components/top/HeroSection";
+import { PageLinksSection } from "@/components/top/PageLinksSection";
 import { ContentPanel } from "@/components/ui/ContentPanel";
 import { FramedImage } from "@/components/ui/FramedImage";
 import { NewsListItem } from "@/components/ui/NewsListItem";
@@ -59,6 +60,8 @@ export default function Home() {
 						alt="西尾ブレイズの活動写真"
 					/>
 				</section>
+
+				<PageLinksSection />
 
 				<Copyright />
 			</main>

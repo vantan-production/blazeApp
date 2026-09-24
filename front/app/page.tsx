@@ -1,24 +1,11 @@
 import { PageShell } from "@/components/layout/PageShell";
 import { ActivityGallery } from "@/components/top/ActivityGallery";
 import { HeroSection } from "@/components/top/HeroSection";
+import { LatestNewsSection } from "@/components/top/LatestNewsSection";
 import { PageLinksSection } from "@/components/top/PageLinksSection";
 import { ContentPanel } from "@/components/ui/ContentPanel";
-import { NewsListItem } from "@/components/ui/NewsListItem";
 import { PillHeading } from "@/components/ui/PillHeading";
 import { TrialBanner } from "@/components/ui/TrialBanner";
-import { routes } from "@/lib/routes";
-
-// TODO: お知らせはAPIから取得する。詳細ページ未作成のためリンク先は一覧ページ
-const newsItems = [
-	{
-		id: "1",
-		date: "2025/10/26",
-		title:
-			"あああああああああああああああああああああああああああああああああああ",
-	},
-	{ id: "2", date: "2025/10/26", title: "西尾市ライオンズクラブ杯" },
-	{ id: "3", date: "2025/10/26", title: "西尾市ライオンズクラブ杯" },
-];
 
 // TODO: 活動写真が用意できたら差し替える（今はFigmaのプレースホルダー画像）
 const galleryPhotos = [1, 2, 3].map((n) => ({
@@ -37,21 +24,7 @@ export default function Home() {
 			</div>
 
 			<main className="flex flex-1 flex-col items-center gap-8 px-6 pb-10">
-				<section className="flex w-full flex-col gap-4">
-					<h2 className="px-[10px] pt-[10px] pb-5 text-center text-[22px] leading-[22px] tracking-[1.5px] text-brand-white">
-						お知らせ
-					</h2>
-					<ul className="flex flex-col gap-4">
-						{newsItems.map((item) => (
-							<NewsListItem
-								key={item.id}
-								href={routes.news}
-								date={item.date}
-								title={item.title}
-							/>
-						))}
-					</ul>
-				</section>
+				<LatestNewsSection />
 
 				<section className="flex w-full flex-col items-center gap-8">
 					<PillHeading>西尾ブレイズって？</PillHeading>

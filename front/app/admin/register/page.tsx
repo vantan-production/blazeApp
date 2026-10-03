@@ -15,7 +15,7 @@ export default async function AdminRegisterPage({
 	const { token } = await searchParams;
 
 	return (
-		<AdminAuthCard backHref={adminRoutes.welcome}>
+		<AdminAuthCard backHref={adminRoutes.login}>
 			<RegisterForm
 				invitationToken={typeof token === "string" ? token : null}
 			/>

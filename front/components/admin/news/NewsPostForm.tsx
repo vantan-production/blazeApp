@@ -22,7 +22,7 @@ export function NewsPostForm() {
 			successMessage="ニュースを投稿しました。"
 			extraFields={<CategorySelector value={category} onChange={setCategory} />}
 			extraValues={{ category }}
-			bodyAttachmentShortcut
+			bodyImages={{ name: "images", accept: "image/*" }}
 			submitGap="sm"
 			onSuccess={() => router.push(adminRoutes.news)}
 		/>

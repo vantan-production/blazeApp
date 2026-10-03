@@ -22,7 +22,7 @@ export default function AdminNewsPage() {
 				<Link
 					href={adminRoutes.newsNew}
 					aria-label="ニュースを新規投稿"
-					className="pointer-events-auto flex size-20 items-center justify-center rounded-full bg-white shadow-[0px_4px_4px_rgba(0,0,0,0.15)]"
+					className="pointer-events-auto flex size-20 items-center justify-center rounded-full bg-white shadow-[0px_6px_10px_rgba(0,0,0,0.35)]"
 				>
 					<Image
 						src="/icons/admin/plus-large.svg"

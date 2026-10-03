@@ -6,6 +6,7 @@ import { sendFormData, toErrorMessage } from "@/lib/admin/api";
 import { type FieldErrors, validateForm } from "@/lib/admin/form";
 import { useToastStore } from "@/lib/store/useToastStore";
 import { bodySchema, titleSchema } from "@/lib/validation/schemas";
+import { AdminBodyImages } from "./AdminBodyImages";
 import { AdminButton } from "./AdminButton";
 import { AdminFilePicker } from "./AdminFilePicker";
 import { AdminFieldError, AdminTextField } from "./AdminTextField";
@@ -16,6 +17,9 @@ const postSchema = z.object({
 });
 
 type PostValues = z.input<typeof postSchema>;
+
+// back が1回の投稿で受け取れる画像の上限（back/src/utils/media.ts の MAX_FILE_COUNT）
+const BODY_IMAGES_MAX = 10;
 
 type Props = {
 	/** 送信先のAPI（multipart/form-data で POST する） */
@@ -35,8 +39,14 @@ type Props = {
 	extraFields?: React.ReactNode;
 	/** FormData に追加で載せる値（undefined は送らない） */
 	extraValues?: Record<string, string | undefined>;
-	/** 本文欄の右下にアイコンを出し、添付欄の選択ダイアログを開けるようにする（ニュース投稿 2255:972） */
-	bodyAttachmentShortcut?: boolean;
+	/**
+	 * 本文に載せる画像の設定。指定すると本文欄の右下に画像追加アイコンを出す（ニュース投稿 2255:972）。
+	 * attachment（サムネイルなど）とは別のフィールド名で、複数枚まとめて送る
+	 */
+	bodyImages?: {
+		name: string;
+		accept?: string;
+	};
 	/** 入力欄全体を左右20pxずつ内側に寄せる（メディア情報は入力欄も 308px 幅） */
 	narrowFields?: boolean;
 	/** 入力欄と投稿ボタンの間隔（Figma: ニュース 36px / メディア・実績 82px） */
@@ -55,15 +65,17 @@ export function AdminPostForm({
 	successMessage,
 	extraFields,
 	extraValues,
-	bodyAttachmentShortcut = false,
+	bodyImages,
 	narrowFields = false,
 	submitGap = "lg",
 	onSuccess,
 }: Props) {
-	const attachmentId = useId();
+	const bodyImagesId = useId();
 	const showToast = useToastStore((state) => state.showToast);
 	const [values, setValues] = useState<PostValues>({ title: "", body: "" });
 	const [files, setFiles] = useState<File[]>([]);
+	const [bodyImageFiles, setBodyImageFiles] = useState<File[]>([]);
+	const [bodyImagesError, setBodyImagesError] = useState<string | null>(null);
 	const [errors, setErrors] = useState<FieldErrors<PostValues>>({});
 	const [submitError, setSubmitError] = useState<string | null>(null);
 	const [pending, setPending] = useState(false);
@@ -93,6 +105,11 @@ export function AdminPostForm({
 					: attachment.name;
 			formData.append(fieldName, file);
 		}
+		if (bodyImages) {
+			for (const image of bodyImageFiles) {
+				formData.append(bodyImages.name, image);
+			}
+		}
 
 		setPending(true);
 		try {
@@ -100,6 +117,8 @@ export function AdminPostForm({
 			showToast(successMessage);
 			setValues({ title: "", body: "" });
 			setFiles([]);
+			setBodyImageFiles([]);
+			setBodyImagesError(null);
 			onSuccess?.();
 		} catch (error) {
 			setSubmitError(toErrorMessage(error, "投稿に失敗しました。"));
@@ -139,12 +158,12 @@ export function AdminPostForm({
 					}
 					error={errors.body}
 					adornment={
-						bodyAttachmentShortcut ? (
+						bodyImages ? (
 							// 丸い青ボタンに画像アイコン、右下に＋バッジを重ねて「画像を追加」と分かるようにする
 							<label
-								htmlFor={attachmentId}
-								aria-label="画像を追加"
-								title="画像を追加"
+								htmlFor={bodyImagesId}
+								aria-label="本文に画像を追加"
+								title="本文に画像を追加"
 								className="absolute right-3 bottom-4 flex size-10 cursor-pointer items-center justify-center rounded-full bg-brand-blue text-brand-white shadow-[0px_2px_4px_rgba(0,0,0,0.25)] transition-opacity hover:opacity-80"
 							>
 								<svg
@@ -160,6 +179,7 @@ export function AdminPostForm({
 									className="absolute -right-1 -bottom-1 flex size-[18px] items-center justify-center rounded-full border-2 border-brand-blue bg-brand-yellow text-brand-blue"
 								>
 									<svg
+										aria-hidden="true"
 										viewBox="0 0 12 12"
 										fill="none"
 										stroke="currentColor"
@@ -174,8 +194,25 @@ export function AdminPostForm({
 						) : undefined
 					}
 				/>
+				{bodyImages && (
+					<AdminBodyImages
+						id={bodyImagesId}
+						files={bodyImageFiles}
+						onChange={(next) => {
+							setBodyImageFiles(next);
+							setBodyImagesError(null);
+						}}
+						accept={bodyImages.accept}
+						max={BODY_IMAGES_MAX}
+						onOverflow={() =>
+							setBodyImagesError(`本文の画像は${BODY_IMAGES_MAX}枚までです。`)
+						}
+					/>
+				)}
+				{bodyImagesError && (
+					<AdminFieldError message={bodyImagesError} tone="dark" />
+				)}
 				<AdminFilePicker
-					id={attachmentId}
 					placeholder={attachment.placeholder}
 					accept={attachment.accept}
 					files={files}

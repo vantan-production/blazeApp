@@ -24,6 +24,7 @@ export function AchievementPostForm() {
 				placeholder: "ファイルをアップロード",
 			}}
 			successMessage="実績を投稿しました。"
+			bodyImages={{ name: "images", accept: "image/*" }}
 			onSuccess={() => router.push(adminRoutes.achievements)}
 		/>
 	);

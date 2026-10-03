@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import {
-	type AchievementPost,
+	type AchievementPostDetail,
 	formatAchievementDate,
 } from "@/lib/admin/achievements";
 import type { ApiSuccess } from "@/lib/admin/api";
@@ -19,12 +19,12 @@ type Props = {
  * 添付した動画はその場で再生、ファイルは別タブで開けるようにする
  */
 export function AdminAchievementDetail({ id }: Props) {
-	const [post, setPost] = useState<AchievementPost | null>(null);
+	const [post, setPost] = useState<AchievementPostDetail | null>(null);
 	const [error, setError] = useState<string | null>(null);
 
 	useEffect(() => {
 		let ignore = false;
-		apiClient<ApiSuccess<AchievementPost>>(`/api/achievement/${id}`)
+		apiClient<ApiSuccess<AchievementPostDetail>>(`/api/achievement/${id}`)
 			.then((res) => {
 				if (!ignore) setPost(res.data);
 			})
@@ -78,6 +78,28 @@ export function AdminAchievementDetail({ id }: Props) {
 			<p className="text-[15px] leading-[26px] tracking-[1px] break-all whitespace-pre-wrap">
 				<LinkifiedText text={post.body} />
 			</p>
+			{post.images.length > 0 && (
+				// ニュース詳細と同じく本文の画像は横に並べ、はみ出した分は横スクロールにする。
+				// 大きさは一覧のサムネイルと同じ 4:3 にそろえ、タップで元の画像を別タブで開く
+				<ul className="-mx-[27px] flex snap-x snap-mandatory scroll-px-[27px] gap-3 overflow-x-auto px-[27px] pb-1">
+					{post.images.map((image, index) => (
+						<li key={image.id} className="shrink-0 snap-start">
+							<a
+								href={image.url}
+								target="_blank"
+								rel="noopener noreferrer"
+								aria-label={`本文の画像 ${index + 1}枚目を開く`}
+								className="block transition-opacity hover:opacity-80"
+							>
+								<AchievementThumbnail
+									url={image.url}
+									className="aspect-[4/3] w-[160px] rounded-[8px]"
+								/>
+							</a>
+						</li>
+					))}
+				</ul>
+			)}
 			{post.file_url && (
 				<a
 					href={post.file_url}

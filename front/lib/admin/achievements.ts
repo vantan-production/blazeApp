@@ -10,6 +10,11 @@ export type AchievementPost = {
 	created_at: string;
 };
 
+/** GET /api/achievement/:id の実績。本文に載せた画像も付く */
+export type AchievementPostDetail = AchievementPost & {
+	images: { id: string; url: string }[];
+};
+
 /** ISO日時を YYYY/MM/DD にする */
 export const formatAchievementDate = (iso: string) => {
 	const date = new Date(iso);

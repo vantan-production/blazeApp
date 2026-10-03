@@ -2,22 +2,9 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { ApiSuccess } from "@/lib/admin/api";
+import { formatNewsDate, type NewsPost } from "@/lib/admin/news";
 import { apiClient } from "@/lib/apiClient";
 import { AdminNewsListItem } from "./AdminNewsListItem";
-
-type NewsPost = {
-	id: string;
-	title: string;
-	category: string | null;
-	created_at: string;
-};
-
-/** ISO日時を YYYY/MM/DD にする */
-const formatDate = (iso: string) => {
-	const date = new Date(iso);
-	const pad = (n: number) => String(n).padStart(2, "0");
-	return `${date.getFullYear()}/${pad(date.getMonth() + 1)}/${pad(date.getDate())}`;
-};
 
 /** 投稿済みニュースの一覧（GET /api/news-post。10件ずつ追加読み込み） */
 export function AdminNewsList() {
@@ -66,8 +53,10 @@ export function AdminNewsList() {
 				{posts.map((post) => (
 					<AdminNewsListItem
 						key={post.id}
+						id={post.id}
+						thumbnailUrl={post.img_url}
 						category={post.category}
-						date={formatDate(post.created_at)}
+						date={formatNewsDate(post.created_at)}
 						title={post.title}
 					/>
 				))}

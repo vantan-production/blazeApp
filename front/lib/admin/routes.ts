@@ -17,3 +17,6 @@ export const adminRoutes = {
 /** 問い合わせ詳細のパス */
 export const adminInquiryDetailPath = (id: string) =>
 	`${adminRoutes.inquiry}/${id}`;
+
+/** ニュース詳細のパス */
+export const adminNewsDetailPath = (id: string) => `${adminRoutes.news}/${id}`;

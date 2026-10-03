@@ -14,6 +14,8 @@ type Props = {
 	max: number;
 	/** 上限を超えて選ばれたときに onChange の後で呼ぶ */
 	onOverflow?: () => void;
+	/** 選んだ画像の上に出す見出し（枚数の前に付く） */
+	label?: string;
 };
 
 /**
@@ -27,6 +29,7 @@ export function AdminBodyImages({
 	accept,
 	max,
 	onOverflow,
+	label = "本文の画像",
 }: Props) {
 	// プレビューURL（アンマウント時・選び直し時に解放する）
 	const previews = useMemo(
@@ -77,7 +80,7 @@ export function AdminBodyImages({
 			{previews.length > 0 && (
 				<div className="flex w-full flex-col gap-1">
 					<p className="text-[12px] leading-[18px] text-brand-white">
-						本文の画像（{previews.length}/{max}枚）
+						{label}（{previews.length}/{max}枚）
 					</p>
 					<ul className="flex gap-2 overflow-x-auto pt-2 pr-2 pb-1">
 						{previews.map((preview, index) => (

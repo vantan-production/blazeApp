@@ -126,6 +126,12 @@ export function TrialNoticeForm() {
 		});
 	};
 
+	// タイトル・本文・宛先がそろったらボタンを有効にし、押せる状態だと見て分かるようにする
+	const canSubmit =
+		noticeSchema.safeParse(values).success &&
+		selectedIds.size > 0 &&
+		selectedIds.size <= MAX_RECIPIENTS;
+
 	/** 入力と宛先を確かめ、問題なければ確認ダイアログを開く */
 	const openConfirm = (applicationIds: string[]) => {
 		setSubmitError(null);
@@ -282,7 +288,7 @@ export function TrialNoticeForm() {
 							type="submit"
 							variant="light"
 							size="sm"
-							disabled={pending}
+							disabled={pending || !canSubmit}
 						>
 							{pending ? "送信中…" : "送信"}
 						</AdminButton>

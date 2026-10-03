@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import type { ApiSuccess } from "@/lib/admin/api";
 import {
 	formatGameDate,
+	type GameImage,
 	type GamePost,
 	gameConsentLabel,
 } from "@/lib/admin/game";
@@ -16,7 +17,7 @@ type Props = {
 
 /**
  * 投稿済み試合風景の詳細（GET /api/gameImg/:id）。ニュース詳細と同じ並びで日付を出し、
- * 画像は 4:3 にそろえて2列で並べる。各画像の下に掲載同意の状態を出し、タップで元の画像を別タブで開く
+ * 先頭の画像をサムネイルとして大きく出し、残り（記事内の画像）は横に並べる。各画像の下に掲載同意の状態を出す
  */
 export function AdminGameDetail({ id }: Props) {
 	const [post, setPost] = useState<GamePost | null>(null);
@@ -49,8 +50,18 @@ export function AdminGameDetail({ id }: Props) {
 		return <p className="text-[14px] text-brand-white">読み込み中…</p>;
 	}
 
+	// 先頭の1枚がサムネイル（投稿フォームで先頭に送っている）、残りが記事内の画像
+	const [thumbnail, ...bodyImages] = post.images;
+
 	return (
 		<article className="flex w-full flex-col gap-4 text-brand-white">
+			{thumbnail && (
+				<GameImageLink
+					image={thumbnail}
+					label="サムネイル画像を開く"
+					className="aspect-[4/3] w-full rounded-[12px]"
+				/>
+			)}
 			<div className="flex flex-col gap-2 after:h-px after:w-full after:bg-white">
 				<time className="px-[2px] text-[14px] leading-[22px] tracking-[1px]">
 					{formatGameDate(post.created_at)}
@@ -60,29 +71,50 @@ export function AdminGameDetail({ id }: Props) {
 				</h2>
 			</div>
 			{/* TODO: 掲載同意の変更・モザイク処理（デザイン未作成。API は /api/gameImg/images/:imageId/consent・mosaic がある） */}
-			<ul className="grid grid-cols-2 gap-3">
-				{post.images.map((image, index) => (
-					<li key={image.id} className="flex flex-col gap-1">
-						<a
-							href={image.url}
-							target="_blank"
-							rel="noopener noreferrer"
-							aria-label={`画像 ${index + 1}枚目を開く`}
-							className="block transition-opacity hover:opacity-80"
-						>
-							<GameThumbnail
-								url={image.url}
-								className="aspect-[4/3] w-full rounded-[8px]"
+			{bodyImages.length > 0 && (
+				// ニュース詳細の本文の画像と同じく横に並べ、はみ出した分は横スクロールにする
+				<ul className="-mx-[27px] flex snap-x snap-mandatory scroll-px-[27px] gap-3 overflow-x-auto px-[27px] pb-1">
+					{bodyImages.map((image, index) => (
+						<li key={image.id} className="shrink-0 snap-start">
+							<GameImageLink
+								image={image}
+								label={`記事内の画像 ${index + 1}枚目を開く`}
+								className="aspect-[4/3] w-[160px] rounded-[8px]"
 							/>
-						</a>
-						{image.consent_status && (
-							<span className="text-[12px] leading-[18px] tracking-[1px]">
-								{gameConsentLabel[image.consent_status]}
-							</span>
-						)}
-					</li>
-				))}
-			</ul>
+						</li>
+					))}
+				</ul>
+			)}
 		</article>
+	);
+}
+
+type GameImageLinkProps = {
+	image: GameImage;
+	/** 読み上げ用の文言 */
+	label: string;
+	/** 画像の大きさ・角丸 */
+	className: string;
+};
+
+/** タップで元の画像を別タブで開く画像。下に掲載同意の状態を出す */
+function GameImageLink({ image, label, className }: GameImageLinkProps) {
+	return (
+		<div className="flex flex-col gap-1">
+			<a
+				href={image.url}
+				target="_blank"
+				rel="noopener noreferrer"
+				aria-label={label}
+				className="block transition-opacity hover:opacity-80"
+			>
+				<GameThumbnail url={image.url} className={className} />
+			</a>
+			{image.consent_status && (
+				<span className="text-[12px] leading-[18px] tracking-[1px]">
+					{gameConsentLabel[image.consent_status]}
+				</span>
+			)}
+		</div>
 	);
 }

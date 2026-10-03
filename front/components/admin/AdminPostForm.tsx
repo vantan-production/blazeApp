@@ -219,7 +219,7 @@ export function AdminPostForm({
 					onChange={setFiles}
 				/>
 			</div>
-			<div className="flex w-full flex-col items-center gap-2 px-5">
+			<div className="flex w-full flex-col items-center gap-2">
 				{submitError && <AdminFieldError message={submitError} tone="dark" />}
 				<AdminButton type="submit" variant="light" disabled={pending}>
 					{pending ? "投稿中…" : "投稿"}

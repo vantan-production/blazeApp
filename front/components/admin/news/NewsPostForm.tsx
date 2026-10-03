@@ -16,14 +16,13 @@ export function NewsPostForm() {
 			endpoint="/api/news-post"
 			attachment={{
 				name: "image",
-				placeholder: "アイキャッチ画像を選択",
+				placeholder: "サムネイル画像を選択",
 				accept: "image/*",
 			}}
 			successMessage="ニュースを投稿しました。"
 			extraFields={<CategorySelector value={category} onChange={setCategory} />}
 			extraValues={{ category }}
 			bodyAttachmentShortcut
-			insetAttachment
 			submitGap="sm"
 			onSuccess={() => router.push(adminRoutes.news)}
 		/>

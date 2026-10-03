@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { useId, useState } from "react";
 import { z } from "zod";
 import { sendFormData, toErrorMessage } from "@/lib/admin/api";
@@ -38,8 +37,6 @@ type Props = {
 	extraValues?: Record<string, string | undefined>;
 	/** 本文欄の右下にアイコンを出し、添付欄の選択ダイアログを開けるようにする（ニュース投稿 2255:972） */
 	bodyAttachmentShortcut?: boolean;
-	/** 添付欄を左右20pxずつ内側に寄せる（ニュース投稿のアイキャッチ 308px 幅） */
-	insetAttachment?: boolean;
 	/** 入力欄全体を左右20pxずつ内側に寄せる（メディア情報は入力欄も 308px 幅） */
 	narrowFields?: boolean;
 	/** 入力欄と投稿ボタンの間隔（Figma: ニュース 36px / メディア・実績 82px） */
@@ -59,7 +56,6 @@ export function AdminPostForm({
 	extraFields,
 	extraValues,
 	bodyAttachmentShortcut = false,
-	insetAttachment = false,
 	narrowFields = false,
 	submitGap = "lg",
 	onSuccess,
@@ -144,34 +140,51 @@ export function AdminPostForm({
 					error={errors.body}
 					adornment={
 						bodyAttachmentShortcut ? (
+							// 丸い青ボタンに画像アイコン、右下に＋バッジを重ねて「画像を追加」と分かるようにする
 							<label
 								htmlFor={attachmentId}
-								aria-label="画像を選択"
-								className="absolute right-[5px] bottom-[5px] flex size-6 cursor-pointer items-center justify-center"
+								aria-label="画像を追加"
+								title="画像を追加"
+								className="absolute right-3 bottom-4 flex size-10 cursor-pointer items-center justify-center rounded-full bg-brand-blue text-brand-white shadow-[0px_2px_4px_rgba(0,0,0,0.25)] transition-opacity hover:opacity-80"
 							>
-								<Image
-									src="/icons/admin/photo-small.svg"
-									alt=""
-									width={24}
-									height={24}
-								/>
+								<svg
+									aria-hidden="true"
+									viewBox="0 0 24 24"
+									fill="currentColor"
+									className="size-[22px]"
+								>
+									<path d="M19 5V19H5V5H19ZM19 3H5C3.9 3 3 3.9 3 5V19C3 20.1 3.9 21 5 21H19C20.1 21 21 20.1 21 19V5C21 3.9 20.1 3 19 3ZM14.14 11.86L11.14 15.73L9 13.14L6 17H18L14.14 11.86Z" />
+								</svg>
+								<span
+									aria-hidden="true"
+									className="absolute -right-1 -bottom-1 flex size-[18px] items-center justify-center rounded-full border-2 border-brand-blue bg-brand-yellow text-brand-blue"
+								>
+									<svg
+										viewBox="0 0 12 12"
+										fill="none"
+										stroke="currentColor"
+										strokeWidth={2}
+										strokeLinecap="round"
+										className="size-[10px]"
+									>
+										<path d="M6 2v8M2 6h8" />
+									</svg>
+								</span>
 							</label>
 						) : undefined
 					}
 				/>
-				<div className={insetAttachment ? "px-5" : ""}>
-					<AdminFilePicker
-						id={attachmentId}
-						placeholder={attachment.placeholder}
-						accept={attachment.accept}
-						files={files}
-						onChange={setFiles}
-					/>
-				</div>
+				<AdminFilePicker
+					id={attachmentId}
+					placeholder={attachment.placeholder}
+					accept={attachment.accept}
+					files={files}
+					onChange={setFiles}
+				/>
 			</div>
 			<div className="flex w-full flex-col items-center gap-2 px-5">
 				{submitError && <AdminFieldError message={submitError} tone="dark" />}
-				<AdminButton type="submit" variant="light" size="sm" disabled={pending}>
+				<AdminButton type="submit" variant="light" disabled={pending}>
 					{pending ? "投稿中…" : "投稿"}
 				</AdminButton>
 			</div>

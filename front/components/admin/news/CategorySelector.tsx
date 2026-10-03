@@ -63,7 +63,7 @@ export function CategorySelector({ value, onChange }: Props) {
 			<legend className="mb-[2px] text-[12px] leading-[22px] font-medium text-brand-white">
 				カテゴリー
 			</legend>
-			<div className="flex flex-wrap items-start gap-[2px]">
+			<div className="flex flex-wrap items-start gap-2">
 				{options.map((option) => {
 					const selected = option === value;
 					return (

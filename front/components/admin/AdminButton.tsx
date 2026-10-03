@@ -7,7 +7,7 @@ import Link from "next/link";
  */
 export type AdminButtonVariant = "primary" | "outline" | "light";
 
-/** md: 高さ38px（認証カード内） / sm: 高さ32px（投稿フォーム・入口画面） */
+/** md: 高さ38px（認証カード内・投稿フォーム） / sm: 高さ32px（入口画面） */
 export type AdminButtonSize = "md" | "sm";
 
 type StyleOptions = {

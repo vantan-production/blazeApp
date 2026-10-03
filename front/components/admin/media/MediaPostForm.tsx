@@ -17,6 +17,7 @@ export function MediaPostForm() {
 				accept: "image/*",
 			}}
 			successMessage="メディア情報を投稿しました。"
+			bodyImages={{ name: "images", accept: "image/*" }}
 			onSuccess={() => router.push(adminRoutes.media)}
 		/>
 	);

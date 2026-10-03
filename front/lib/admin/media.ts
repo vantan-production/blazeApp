@@ -8,6 +8,11 @@ export type MediaPost = {
 	created_at: string;
 };
 
+/** GET /api/media/:id のメディア情報。本文に載せた画像も付く */
+export type MediaPostDetail = MediaPost & {
+	images: { id: string; url: string }[];
+};
+
 /** ISO日時を YYYY/MM/DD にする */
 export const formatMediaDate = (iso: string) => {
 	const date = new Date(iso);

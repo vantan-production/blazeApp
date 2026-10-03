@@ -29,6 +29,9 @@ export function GameImageForm() {
 	const [submitError, setSubmitError] = useState<string | null>(null);
 	const [pending, setPending] = useState(false);
 
+	// 画像が選ばれたらボタンを有効にし、押せる状態だと見て分かるようにする
+	const canSubmit = gameImageSchema.safeParse({ images, message }).success;
+
 	const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
 		event.preventDefault();
 		setSubmitError(null);
@@ -83,7 +86,12 @@ export function GameImageForm() {
 			</div>
 			<div className="flex w-full flex-col items-center gap-2">
 				{submitError && <AdminFieldError message={submitError} tone="dark" />}
-				<AdminButton type="submit" variant="light" size="sm" disabled={pending}>
+				<AdminButton
+					type="submit"
+					variant="light"
+					size="sm"
+					disabled={pending || !canSubmit}
+				>
 					{pending ? "更新中…" : "更新"}
 				</AdminButton>
 			</div>

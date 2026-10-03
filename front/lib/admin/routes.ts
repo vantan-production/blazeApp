@@ -9,6 +9,7 @@ export const adminRoutes = {
 	news: "/admin/news",
 	newsNew: "/admin/news/new",
 	media: "/admin/media",
+	mediaNew: "/admin/media/new",
 	achievements: "/admin/achievements",
 	game: "/admin/game",
 	inquiry: "/admin/inquiry",
@@ -17,3 +18,7 @@ export const adminRoutes = {
 /** 問い合わせ詳細のパス */
 export const adminInquiryDetailPath = (id: string) =>
 	`${adminRoutes.inquiry}/${id}`;
+
+/** メディア情報詳細のパス */
+export const adminMediaDetailPath = (id: string) =>
+	`${adminRoutes.media}/${id}`;

@@ -72,6 +72,9 @@ export function AdminPostForm({
 	const [submitError, setSubmitError] = useState<string | null>(null);
 	const [pending, setPending] = useState(false);
 
+	// タイトル・本文が投稿できる内容になったらボタンを有効にし、押せる状態だと見て分かるようにする
+	const canSubmit = postSchema.safeParse(values).success;
+
 	const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
 		event.preventDefault();
 		setSubmitError(null);
@@ -171,7 +174,12 @@ export function AdminPostForm({
 			</div>
 			<div className="flex w-full flex-col items-center gap-2 px-5">
 				{submitError && <AdminFieldError message={submitError} tone="dark" />}
-				<AdminButton type="submit" variant="light" size="sm" disabled={pending}>
+				<AdminButton
+					type="submit"
+					variant="light"
+					size="sm"
+					disabled={pending || !canSubmit}
+				>
 					{pending ? "投稿中…" : "投稿"}
 				</AdminButton>
 			</div>

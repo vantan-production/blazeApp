@@ -172,12 +172,11 @@ export function AdminPostForm({
 					/>
 				</div>
 			</div>
-			<div className="flex w-full flex-col items-center gap-2 px-5">
+			<div className="flex w-full flex-col items-center gap-2">
 				{submitError && <AdminFieldError message={submitError} tone="dark" />}
 				<AdminButton
 					type="submit"
 					variant="light"
-					size="sm"
 					disabled={pending || !canSubmit}
 				>
 					{pending ? "投稿中…" : "投稿"}

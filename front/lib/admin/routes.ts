@@ -11,9 +11,13 @@ export const adminRoutes = {
 	media: "/admin/media",
 	achievements: "/admin/achievements",
 	game: "/admin/game",
+	gameNew: "/admin/game/new",
 	inquiry: "/admin/inquiry",
 } as const;
 
 /** 問い合わせ詳細のパス */
 export const adminInquiryDetailPath = (id: string) =>
 	`${adminRoutes.inquiry}/${id}`;
+
+/** 試合風景詳細のパス */
+export const adminGameDetailPath = (id: string) => `${adminRoutes.game}/${id}`;

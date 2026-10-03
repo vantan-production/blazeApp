@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { z } from "zod";
 import { AdminButton } from "@/components/admin/AdminButton";
@@ -10,6 +11,7 @@ import {
 } from "@/components/admin/AdminTextField";
 import { sendFormData, toErrorMessage } from "@/lib/admin/api";
 import { type FieldErrors, validateForm } from "@/lib/admin/form";
+import { adminRoutes } from "@/lib/admin/routes";
 import { useToastStore } from "@/lib/store/useToastStore";
 
 const gameImageSchema = z.object({
@@ -20,8 +22,9 @@ const gameImageSchema = z.object({
 
 type GameImageValues = z.input<typeof gameImageSchema>;
 
-/** 試合風景の画像アップロードフォーム（Figma: game 2034:1657） */
+/** 試合風景の画像アップロードフォーム（Figma: game 2034:1657）。POST /api/gameImg に送信し、成功したら一覧へ戻る */
 export function GameImageForm() {
+	const router = useRouter();
 	const showToast = useToastStore((state) => state.showToast);
 	const [images, setImages] = useState<File[]>([]);
 	const [message, setMessage] = useState("");
@@ -53,6 +56,7 @@ export function GameImageForm() {
 			showToast("試合風景を更新しました。");
 			setImages([]);
 			setMessage("");
+			router.push(adminRoutes.game);
 		} catch (error) {
 			setSubmitError(toErrorMessage(error, "アップロードに失敗しました。"));
 		} finally {

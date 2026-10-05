@@ -12,6 +12,8 @@ export const adminRoutes = {
 	achievements: "/admin/achievements",
 	game: "/admin/game",
 	inquiry: "/admin/inquiry",
+	// 関係者（member）から届いた投稿申請の承認
+	submissions: "/admin/submissions",
 } as const;
 
 /** 問い合わせ詳細のパス */

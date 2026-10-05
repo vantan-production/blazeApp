@@ -17,3 +17,17 @@ export const adminRoutes = {
 /** 問い合わせ詳細のパス */
 export const adminInquiryDetailPath = (id: string) =>
 	`${adminRoutes.inquiry}/${id}`;
+
+/** 関係者向けお知らせ（管理側）の一覧・新規作成 */
+export const adminNoticeRoutes = {
+	list: "/admin/notices",
+	new: "/admin/notices/new",
+} as const;
+
+/** 関係者向けお知らせの詳細（既読状況・削除）のパス */
+export const adminNoticeDetailPath = (id: string) =>
+	`${adminNoticeRoutes.list}/${id}`;
+
+/** 関係者向けお知らせの編集のパス */
+export const adminNoticeEditPath = (id: string) =>
+	`${adminNoticeDetailPath(id)}/edit`;

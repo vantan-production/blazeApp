@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AdminAuthCard } from "@/components/admin/AdminAuthCard";
 import { LoginForm } from "@/components/admin/login/LoginForm";
@@ -17,6 +18,12 @@ export default async function AdminLoginPage() {
 	return (
 		<AdminAuthCard>
 			<LoginForm />
+			<Link
+				href={adminRoutes.forgotPassword}
+				className="mt-3 text-[12px] leading-[20px] tracking-[0.5px] text-brand-blue underline transition-opacity hover:opacity-80"
+			>
+				パスワードを忘れた方
+			</Link>
 		</AdminAuthCard>
 	);
 }

@@ -5,9 +5,14 @@ type RequestConfig = RequestInit & {
 	skipAuthRedirect?: boolean;
 };
 
-// backのベースURL。Server Component側（front/lib/auth.ts）とも共有する単一の定義元
-export const API_BASE_URL =
+// backのベースURL。Server Component側（front/lib/auth.ts）とも共有する単一の定義元。
+// サーバー側で動くときは API_INTERNAL_BASE_URL を優先する（docker compose ではコンテナ内の localhost が back を指さないため）
+const PUBLIC_API_BASE_URL =
 	process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080";
+export const API_BASE_URL =
+	typeof window === "undefined"
+		? process.env.API_INTERNAL_BASE_URL || PUBLIC_API_BASE_URL
+		: PUBLIC_API_BASE_URL;
 
 export class ApiError extends Error {
 	status: number;

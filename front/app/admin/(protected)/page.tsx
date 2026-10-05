@@ -1,3 +1,5 @@
+import Image from "next/image";
+import Link from "next/link";
 import {
 	AdminMenuCard,
 	type AdminMenuIcon,
@@ -111,7 +113,15 @@ export default async function AdminTopPage() {
 	const isOwner = user?.role === "owner";
 
 	return (
-		<main className="flex w-full flex-1 flex-col items-center gap-[60px] px-[27px] pt-[54px] pb-12">
+		<main className="relative flex w-full flex-1 flex-col items-center gap-[60px] px-[27px] pt-[54px] pb-12">
+			{/* 右上のアイコンからアカウント画面（ログアウト・通知設定）へ */}
+			<Link
+				href={menuPath.account}
+				aria-label="アカウント"
+				className="absolute top-[14px] right-[18px] flex size-11 items-center justify-center rounded-full bg-brand-white shadow-[0px_2px_6px_rgba(0,0,0,0.3)] transition-opacity hover:opacity-80"
+			>
+				<Image src="/icons/admin/account.svg" alt="" width={26} height={26} />
+			</Link>
 			<h1 className="text-[36px] leading-[22px] tracking-[1.5px] text-brand-white">
 				管理者ページ
 			</h1>

@@ -5,13 +5,20 @@ import { AdminGameList } from "@/components/admin/game/AdminGameList";
 import { adminRoutes } from "@/lib/admin/routes";
 
 export const metadata = {
-	title: "試合風景更新 | 西尾ブレイズ 管理画面",
+	title: "試合風景 | 西尾ブレイズ 管理画面",
 };
 
 /** 投稿済み試合風景の一覧（ニュース一覧と同じ構成）。右下の＋から新規投稿へ */
 export default function AdminGamePage() {
 	return (
 		<AdminPageLayout title="試合風景">
+			{/* 関係者から届いた掲載取り下げ依頼へ */}
+			<Link
+				href={adminRoutes.gameConsentRequests}
+				className="-mt-6 self-end text-[14px] leading-[22px] tracking-[1px] text-brand-white underline transition-opacity hover:opacity-80"
+			>
+				取り下げ依頼を見る
+			</Link>
 			<AdminGameList />
 			{/* 最後の行が右下の＋ボタンに隠れないようにする余白 */}
 			<div aria-hidden className="h-12 shrink-0" />

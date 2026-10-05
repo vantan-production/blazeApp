@@ -12,6 +12,8 @@ export const adminRoutes = {
 	achievements: "/admin/achievements",
 	game: "/admin/game",
 	gameNew: "/admin/game/new",
+	// 関係者（member）から届いた試合風景の掲載取り下げ依頼
+	gameConsentRequests: "/admin/game/consent-requests",
 	inquiry: "/admin/inquiry",
 } as const;
 
@@ -21,3 +23,7 @@ export const adminInquiryDetailPath = (id: string) =>
 
 /** 試合風景詳細のパス */
 export const adminGameDetailPath = (id: string) => `${adminRoutes.game}/${id}`;
+
+/** 試合風景の画像1枚のモザイク編集のパス */
+export const adminGameMosaicPath = (id: string, imageId: string) =>
+	`${adminGameDetailPath(id)}/images/${imageId}/mosaic`;

@@ -1,8 +1,8 @@
 // 管理画面のアカウントまわり（パスワード再設定・ログアウト・通知設定・アカウント削除／復旧）の型と API 呼び出し。
 
-import { API_BASE_URL, ApiError } from "../apiClient";
+import { API_BASE_URL, ApiError, apiClient } from "../apiClient";
 import type { ApiSuccess } from "./api";
-import { adminRoutes } from "./routes";
+import { adminRoutes, homePathForRole } from "./routes";
 
 /** ロールの表示名（back/src/db/roleGuard.ts の Role と同じ値） */
 export const adminRoleLabel: Record<"owner" | "admin" | "member", string> = {
@@ -102,4 +102,19 @@ export const accountRequest = async <T = undefined>(
 	}
 
 	return body as ApiSuccess<T>;
+};
+
+/**
+ * ログイン直後に、ロールに合った行き先（homePathForRole）を調べる。
+ * ログイン API はロールを返さないため /api/admin/me で確かめる。取れなければ管理画面TOPにする
+ */
+export const fetchHomePath = async (): Promise<string> => {
+	try {
+		const res = await apiClient<ApiSuccess<{ role: string }>>("/api/admin/me", {
+			skipAuthRedirect: true,
+		});
+		return homePathForRole(res.data.role);
+	} catch {
+		return adminRoutes.top;
+	}
 };

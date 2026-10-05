@@ -9,6 +9,7 @@ import {
 	AdminFieldError,
 	AdminTextField,
 } from "@/components/admin/AdminTextField";
+import { fetchHomePath } from "@/lib/admin/account";
 import type { ApiSuccess } from "@/lib/admin/api";
 import { type FieldErrors, validateForm } from "@/lib/admin/form";
 import { adminRoutes } from "@/lib/admin/routes";
@@ -74,7 +75,8 @@ export function LoginForm() {
 					skipAuthRedirect: true,
 				},
 			);
-			router.replace(adminRoutes.top);
+			// member は関係者ページ、admin / owner は管理画面TOPへ
+			router.replace(await fetchHomePath());
 			router.refresh();
 		} catch (error) {
 			setSubmitError(loginErrorMessage(error));

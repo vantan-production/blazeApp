@@ -23,3 +23,10 @@ export const adminRoutes = {
 /** 問い合わせ詳細のパス */
 export const adminInquiryDetailPath = (id: string) =>
 	`${adminRoutes.inquiry}/${id}`;
+
+/** 関係者ページ（member 向け。front/members の memberRoutes.top と同じ） */
+export const membersTopPath = "/members";
+
+/** ログイン後の行き先。member は関係者ページ、admin / owner は管理画面TOP */
+export const homePathForRole = (role: string) =>
+	role === "member" ? membersTopPath : adminRoutes.top;

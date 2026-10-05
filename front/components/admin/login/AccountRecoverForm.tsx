@@ -8,10 +8,9 @@ import {
 	AdminFieldError,
 	AdminTextField,
 } from "@/components/admin/AdminTextField";
-import { accountRequest } from "@/lib/admin/account";
+import { accountRequest, fetchHomePath } from "@/lib/admin/account";
 import { toErrorMessage } from "@/lib/admin/api";
 import { type FieldErrors, validateForm } from "@/lib/admin/form";
-import { adminRoutes } from "@/lib/admin/routes";
 import { ApiError } from "@/lib/apiClient";
 import { useToastStore } from "@/lib/store/useToastStore";
 import { emailSchema, passwordSchema } from "@/lib/validation/schemas";
@@ -62,7 +61,8 @@ export function AccountRecoverForm() {
 				{ method: "POST", payload: result.data, redirectOnUnauthorized: false },
 			);
 			showToast("アカウントを元に戻しました。");
-			router.replace(adminRoutes.top);
+			// member は関係者ページ、admin / owner は管理画面TOPへ
+			router.replace(await fetchHomePath());
 			router.refresh();
 		} catch (error) {
 			// 401: メールアドレス・パスワード違い / 400: 削除されていない / 403: 30日を過ぎている（back の文言を出す）

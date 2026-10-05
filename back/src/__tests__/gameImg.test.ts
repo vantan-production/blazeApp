@@ -19,9 +19,10 @@ function pngFile(name = "photo.png") {
 
 const ORIGIN = "http://localhost:3000";
 
-async function postGameImg(cookie: string) {
+async function postGameImg(cookie: string, consentConfirmed?: string) {
   const fd = new FormData();
   fd.append("image", pngFile());
+  if (consentConfirmed !== undefined) fd.append("consent_confirmed", consentConfirmed);
   return app.request("/api/gameImg", {
     method: "POST",
     headers: { Cookie: cookie, Origin: ORIGIN },
@@ -108,6 +109,27 @@ describe("GET /api/gameImg — 公開範囲", () => {
     const publicRes = await app.request("/api/gameImg");
     const publicBody = await publicRes.json() as { data: unknown[] };
     expect(publicBody.data).toHaveLength(1);
+  });
+});
+
+describe("POST /api/gameImg — 投稿者による掲載OKの確認", () => {
+  it("consent_confirmed=true なら作成直後から一般公開で見える", async () => {
+    const cookie = await registerAndLogin("Owner", `owner-consent1${D}`);
+    expect((await postGameImg(cookie, "true")).status).toBe(200);
+
+    const { rows } = await testPool.query(`SELECT consent_status FROM images`);
+    expect(rows.map((r) => r.consent_status)).toEqual(["approved"]);
+
+    const publicBody = await (await app.request("/api/gameImg")).json() as { data: unknown[] };
+    expect(publicBody.data).toHaveLength(1);
+  });
+
+  it("consent_confirmed が true 以外なら pending のまま", async () => {
+    const cookie = await registerAndLogin("Owner", `owner-consent2${D}`);
+    expect((await postGameImg(cookie, "false")).status).toBe(200);
+
+    const { rows } = await testPool.query(`SELECT consent_status FROM images`);
+    expect(rows.map((r) => r.consent_status)).toEqual(["pending"]);
   });
 });
 

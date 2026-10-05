@@ -14,7 +14,7 @@ export function AccountProfileCard({ user }: Props) {
 	];
 
 	return (
-		<dl className="grid w-full grid-cols-[88px_1fr] gap-x-[10px] gap-y-2 rounded-[10px] border border-brand-white px-[10px] py-3 leading-[22px] tracking-[1px] text-white">
+		<dl className="grid w-full grid-cols-[100px_1fr] gap-x-[10px] gap-y-2 rounded-[10px] border border-brand-white px-[10px] py-3 leading-[22px] tracking-[1px] text-white">
 			{rows.map((row) => (
 				<div key={row.label} className="contents">
 					<dt className="text-[12px]">{row.label}</dt>

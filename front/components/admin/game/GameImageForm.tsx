@@ -75,7 +75,7 @@ export function GameImageForm() {
 		setPending(true);
 		try {
 			await sendFormData("/api/gameImg", formData);
-			showToast("試合風景を更新しました。");
+			showToast("試合風景を投稿しました。");
 			setThumbnail([]);
 			setBodyImages([]);
 			setBodyImagesError(null);
@@ -150,7 +150,7 @@ export function GameImageForm() {
 					variant="light"
 					disabled={pending || !canSubmit}
 				>
-					{pending ? "更新中…" : "更新"}
+					{pending ? "投稿中…" : "投稿"}
 				</AdminButton>
 			</div>
 		</form>

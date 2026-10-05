@@ -11,7 +11,7 @@ export const metadata = {
 /** 投稿済み試合風景の一覧（ニュース一覧と同じ構成）。右下の＋から新規投稿へ */
 export default function AdminGamePage() {
 	return (
-		<AdminPageLayout title="試合風景更新">
+		<AdminPageLayout title="試合風景">
 			<AdminGameList />
 			{/* 最後の行が右下の＋ボタンに隠れないようにする余白 */}
 			<div aria-hidden className="h-12 shrink-0" />

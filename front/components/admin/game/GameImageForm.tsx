@@ -39,6 +39,7 @@ export function GameImageForm() {
 	const [bodyImages, setBodyImages] = useState<File[]>([]);
 	const [bodyImagesError, setBodyImagesError] = useState<string | null>(null);
 	const [message, setMessage] = useState("");
+	const [consentConfirmed, setConsentConfirmed] = useState(false);
 	const [errors, setErrors] = useState<FieldErrors<GameImageValues>>({});
 	const [submitError, setSubmitError] = useState<string | null>(null);
 	const [pending, setPending] = useState(false);
@@ -71,15 +72,24 @@ export function GameImageForm() {
 			formData.append("image", image);
 		}
 		// TODO: 一言メッセージは API（POST /api/gameImg）に項目が無いため未送信。デザイン注記でも「要検討」
+		// 投稿者が掲載OKを確認していれば、back は最初から公開（approved）で保存する。未確認なら掲載確認待ち
+		if (consentConfirmed) {
+			formData.append("consent_confirmed", "true");
+		}
 
 		setPending(true);
 		try {
 			await sendFormData("/api/gameImg", formData);
-			showToast("試合風景を投稿しました。");
+			showToast(
+				consentConfirmed
+					? "試合風景を投稿しました。"
+					: "試合風景を投稿しました（掲載確認待ちのため、まだ公開されていません）。",
+			);
 			setThumbnail([]);
 			setBodyImages([]);
 			setBodyImagesError(null);
 			setMessage("");
+			setConsentConfirmed(false);
 			router.push(adminRoutes.game);
 		} catch (error) {
 			setSubmitError(toErrorMessage(error, "アップロードに失敗しました。"));
@@ -144,6 +154,21 @@ export function GameImageForm() {
 				/>
 			</div>
 			<div className="flex w-full flex-col items-center gap-2">
+				{/* 写っている人の掲載OKを投稿者が確認した場合だけ、すぐ一般公開する（未成年の肖像を含むため既定はオフ） */}
+				<label className="flex w-full cursor-pointer items-start gap-2 text-[14px] leading-[22px] tracking-[1px] text-brand-white">
+					<input
+						type="checkbox"
+						checked={consentConfirmed}
+						onChange={(event) => setConsentConfirmed(event.target.checked)}
+						className="mt-[3px] size-4 shrink-0 accent-brand-white"
+					/>
+					<span>
+						写っている全員が掲載OKであることを確認した
+						<span className="block text-[12px] leading-[18px] opacity-80">
+							チェックしない場合は掲載確認待ちになり、公開サイトには表示されません
+						</span>
+					</span>
+				</label>
 				{submitError && <AdminFieldError message={submitError} tone="dark" />}
 				<AdminButton
 					type="submit"

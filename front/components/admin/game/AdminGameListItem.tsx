@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { gameConsentLabel } from "@/lib/admin/game";
 import { adminGameDetailPath } from "@/lib/admin/routes";
 import { GameThumbnail } from "./GameThumbnail";
 
@@ -8,7 +9,7 @@ type Props = {
 	thumbnailUrl: string | null;
 	/** 投稿した画像の枚数 */
 	imageCount: number;
-	/** 掲載同意が未確認の枚数（0なら印を出さない） */
+	/** 掲載確認待ちの枚数（0なら印を出さない） */
 	pendingCount: number;
 	/** 表示用の日付（YYYY/MM/DD） */
 	date: string;
@@ -43,7 +44,7 @@ export function AdminGameListItem({
 						{pendingCount > 0 && (
 							// ニュースのカテゴリータグと同じ形
 							<span className="shrink-0 rounded-[200px] bg-white px-[10px] text-[12px] leading-[22px] tracking-[1px] text-brand-blue">
-								同意未確認 {pendingCount}枚
+								{gameConsentLabel.pending} {pendingCount}枚
 							</span>
 						)}
 					</div>

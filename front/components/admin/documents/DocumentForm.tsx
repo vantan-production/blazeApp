@@ -12,49 +12,46 @@ import { sendFormData, toErrorMessage } from "@/lib/admin/api";
 import {
 	type AdminDocument,
 	displayFileName,
-	documentCreateSchema,
 	documentUpdateSchema,
 	type SavedDocument,
 } from "@/lib/admin/documents";
 import { type FieldErrors, validateForm } from "@/lib/admin/form";
 
-type DocumentValues = z.input<typeof documentCreateSchema>;
+type DocumentValues = z.input<typeof documentUpdateSchema>;
 
 type Props = {
-	/** 編集する資料。省略すると新規登録（POST /api/documents） */
-	document?: AdminDocument;
-	/** 保存できたあとの処理（一覧へ戻る・一覧の行を書き換える など） */
+	/** 編集する資料 */
+	document: AdminDocument;
+	/** 保存できたあとの処理（一覧の行を書き換える など） */
 	onSaved: (saved: SavedDocument, replacedFile: File | null) => void;
-	/** 編集をやめる（編集のときだけ「キャンセル」を出す） */
-	onCancel?: () => void;
+	/** 編集をやめる */
+	onCancel: () => void;
 };
 
 /**
- * 資料の登録・編集フォーム（POST /api/documents・PATCH /api/documents/:id。multipart/form-data）。
- * 項目はタイトル（必須）・分類・説明・ファイル（登録時は必須、編集時は差し替えるときだけ）
+ * 資料の編集フォーム（PATCH /api/documents/:id。multipart/form-data）。
+ * 項目はタイトル（必須）・分類・説明・ファイル（差し替えるときだけ）。
+ * 新規登録は複数ファイルをまとめて登録できる DocumentCreateForm を使う
  */
 export function DocumentForm({ document, onSaved, onCancel }: Props) {
-	const isEdit = document !== undefined;
-	const schema = isEdit ? documentUpdateSchema : documentCreateSchema;
 	const [values, setValues] = useState<DocumentValues>({
-		title: document?.title ?? "",
-		category: document?.category ?? "",
-		description: document?.description ?? "",
+		title: document.title,
+		category: document.category ?? "",
+		description: document.description ?? "",
 		file: [],
 	});
 	const [errors, setErrors] = useState<FieldErrors<DocumentValues>>({});
 	const [submitError, setSubmitError] = useState<string | null>(null);
 	const [pending, setPending] = useState(false);
 
-	// 編集では、どこかを変えたときだけ保存できるようにする
+	// どこかを変えたときだけ保存できるようにする
 	const changed =
-		!isEdit ||
 		values.title.trim() !== document.title ||
 		values.category.trim() !== (document.category ?? "") ||
 		values.description.trim() !== (document.description ?? "") ||
 		values.file.length > 0;
 	// 必要な入力がそろったらボタンを有効にする
-	const canSubmit = changed && schema.safeParse(values).success;
+	const canSubmit = changed && documentUpdateSchema.safeParse(values).success;
 
 	const setField = <K extends keyof DocumentValues>(
 		key: K,
@@ -65,7 +62,7 @@ export function DocumentForm({ document, onSaved, onCancel }: Props) {
 		event.preventDefault();
 		setSubmitError(null);
 
-		const result = validateForm(schema, values);
+		const result = validateForm(documentUpdateSchema, values);
 		if (!result.success) {
 			setErrors(result.errors);
 			return;
@@ -73,7 +70,7 @@ export function DocumentForm({ document, onSaved, onCancel }: Props) {
 		const { title, category, description, file } = result.data;
 
 		// back は説明の空欄を「変更なし」として扱うため、登録済みの説明を消すことはできない
-		if (isEdit && document.description && description === "") {
+		if (document.description && description === "") {
 			setErrors({
 				description:
 					"説明は空にできません。不要な場合は短い文に書き換えてください。",
@@ -82,20 +79,14 @@ export function DocumentForm({ document, onSaved, onCancel }: Props) {
 		}
 		setErrors({});
 
+		// 変えた項目だけ送る（分類は空文字を送ると消える）
 		const formData = new FormData();
-		if (isEdit) {
-			// 編集は変えた項目だけ送る（分類は空文字を送ると消える）
-			if (title !== document.title) formData.append("title", title);
-			if (category !== (document.category ?? "")) {
-				formData.append("category", category);
-			}
-			if (description !== (document.description ?? "")) {
-				formData.append("description", description);
-			}
-		} else {
-			formData.append("title", title);
-			if (category) formData.append("category", category);
-			if (description) formData.append("description", description);
+		if (title !== document.title) formData.append("title", title);
+		if (category !== (document.category ?? "")) {
+			formData.append("category", category);
+		}
+		if (description !== (document.description ?? "")) {
+			formData.append("description", description);
 		}
 		const selectedFile = file[0] ?? null;
 		if (selectedFile) formData.append("file", selectedFile);
@@ -103,18 +94,13 @@ export function DocumentForm({ document, onSaved, onCancel }: Props) {
 		setPending(true);
 		try {
 			const res = await sendFormData<SavedDocument>(
-				isEdit ? `/api/documents/${document.id}` : "/api/documents",
+				`/api/documents/${document.id}`,
 				formData,
-				isEdit ? "PATCH" : "POST",
+				"PATCH",
 			);
 			onSaved(res.data, selectedFile);
 		} catch (error) {
-			setSubmitError(
-				toErrorMessage(
-					error,
-					isEdit ? "保存に失敗しました。" : "登録に失敗しました。",
-				),
-			);
+			setSubmitError(toErrorMessage(error, "保存に失敗しました。"));
 			setPending(false);
 		}
 	};
@@ -153,24 +139,22 @@ export function DocumentForm({ document, onSaved, onCancel }: Props) {
 				/>
 				<div className="flex flex-col gap-1">
 					<p className="text-[12px] leading-[22px] font-medium text-brand-white">
-						{isEdit ? "ファイルを差し替える（任意）" : "ファイル（必須）"}
+						ファイルを差し替える（任意）
 					</p>
-					{isEdit && document.file_name && (
+					{document.file_name && (
 						<p className="text-[12px] leading-[18px] break-all text-brand-white/80">
 							いまのファイル: {displayFileName(document.file_name)}
 						</p>
 					)}
 					<AdminFilePicker
-						placeholder={
-							isEdit ? "新しいファイルを選択" : "配布するファイルを選択"
-						}
+						placeholder="新しいファイルを選択"
 						files={values.file}
 						onChange={(files) => setField("file", files)}
 						error={errors.file}
 					/>
 					<p className="text-[12px] leading-[18px] text-brand-white/80">
 						PDF・Word・Excel・画像など。1ファイル10MBまで。
-						{isEdit && "差し替えると前のファイルは削除されます。"}
+						差し替えると前のファイルは削除されます。
 					</p>
 				</div>
 			</div>
@@ -182,24 +166,16 @@ export function DocumentForm({ document, onSaved, onCancel }: Props) {
 					size="sm"
 					disabled={pending || !canSubmit}
 				>
-					{pending
-						? isEdit
-							? "保存中…"
-							: "登録中…"
-						: isEdit
-							? "保存"
-							: "登録"}
+					{pending ? "保存中…" : "保存"}
 				</AdminButton>
-				{onCancel && (
-					<button
-						type="button"
-						onClick={onCancel}
-						disabled={pending}
-						className="text-[14px] leading-[22px] tracking-[1px] text-brand-white underline disabled:opacity-50"
-					>
-						キャンセル
-					</button>
-				)}
+				<button
+					type="button"
+					onClick={onCancel}
+					disabled={pending}
+					className="text-[14px] leading-[22px] tracking-[1px] text-brand-white underline disabled:opacity-50"
+				>
+					キャンセル
+				</button>
 			</div>
 		</form>
 	);

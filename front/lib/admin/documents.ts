@@ -69,19 +69,33 @@ const optionalCategorySchema = z
 		`分類は${limits.category.max}文字以内で入力してください。`,
 	);
 
-/** 新規登録フォーム（POST /api/documents。title と file が必須） */
-export const documentCreateSchema = z.object({
+/** 新規登録で一度に選べるファイル数 */
+export const DOCUMENT_MAX_FILES = 10;
+
+/** 新規登録の1ファイル分（1ファイル＝1資料として POST /api/documents を1回ずつ呼ぶ） */
+export const documentCreateItemSchema = z.object({
 	title: documentTitleSchema,
+	file: z
+		.instanceof(File)
+		.refine((file) => file.size <= DOCUMENT_MAX_FILE_SIZE, fileSizeMessage),
+});
+
+/** 新規登録フォーム。分類・説明は選んだ全ファイルで共通 */
+export const documentCreateSchema = z.object({
 	category: optionalCategorySchema,
 	description: documentDescriptionSchema,
-	file: z
-		.array(z.instanceof(File))
-		.length(1, "ファイルを選択してください。")
-		.refine(
-			(files) => files.every((file) => file.size <= DOCUMENT_MAX_FILE_SIZE),
-			fileSizeMessage,
+	items: z
+		.array(documentCreateItemSchema)
+		.min(1, "ファイルを選択してください。")
+		.max(
+			DOCUMENT_MAX_FILES,
+			`ファイルは一度に${DOCUMENT_MAX_FILES}個まで選択できます。`,
 		),
 });
+
+/** 登録時のタイトルの初期値（ファイル名から拡張子を外したもの） */
+export const titleFromFileName = (fileName: string) =>
+	fileName.replace(/\.[^.]+$/, "");
 
 /** 編集フォーム（PATCH /api/documents/:id。ファイルは差し替えるときだけ選ぶ） */
 export const documentUpdateSchema = z.object({

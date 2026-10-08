@@ -6,6 +6,7 @@ import {
 	Savate,
 	Sawarabi_Mincho,
 } from "next/font/google";
+import { PcFrame } from "@/components/layout/PcFrame";
 import "./globals.css";
 
 const notoSansJp = Noto_Sans_JP({
@@ -52,7 +53,10 @@ export default function RootLayout({
 			lang="ja"
 			className={`${notoSansJp.variable} ${savate.variable} ${sawarabiMincho.variable} ${mplusRounded.variable} ${inter.variable} h-full antialiased`}
 		>
-			<body className="min-h-full flex flex-col font-sans">{children}</body>
+			<body className="min-h-full flex flex-col font-sans">
+				<PcFrame />
+				{children}
+			</body>
 		</html>
 	);
 }

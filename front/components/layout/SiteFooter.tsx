@@ -11,7 +11,7 @@ export function SiteFooter() {
 	return (
 		<footer className="flex w-full flex-col items-center gap-10 px-6 pt-20 pb-6">
 			<Image
-				src="/img/nishioBlaze.jpg"
+				src="/images/nishioBlaze.jpg"
 				alt="西尾ブレイズ Aichi Dodge Ball Club Team"
 				width={1873}
 				height={874}

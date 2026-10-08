@@ -36,7 +36,7 @@ export function AdminAuthCard({ backHref, children }: Props) {
 			)}
 			<div className="flex w-full flex-col items-center gap-2 rounded-[20px] bg-brand-white px-5 pt-[55px] pb-[38px]">
 				<Image
-					src="/img/nishioBlaze.jpg"
+					src="/images/nishioBlaze.jpg"
 					alt="西尾ブレイズ"
 					width={1873}
 					height={874}

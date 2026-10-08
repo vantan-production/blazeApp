@@ -32,24 +32,3 @@ export const activityPlace = {
 
 /** 持ち物（Figma: Frame 91 980:365） */
 export const belongings = ["シューズ", "水筒", "タオル", "動きやすい服"];
-
-export type Notice = { id: string; date: string; text: string };
-
-/** 保護者の方への連絡事項（Figma: all-news 980:384）。API接続までの仮データ */
-export const notices: Notice[] = [
-	{
-		id: "1",
-		date: "xxx/yy/zz",
-		text: "テキストテキストテキストテキストテキストテキストテキストテキスト",
-	},
-	{
-		id: "2",
-		date: "xxx/yy/zz",
-		text: "テキストテキストテキストテキストテキストテキストテキストテキスト",
-	},
-	{
-		id: "3",
-		date: "xxx/yy/zz",
-		text: "テキストテキストテキストテキストテキストテキストテキストテキスト",
-	},
-];

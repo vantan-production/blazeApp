@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { z } from "zod";
+import { upcomingPracticeDates } from "@/components/features/activities/practiceDates";
 import { postForm, toErrorMessage } from "@/lib/postForm";
 import {
 	birthDateSchema,
@@ -53,13 +54,46 @@ type Status = "idle" | "sending" | "done" | "error";
 const inputClass =
 	"w-full rounded-[8px] border border-brand-blue/30 bg-white px-3 py-2 text-[16px] text-brand-black";
 
+/** 今日は外部から変化を通知しないため購読は不要 */
+const subscribeNothing = () => () => {};
+
+/** 同じ日なら同じ値を返す（useSyncExternalStore のスナップショットとして安定させる） */
+function getTodayKey(): string {
+	const now = new Date();
+	return `${now.getFullYear()}-${now.getMonth()}-${now.getDate()}`;
+}
+
+function parseTodayKey(key: string): Date {
+	const [year, month, date] = key.split("-").map(Number);
+	return new Date(year, month, date);
+}
+
+type Props = {
+	/** 活動内容ページの練習日から来たときに、最初から選んでおく体験希望日（YYYY-MM-DD） */
+	initialTrialDate?: string;
+};
+
 /** ドッジボール体験の申し込みフォーム（Figmaデザイン未作成のため仮デザイン） */
-export function TrialForm() {
+export function TrialForm({ initialTrialDate }: Props) {
 	const [errors, setErrors] = useState<FieldErrors>({});
 	const [status, setStatus] = useState<Status>("idle");
 	const [submitError, setSubmitError] = useState<string | null>(null);
 	// 「その他」「紹介」を選んだときだけ追加の入力欄を出すため、きっかけだけ state で持つ
 	const [motivation, setMotivation] = useState("");
+	// 体験希望日は練習日からだけ選べるようにする。今日はビルド時と閲覧時でずれるため、クライアントでのみ取得する（サーバーでは null）
+	const todayKey = useSyncExternalStore(
+		subscribeNothing,
+		getTodayKey,
+		() => null,
+	);
+	const practiceDates = todayKey
+		? upcomingPracticeDates(parseTodayKey(todayKey))
+		: [];
+	const [trialDate, setTrialDate] = useState(initialTrialDate ?? "");
+	// 選択肢にない日（期間外・練習日でない日）がクエリで渡されたときは未選択にする
+	const selectedTrialDate = practiceDates.some((d) => d.value === trialDate)
+		? trialDate
+		: "";
 
 	const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
 		event.preventDefault();
@@ -116,12 +150,22 @@ export function TrialForm() {
 				error={errors.trial_date}
 				required
 			>
-				<input
+				<select
 					id="trial_date"
 					name="trial_date"
-					type="date"
+					value={selectedTrialDate}
+					onChange={(event) => setTrialDate(event.target.value)}
 					className={inputClass}
-				/>
+				>
+					<option value="" disabled>
+						練習日から選んでください
+					</option>
+					{practiceDates.map((date) => (
+						<option key={date.value} value={date.value}>
+							{date.label}
+						</option>
+					))}
+				</select>
 			</Field>
 			<Field label="お名前" name="name" error={errors.name} required>
 				<input id="name" name="name" className={inputClass} />

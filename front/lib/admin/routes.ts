@@ -23,6 +23,12 @@ export const adminRoutes = {
 	resetPassword: "/admin/reset-password",
 	// 削除から30日以内のアカウントを元に戻す
 	accountRecover: "/admin/account-recover",
+
+	// 体験申込者への連絡メール（送信履歴一覧・新規送信）
+	trialNotices: "/admin/trial-notices",
+	trialNoticesNew: "/admin/trial-notices/new",
+	// 体験申し込みの一覧（詳細は adminTrialApplicationDetailPath）
+	trialApplications: "/admin/trial-applications",
 } as const;
 
 /** 問い合わせ詳細のパス */
@@ -53,3 +59,7 @@ export const adminGameDetailPath = (id: string) => `${adminRoutes.game}/${id}`;
 /** 試合風景の画像1枚のモザイク編集のパス */
 export const adminGameMosaicPath = (id: string, imageId: string) =>
 	`${adminGameDetailPath(id)}/images/${imageId}/mosaic`;
+
+/** 体験申し込み詳細のパス（URL には申し込みIDだけを載せ、名前などの個人情報は載せない） */
+export const adminTrialApplicationDetailPath = (id: string) =>
+	`${adminRoutes.trialApplications}/${id}`;

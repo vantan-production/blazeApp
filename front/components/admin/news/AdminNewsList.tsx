@@ -1,0 +1,89 @@
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
+import { type ApiSuccess, toErrorMessage } from "@/lib/admin/api";
+import { apiClient } from "@/lib/apiClient";
+import { AdminNewsListItem } from "./AdminNewsListItem";
+
+type NewsPost = {
+	id: string;
+	title: string;
+	category: string | null;
+	created_at: string;
+};
+
+/** ISO日時を YYYY/MM/DD にする */
+const formatDate = (iso: string) => {
+	const date = new Date(iso);
+	const pad = (n: number) => String(n).padStart(2, "0");
+	return `${date.getFullYear()}/${pad(date.getMonth() + 1)}/${pad(date.getDate())}`;
+};
+
+/** 投稿済みニュースの一覧（GET /api/news-post。10件ずつ追加読み込み） */
+export function AdminNewsList() {
+	const [posts, setPosts] = useState<NewsPost[]>([]);
+	const [page, setPage] = useState(1);
+	const [totalPages, setTotalPages] = useState(1);
+	const [loading, setLoading] = useState(true);
+	const [error, setError] = useState<string | null>(null);
+
+	const load = useCallback(async (nextPage: number) => {
+		setLoading(true);
+		setError(null);
+		try {
+			const res = await apiClient<ApiSuccess<NewsPost[]>>("/api/news-post", {
+				params: { page: nextPage },
+				// 当面はログインなしでも管理画面を表示するため、401 でもログインへ飛ばさない
+				skipAuthRedirect: true,
+			});
+			setPosts((prev) => (nextPage === 1 ? res.data : [...prev, ...res.data]));
+			setPage(nextPage);
+			setTotalPages(res.pagination?.totalPages ?? 1);
+		} catch (error) {
+			setError(toErrorMessage(error, "ニュースの取得に失敗しました。"));
+		} finally {
+			setLoading(false);
+		}
+	}, []);
+
+	useEffect(() => {
+		load(1);
+	}, [load]);
+
+	if (error) {
+		return <p className="text-[14px] text-brand-white">{error}</p>;
+	}
+
+	if (!loading && posts.length === 0) {
+		return (
+			<p className="text-[14px] text-brand-white">
+				まだ投稿されたニュースはありません。
+			</p>
+		);
+	}
+
+	return (
+		<div className="flex w-full flex-col items-center gap-[30px]">
+			<ul className="flex w-full flex-col gap-[30px]">
+				{posts.map((post) => (
+					<AdminNewsListItem
+						key={post.id}
+						category={post.category}
+						date={formatDate(post.created_at)}
+						title={post.title}
+					/>
+				))}
+			</ul>
+			{loading && <p className="text-[14px] text-brand-white">読み込み中…</p>}
+			{!loading && page < totalPages && (
+				<button
+					type="button"
+					onClick={() => load(page + 1)}
+					className="text-[14px] leading-[22px] tracking-[1px] text-brand-white underline"
+				>
+					もっと見る
+				</button>
+			)}
+		</div>
+	);
+}

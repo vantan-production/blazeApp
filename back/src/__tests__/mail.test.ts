@@ -11,6 +11,7 @@ import {
   buildInquiryAutoReplyEmail,
   buildNoticeNotificationEmail,
   buildSurveyNotificationEmail,
+  buildTrialNoticeEmail,
   trialNotificationEmails,
   sendInquiryAutoReplyEmail,
   type TrialApplicationMailData,
@@ -226,6 +227,33 @@ describe("関係者への一斉通知（宛先の秘匿）", () => {
     expect(mail.bcc).toEqual(members);
     expect(mail.to).toBe("noreply@nishioblaze.test");
     expect(JSON.stringify(mail.to)).not.toContain("a@example.com");
+  });
+});
+
+describe("buildTrialNoticeEmail", () => {
+  it("宛先は1人だけで、cc / bcc を使わない", () => {
+    const mail = buildTrialNoticeEmail("parent@example.com", { title: "持ち物", body: "本文" });
+    expect(mail.to).toBe("parent@example.com");
+    expect(mail.bcc).toBeUndefined();
+    expect(mail.from).toBe("noreply@nishioblaze.test");
+  });
+
+  it("件名にタイトルを使い、改行は潰す", () => {
+    const mail = buildTrialNoticeEmail("p@example.com", {
+      title: "持ち物\r\nBcc: evil@example.com",
+      body: "本文",
+    });
+    expect(mail.subject).toBe("【西尾ブレイズ】持ち物 Bcc: evil@example.com");
+  });
+
+  it("本文をエスケープし、改行を <br /> にする", () => {
+    const mail = buildTrialNoticeEmail("p@example.com", {
+      title: "<b>件名</b>",
+      body: "1行目\n<script>x</script>",
+    });
+    expect(mail.html).toContain("&lt;b&gt;件名&lt;/b&gt;");
+    expect(mail.html).toContain("1行目<br />&lt;script&gt;");
+    expect(mail.html).not.toContain("<script>");
   });
 });
 

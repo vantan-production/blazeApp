@@ -16,6 +16,7 @@ import {
   buildTrialApplicationConfirmationEmail,
   buildTrialApplicationAdminNotification,
   buildInquiryAutoReplyEmail,
+  buildTrialNoticeEmail,
   sendMailMessage,
   type MailMessage,
   type TrialApplicationMailData,
@@ -26,6 +27,7 @@ const TEMPLATE_KEYS = [
   "trial-confirmation",
   "trial-admin",
   "inquiry-reply",
+  "trial-notice",
 ] as const;
 type TemplateKey = (typeof TEMPLATE_KEYS)[number];
 
@@ -79,6 +81,13 @@ function buildAll(to: string): Array<{ key: TemplateKey; message: MailMessage }>
         email: to,
         name: "テスト 次郎",
         title: "疎通確認",
+        body: "これは配信確認用のテスト送信です。\n改行も確認します。",
+      }),
+    },
+    {
+      key: "trial-notice",
+      message: buildTrialNoticeEmail(to, {
+        title: "体験練習の持ち物について",
         body: "これは配信確認用のテスト送信です。\n改行も確認します。",
       }),
     },

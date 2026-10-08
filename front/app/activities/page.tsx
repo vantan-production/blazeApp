@@ -11,7 +11,6 @@ import { InquiryForm } from "@/components/features/activities/InquiryForm";
 import { PageTabs } from "@/components/features/activities/PageTabs";
 import { ScheduleCalendar } from "@/components/features/activities/ScheduleCalendar";
 import { PageShell } from "@/components/layout/PageShell";
-import { SiteFooter } from "@/components/layout/SiteFooter";
 import { PillHeading } from "@/components/ui/PillHeading";
 
 export const metadata: Metadata = {
@@ -69,7 +68,6 @@ export default function ActivitiesPage() {
 					<InquiryForm />
 				</section>
 			</main>
-			<SiteFooter />
 		</PageShell>
 	);
 }

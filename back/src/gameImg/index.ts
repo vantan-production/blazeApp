@@ -1,4 +1,4 @@
-// 試合風景API（6エンドポイント）
+// 試合風景API（8エンドポイント）
 
 import { Hono } from "hono";
 import { createCrudRouter } from "../shared/index.js";
@@ -11,6 +11,8 @@ import { update } from "./update.js";
 import { remove } from "./delete.js";
 import { updateConsent } from "./updateConsent.js";
 import { applyMosaic } from "./applyMosaic.js";
+import { getMosaic } from "./getMosaic.js";
+import { removeMosaic } from "./removeMosaic.js";
 
 const crudApp = createCrudRouter({
   basePath: "/api/gameImg",
@@ -33,12 +35,28 @@ app.patch(
   (c) => updateConsent(c),
 );
 
-// POST /api/gameImg/images/:imageId/mosaic — 指定領域にモザイクを適用（管理者のみ）
+// GET /api/gameImg/images/:imageId/mosaic — 適用中のモザイク領域と原本を取得（管理者のみ）
+app.get(
+  "/api/gameImg/images/:imageId/mosaic",
+  authToken,
+  requireAdmin,
+  (c) => getMosaic(c),
+);
+
+// POST /api/gameImg/images/:imageId/mosaic — モザイク領域を適用・再編集（管理者のみ）
 app.post(
   "/api/gameImg/images/:imageId/mosaic",
   authToken,
   requireAdmin,
   (c) => applyMosaic(c),
+);
+
+// DELETE /api/gameImg/images/:imageId/mosaic — モザイクを解除して原本に戻す（管理者のみ）
+app.delete(
+  "/api/gameImg/images/:imageId/mosaic",
+  authToken,
+  requireAdmin,
+  (c) => removeMosaic(c),
 );
 
 export default app;

@@ -601,6 +601,43 @@ export const components: JsonSchema = {
       },
     },
 
+    MosaicRegion: {
+      type: "object",
+      description: "モザイク領域（座標は原本のピクセル基準）",
+      required: ["x", "y", "width", "height"],
+      properties: {
+        x: { type: "integer", minimum: 0, description: "左上のX座標" },
+        y: { type: "integer", minimum: 0, description: "左上のY座標" },
+        width: { type: "integer", minimum: 1, description: "領域の幅" },
+        height: { type: "integer", minimum: 1, description: "領域の高さ" },
+        pixel_size: {
+          type: "integer",
+          minimum: 2,
+          maximum: 100,
+          description: "モザイクの粗さ（1マスのピクセル数）。省略時は 15",
+        },
+      },
+    },
+
+    MosaicState: {
+      type: "object",
+      description: "画像のモザイク状態（管理者のモザイク編集画面用）",
+      properties: {
+        id: uuidField("画像ID"),
+        url: { type: "string", description: "公開中の画像の署名付きURL（適用中は適用後の画像）" },
+        original_url: {
+          type: "string",
+          description: "編集のベースになる原本の署名付きURL（GET のみ）",
+        },
+        has_mosaic: { type: "boolean", description: "モザイク適用中か（GET のみ）" },
+        mosaic_regions: {
+          type: ["array", "null"],
+          items: { $ref: "#/components/schemas/MosaicRegion" },
+          description: "適用中の領域一覧（未適用なら GET は空配列、DELETE は null）",
+        },
+      },
+    },
+
     GameImg: {
       type: "object",
       description: "試合風景（1投稿に複数画像）",

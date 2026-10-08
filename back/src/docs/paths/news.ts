@@ -42,7 +42,12 @@ function createNewsTypePaths(basePath: string, tag: string, label: string): Path
             body: fields.body,
             category: fields.category,
             visibility: fields.visibility,
-            image: fields.image,
+            image: { ...fields.image, description: "サムネイル画像（任意）" },
+            images: {
+              type: "array",
+              items: { type: "string", format: "binary" },
+              description: "本文に載せる画像（任意・最大10枚）。詳細取得の images で返る",
+            },
           },
         }),
         responses: {

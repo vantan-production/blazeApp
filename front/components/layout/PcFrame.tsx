@@ -1,10 +1,26 @@
+"use client";
+
 import Image from "next/image";
+import { usePathname } from "next/navigation";
+import { adminRoutes } from "@/lib/admin/routes";
+import { memberRoutes } from "@/lib/members/routes";
+
+/** 公開ページ以外（管理画面・関係者ページ）では背景を敷かない */
+const hiddenPrefixes = [adminRoutes.top, memberRoutes.top];
 
 /**
  * PCで開いたときにSP幅（402px）のページの左右に敷く背景（Figma: pc-screen 1844:1107）。
  * クリーム色の上に選手写真を薄く重ね、ぼかしをかける。md未満では表示しない。
  */
 export function PcFrame() {
+	const pathname = usePathname();
+	if (
+		hiddenPrefixes.some(
+			(prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+		)
+	) {
+		return null;
+	}
 	return (
 		<div
 			aria-hidden

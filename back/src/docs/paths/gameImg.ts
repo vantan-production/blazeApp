@@ -32,7 +32,8 @@ export const gameImgPaths: Paths = {
     post: {
       tags: [TAG],
       summary: "試合風景投稿（admin 以上）",
-      description: "image を複数枚まとめて送信できる。初期の掲載同意ステータスは pending。",
+      description:
+        "image を複数枚まとめて送信できる。初期の掲載同意ステータスは pending。consent_confirmed=true のときは、投稿者が写っている全員の掲載OKを確認したものとして approved で保存し、すぐ一般公開する。",
       requestBody: formBody({
         type: "object",
         required: ["image"],
@@ -41,6 +42,11 @@ export const gameImgPaths: Paths = {
             type: "array",
             items: fields.image,
             description: "画像ファイル（複数可）",
+          },
+          consent_confirmed: {
+            type: "string",
+            enum: ["true", "false"],
+            description: "写っている全員が掲載OKであることを投稿者が確認したか。true なら approved で保存する",
           },
         },
       }),

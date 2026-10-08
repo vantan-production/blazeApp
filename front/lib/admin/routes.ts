@@ -97,3 +97,17 @@ export const adminNoticeDetailPath = (id: string) =>
 /** 関係者向けお知らせの編集のパス */
 export const adminNoticeEditPath = (id: string) =>
 	`${adminNoticeDetailPath(id)}/edit`;
+
+/** アンケート・出欠確認（管理側）の一覧・新規作成 */
+export const adminSurveyRoutes = {
+	list: "/admin/surveys",
+	new: "/admin/surveys/new",
+} as const;
+
+/** アンケートの詳細（集計結果・未回答者・削除）のパス */
+export const adminSurveyDetailPath = (id: string) =>
+	`${adminSurveyRoutes.list}/${id}`;
+
+/** アンケートの編集のパス */
+export const adminSurveyEditPath = (id: string) =>
+	`${adminSurveyDetailPath(id)}/edit`;

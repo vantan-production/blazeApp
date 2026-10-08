@@ -33,6 +33,11 @@ export const adminRoutes = {
 	// 体験申込者への連絡メール（送信履歴一覧・新規送信）
 	trialNotices: "/admin/trial-notices",
 	trialNoticesNew: "/admin/trial-notices/new",
+
+	// owner 専用: ユーザー管理・招待・アカウント削除依頼の承認
+	users: "/admin/users",
+	invitations: "/admin/invitations",
+	deleteRequests: "/admin/delete-requests",
 } as const;
 
 /** 問い合わせ詳細のパス */

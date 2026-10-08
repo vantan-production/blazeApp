@@ -6,6 +6,7 @@ import { useEffect, useRef } from "react";
 import { PillHeading } from "@/components/ui/PillHeading";
 import { routes } from "@/lib/routes";
 import { activityPlace, activitySlots } from "./data";
+import { toDateValue } from "./practiceDates";
 
 const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
 
@@ -101,8 +102,9 @@ export function PracticeDayDialog({ date, onClose }: Props) {
 						</div>
 					</dl>
 
+					{/* タップした練習日を体験希望日として選んだ状態でフォームを開く */}
 					<Link
-						href={routes.trial}
+						href={`${routes.trial}?date=${toDateValue(date)}`}
 						className="flex h-12 w-full items-center justify-center rounded-[1000px] bg-brand-yellow text-[18px] font-medium tracking-[1px]"
 					>
 						体験を申し込む

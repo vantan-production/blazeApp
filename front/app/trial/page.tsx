@@ -9,7 +9,9 @@ export const metadata: Metadata = {
 };
 
 /** ドッジボール体験の申し込みページ（Figma注記「体験フォームページが必要」に基づく仮デザイン） */
-export default function TrialPage() {
+export default async function TrialPage({ searchParams }: PageProps<"/trial">) {
+	// 活動内容ページのカレンダーから来たときは、タップした練習日（?date=YYYY-MM-DD）を初期選択にする
+	const { date } = await searchParams;
 	return (
 		<PageShell>
 			<main className="flex flex-col items-center gap-8 px-6 pt-6 pb-10">
@@ -22,7 +24,9 @@ export default function TrialPage() {
 					</p>
 				</ContentPanel>
 				<ContentPanel title="お申し込み" titleAs="h2">
-					<TrialForm />
+					<TrialForm
+						initialTrialDate={typeof date === "string" ? date : undefined}
+					/>
 				</ContentPanel>
 			</main>
 		</PageShell>

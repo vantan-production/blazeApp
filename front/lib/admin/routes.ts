@@ -7,6 +7,7 @@ export const adminRoutes = {
 	news: "/admin/news",
 	newsNew: "/admin/news/new",
 	media: "/admin/media",
+	mediaNew: "/admin/media/new",
 	achievements: "/admin/achievements",
 	achievementsNew: "/admin/achievements/new",
 	game: "/admin/game",
@@ -38,3 +39,7 @@ export const adminNewsDetailPath = (id: string) => `${adminRoutes.news}/${id}`;
 /** 実績詳細のパス */
 export const adminAchievementDetailPath = (id: string) =>
 	`${adminRoutes.achievements}/${id}`;
+
+/** メディア情報詳細のパス */
+export const adminMediaDetailPath = (id: string) =>
+	`${adminRoutes.media}/${id}`;

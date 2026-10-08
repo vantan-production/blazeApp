@@ -70,7 +70,7 @@ export function AdminTextField(props: Props) {
 				aria-invalid={error ? true : undefined}
 				aria-describedby={describedBy}
 				aria-label={ariaLabel}
-				className={`${inputBaseClass} ${boxClass[tone]} h-[202px] resize-none py-2 ${adornment ? "pb-10" : ""}`}
+				className={`${inputBaseClass} ${boxClass[tone]} h-[202px] resize-none py-2 ${adornment ? "pb-14" : ""}`}
 				{...textareaProps}
 			/>
 		);

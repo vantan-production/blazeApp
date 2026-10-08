@@ -30,3 +30,6 @@ export const membersTopPath = "/members";
 /** ログイン後の行き先。member は関係者ページ、admin / owner は管理画面TOP */
 export const homePathForRole = (role: string) =>
 	role === "member" ? membersTopPath : adminRoutes.top;
+
+/** ニュース詳細のパス */
+export const adminNewsDetailPath = (id: string) => `${adminRoutes.news}/${id}`;

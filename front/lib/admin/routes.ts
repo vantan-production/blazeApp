@@ -38,6 +38,10 @@ export const adminRoutes = {
 	users: "/admin/users",
 	invitations: "/admin/invitations",
 	deleteRequests: "/admin/delete-requests",
+
+	// 関係者向けの資料庫（規約・年間スケジュールなどの配布ファイル）
+	documents: "/admin/documents",
+	documentsNew: "/admin/documents/new",
 } as const;
 
 /** 問い合わせ詳細のパス */

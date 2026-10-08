@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { z } from "zod";
@@ -8,6 +9,7 @@ import {
 	AdminFieldError,
 	AdminTextField,
 } from "@/components/admin/AdminTextField";
+import { fetchHomePath } from "@/lib/admin/account";
 import type { ApiSuccess } from "@/lib/admin/api";
 import { type FieldErrors, validateForm } from "@/lib/admin/form";
 import { adminRoutes } from "@/lib/admin/routes";
@@ -43,6 +45,8 @@ export function LoginForm() {
 	const [errors, setErrors] = useState<FieldErrors<LoginValues>>({});
 	const [submitError, setSubmitError] = useState<string | null>(null);
 	const [pending, setPending] = useState(false);
+	// 403（削除から30日以内のアカウント）のとき、復旧画面への案内を出す
+	const [recoverable, setRecoverable] = useState(false);
 
 	const handleChange =
 		(key: keyof LoginValues) => (event: React.ChangeEvent<HTMLInputElement>) =>
@@ -51,6 +55,7 @@ export function LoginForm() {
 	const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
 		event.preventDefault();
 		setSubmitError(null);
+		setRecoverable(false);
 
 		const result = validateForm(loginSchema, values);
 		if (!result.success) {
@@ -70,10 +75,12 @@ export function LoginForm() {
 					skipAuthRedirect: true,
 				},
 			);
-			router.replace(adminRoutes.top);
+			// member は関係者ページ、admin / owner は管理画面TOPへ
+			router.replace(await fetchHomePath());
 			router.refresh();
 		} catch (error) {
 			setSubmitError(loginErrorMessage(error));
+			setRecoverable(error instanceof ApiError && error.status === 403);
 			setPending(false);
 		}
 	};
@@ -105,6 +112,14 @@ export function LoginForm() {
 				/>
 			</div>
 			{submitError && <AdminFieldError message={submitError} />}
+			{recoverable && (
+				<Link
+					href={adminRoutes.accountRecover}
+					className="text-[14px] leading-[22px] tracking-[1px] text-brand-blue underline transition-opacity hover:opacity-80"
+				>
+					アカウントを元に戻す
+				</Link>
+			)}
 			<AdminButton type="submit" disabled={pending}>
 				{pending ? "ログイン中…" : "ログイン"}
 			</AdminButton>

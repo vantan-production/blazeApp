@@ -3,6 +3,7 @@ import {
 	type Invitation,
 	RegisterForm,
 } from "@/components/admin/login/RegisterForm";
+import { adminRoutes } from "@/lib/admin/routes";
 import { API_BASE_URL } from "@/lib/apiClient";
 
 export const metadata = {
@@ -58,7 +59,7 @@ export default async function AdminRegisterPage({
 		: null;
 
 	return (
-		<AdminAuthCard>
+		<AdminAuthCard backHref={adminRoutes.login}>
 			<RegisterForm
 				invitationToken={verified?.ok ? invitationToken : null}
 				invitation={verified?.ok ? verified.invitation : null}

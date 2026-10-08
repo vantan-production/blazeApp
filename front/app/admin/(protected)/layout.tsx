@@ -1,16 +1,22 @@
+import { redirect } from "next/navigation";
+import { adminRoutes, membersTopPath } from "@/lib/admin/routes";
+import { getCurrentUser } from "@/lib/auth";
+
 /**
  * ログインが必要な管理画面のレイアウト。
- * 本来は getCurrentUser（lib/auth.ts）で未ログインを判定し、管理画面の入口（ログイン/新規登録）へリダイレクトする。
- *
- * TODO: 確認のため当面はログインなしでも管理画面を表示する。公開前に getCurrentUser でのリダイレクトを戻す
- *   元のコード:
- *     const user = await getCurrentUser();
- *     if (!user) {
- *       redirect(adminRoutes.welcome);
- *     }
+ * lib/auth.ts の requireAuth は公開サイト用の /login に飛ばすため、ここでは getCurrentUser を直接使い
+ * 未ログインなら管理画面のログイン画面へ、member なら関係者ページへリダイレクトする。
  */
-export default function ProtectedAdminLayout({
+export default async function ProtectedAdminLayout({
 	children,
 }: Readonly<{ children: React.ReactNode }>) {
+	const user = await getCurrentUser();
+	if (!user) {
+		redirect(adminRoutes.login);
+	}
+	// member は管理用の API を使えない（403）ため、関係者ページへ移す
+	if (user.role === "member") {
+		redirect(membersTopPath);
+	}
 	return children;
 }

@@ -1,0 +1,43 @@
+{
+	"version": "0.0.1",
+	"configurations": [
+		{
+			"name": "front",
+			"runtimeExecutable": "npm",
+			"runtimeArgs": [
+				"--prefix",
+				"front",
+				"run",
+				"dev"
+			],
+			"port": 3000
+		},
+		{
+			"name": "e2e-back",
+			"runtimeExecutable": "sh",
+			"runtimeArgs": [
+				"-c",
+				"cd /Users/nanamomi/Documents/dev/blazeApp-wt/e2e-back/back && env -i PATH=\"$PATH\" HOME=\"$HOME\" NODE_ENV=test PORT=8090 DATABASE_URL=postgres://e2e:e2e@localhost:5435/e2e REDIS_URL=redis://localhost:6382 AWS_REGION=ap-northeast-1 AWS_ACCESS_KEY_ID=e2eaccess AWS_SECRET_ACCESS_KEY=e2esecret123 AWS_S3_BUCKET=e2e-bucket AWS_ENDPOINT_URL_S3=http://localhost:9100 CORS_ORIGIN=http://localhost:3100 FRONTEND_URL=http://localhost:3100 JWT_SECRET=e2e-local-only-secret-0123456789abcdef npx tsx src/server.ts"
+			],
+			"port": 8090
+		},
+		{
+			"name": "e2e-public",
+			"runtimeExecutable": "sh",
+			"runtimeArgs": [
+				"-c",
+				"cd /Users/nanamomi/Documents/dev/blazeApp-wt/public-pages/front && NEXT_PUBLIC_API_BASE_URL=http://localhost:8090 npx next dev -p 3100"
+			],
+			"port": 3100
+		},
+		{
+			"name": "e2e-front",
+			"runtimeExecutable": "sh",
+			"runtimeArgs": [
+				"-c",
+				"cd /Users/nanamomi/Documents/dev/blazeApp-wt/e2e-front/front && NEXT_PUBLIC_API_BASE_URL=http://localhost:8090 npx next dev -p 3100"
+			],
+			"port": 3100
+		}
+	]
+}

@@ -54,8 +54,34 @@ type Status = "idle" | "sending" | "done" | "error";
 const inputClass =
 	"w-full rounded-[8px] border border-brand-blue/30 bg-white px-3 py-2 text-[16px] text-brand-black";
 
-/** 今日は外部から変化を通知しないため購読は不要 */
-const subscribeNothing = () => () => {};
+/**
+ * 日付が変わったら React に知らせる。フォームを開いたまま日をまたいでも、
+ * 今日になった練習日を選択肢から外せるように、次の0時とタブに戻ったときに再取得させる
+ */
+function subscribeToday(onChange: () => void): () => void {
+	let timer: ReturnType<typeof setTimeout>;
+	const scheduleMidnight = () => {
+		const now = new Date();
+		const nextMidnight = new Date(
+			now.getFullYear(),
+			now.getMonth(),
+			now.getDate() + 1,
+		);
+		timer = setTimeout(() => {
+			onChange();
+			scheduleMidnight();
+		}, nextMidnight.getTime() - now.getTime());
+	};
+	const onVisibilityChange = () => {
+		if (document.visibilityState === "visible") onChange();
+	};
+	scheduleMidnight();
+	document.addEventListener("visibilitychange", onVisibilityChange);
+	return () => {
+		clearTimeout(timer);
+		document.removeEventListener("visibilitychange", onVisibilityChange);
+	};
+}
 
 /** 同じ日なら同じ値を返す（useSyncExternalStore のスナップショットとして安定させる） */
 function getTodayKey(): string {
@@ -82,7 +108,7 @@ export function TrialForm({ initialTrialDate }: Props) {
 	const [motivation, setMotivation] = useState("");
 	// 体験希望日は練習日からだけ選べるようにする。今日はビルド時と閲覧時でずれるため、クライアントでのみ取得する（サーバーでは null）
 	const todayKey = useSyncExternalStore(
-		subscribeNothing,
+		subscribeToday,
 		getTodayKey,
 		() => null,
 	);

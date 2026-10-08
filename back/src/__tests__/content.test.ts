@@ -60,6 +60,56 @@ describe("GET /api/news-post/:id — admin_name", () => {
   });
 });
 
+// --- 本文の画像 ---
+
+// 1x1 透明PNG（実データなのでsharpでの圧縮処理を通せる）
+const PNG_1X1 = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
+  "base64",
+);
+const pngFile = (name: string) => new File([PNG_1X1], name, { type: "image/png" });
+
+describe("POST /api/news-post — 本文の画像", () => {
+  it("images で送った画像が詳細の images に返り、サムネイルとは別に保存される", async () => {
+    const cookie = await registerAndLogin("Owner", `bodyimg${D}`);
+    const fd = new FormData();
+    fd.append("title", "画像付きタイトル");
+    fd.append("body", "画像付きの本文です。");
+    fd.append("image", pngFile("thumb.png"));
+    fd.append("images", pngFile("a.png"));
+    fd.append("images", pngFile("b.png"));
+    const res = await app.request("/api/news-post", {
+      method: "POST",
+      headers: { Cookie: cookie, Origin: ORIGIN },
+      body: fd,
+    });
+    expect(res.status).toBe(200);
+    const created = (await res.json()) as { data: { id: string; img: string | null } };
+    expect(created.data.img).toBeTruthy();
+
+    const detail = (await (await app.request(`/api/news-post/${created.data.id}`)).json()) as {
+      data: { images: { id: string; url: string }[] };
+    };
+    expect(detail.data.images).toHaveLength(2);
+  });
+
+  it("本文の画像が11枚以上なら400で、投稿は作られない", async () => {
+    const cookie = await registerAndLogin("Owner", `bodyimg2${D}`);
+    const fd = new FormData();
+    fd.append("title", "枚数超過タイトル");
+    fd.append("body", "枚数超過の本文です。");
+    for (let i = 0; i < 11; i++) fd.append("images", pngFile(`${i}.png`));
+    const res = await app.request("/api/news-post", {
+      method: "POST",
+      headers: { Cookie: cookie, Origin: ORIGIN },
+      body: fd,
+    });
+    expect(res.status).toBe(400);
+    const rows = await testPool.query("SELECT id FROM news");
+    expect(rows.rowCount).toBe(0);
+  });
+});
+
 // --- 書き込み権限 ---
 
 describe("ニュース書き込み権限", () => {

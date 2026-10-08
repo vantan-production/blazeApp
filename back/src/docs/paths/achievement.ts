@@ -41,6 +41,11 @@ export const achievementPaths: Paths = {
           image: fields.image,
           movie: fields.movie,
           file: fields.file,
+          images: {
+            type: "array",
+            items: { type: "string", format: "binary" },
+            description: "本文に載せる画像（任意・最大10枚）。詳細取得の images で返る",
+          },
         },
       }),
       responses: {

@@ -8,6 +8,7 @@ export const adminRoutes = {
 	newsNew: "/admin/news/new",
 	media: "/admin/media",
 	achievements: "/admin/achievements",
+	achievementsNew: "/admin/achievements/new",
 	game: "/admin/game",
 	inquiry: "/admin/inquiry",
 	// 自分のアカウント（プロフィール・通知設定・ログアウト・削除）
@@ -33,3 +34,7 @@ export const homePathForRole = (role: string) =>
 
 /** ニュース詳細のパス */
 export const adminNewsDetailPath = (id: string) => `${adminRoutes.news}/${id}`;
+
+/** 実績詳細のパス */
+export const adminAchievementDetailPath = (id: string) =>
+	`${adminRoutes.achievements}/${id}`;

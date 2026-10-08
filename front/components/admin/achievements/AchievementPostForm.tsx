@@ -1,6 +1,8 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { AdminPostForm } from "@/components/admin/AdminPostForm";
+import { adminRoutes } from "@/lib/admin/routes";
 
 // back/src/utils/media.ts の許可拡張子と同じ一覧。
 // back は image / movie を拡張子で検査するため、MIME タイプ（RAW や一部の HEIC では空になる）ではなく拡張子で振り分ける
@@ -30,8 +32,10 @@ const attachmentFieldOf = (file: File) => {
 	return "file";
 };
 
-/** 実績の投稿フォーム（Figma: achievements 2034:1621）。POST /api/achievement に送信する */
+/** 実績の投稿フォーム（Figma: achievements 2034:1621）。POST /api/achievement に送信し、成功したら一覧へ戻る */
 export function AchievementPostForm() {
+	const router = useRouter();
+
 	return (
 		<AdminPostForm
 			endpoint="/api/achievement"
@@ -40,6 +44,8 @@ export function AchievementPostForm() {
 				placeholder: "ファイルをアップロード",
 			}}
 			successMessage="実績を投稿しました。"
+			bodyImages={{ name: "images", accept: "image/*" }}
+			onSuccess={() => router.push(adminRoutes.achievements)}
 		/>
 	);
 }

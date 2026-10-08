@@ -12,6 +12,7 @@ import { createReply } from "./reply.js";
 import { deleteReply } from "./deleteReply.js";
 import { clientIp } from "../utils/monitoring.js";
 import { createFormRateLimiter } from "../utils/formRateLimit.js";
+import { requireUuidParams } from "../utils/uuidParam.js";
 
 type Variables = {
   user: typeof admin.$inferSelect;
@@ -37,18 +38,18 @@ const inquiryLimiter =
 app.get("/api/inquiry", authToken, requireAdmin, (c) => getAll(c));
 
 // GET /api/inquiry/:id — 特定の問い合わせ内容を取得（admin以上）
-app.get("/api/inquiry/:id", authToken, requireAdmin, (c) => getById(c));
+app.get("/api/inquiry/:id", authToken, requireAdmin, requireUuidParams, (c) => getById(c));
 
 // POST /api/inquiry — お客様からの問い合わせ（認証不要）
 app.post("/api/inquiry", inquiryLimiter, (c) => create(c));
 
 // PATCH /api/inquiry/:id/status — 対応ステータスの更新（admin以上）
-app.patch("/api/inquiry/:id/status", authToken, requireAdmin, (c) => updateStatus(c));
+app.patch("/api/inquiry/:id/status", authToken, requireAdmin, requireUuidParams, (c) => updateStatus(c));
 
 // POST /api/inquiry/:id/reply — 問い合わせへの返信（admin以上）
-app.post("/api/inquiry/:id/reply", authToken, requireAdmin, (c) => createReply(c));
+app.post("/api/inquiry/:id/reply", authToken, requireAdmin, requireUuidParams, (c) => createReply(c));
 
 // DELETE /api/inquiry/:id/reply/:reply_id — 返信を削除（admin以上）
-app.delete("/api/inquiry/:id/reply/:reply_id", authToken, requireAdmin, (c) => deleteReply(c));
+app.delete("/api/inquiry/:id/reply/:reply_id", authToken, requireAdmin, requireUuidParams, (c) => deleteReply(c));
 
 export default app;

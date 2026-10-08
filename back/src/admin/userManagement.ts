@@ -6,6 +6,7 @@ import { Hono, z, eq } from "../index.js";
 import { isNull } from "drizzle-orm";
 import { db, admin, authToken } from "../shared/index.js";
 import { requireOwner } from "../db/roleGuard.js";
+import { requireUuidParams } from "../utils/uuidParam.js";
 
 type Variables = { user: typeof admin.$inferSelect };
 
@@ -29,7 +30,7 @@ app.get("/api/admin/users", authToken, requireOwner, async (c) => {
 });
 
 // ロール変更
-app.patch("/api/admin/users/:userId/role", authToken, requireOwner, async (c) => {
+app.patch("/api/admin/users/:userId/role", authToken, requireOwner, requireUuidParams, async (c) => {
   const userId = c.req.param("userId");
   if (!userId) {
     return c.json({ success: false, errors: "ユーザーIDが指定されていません。" }, 400);

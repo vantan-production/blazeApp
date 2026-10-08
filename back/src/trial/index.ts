@@ -8,6 +8,7 @@ import { getById } from "./getById.js";
 import { create } from "./create.js";
 import { clientIp } from "../utils/monitoring.js";
 import { createFormRateLimiter } from "../utils/formRateLimit.js";
+import { requireUuidParams } from "../utils/uuidParam.js";
 
 type Variables = {
   user: typeof admin.$inferSelect;
@@ -30,7 +31,7 @@ const trialLimiter =
 app.get("/api/trial-application", authToken, requireAdmin, (c) => getAll(c));
 
 // GET /api/trial-application/:id — 特定の体験申し込み内容を取得（admin以上）
-app.get("/api/trial-application/:id", authToken, requireAdmin, (c) => getById(c));
+app.get("/api/trial-application/:id", authToken, requireAdmin, requireUuidParams, (c) => getById(c));
 
 // POST /api/trial-application — 体験申し込み（認証不要）
 app.post("/api/trial-application", trialLimiter, (c) => create(c));

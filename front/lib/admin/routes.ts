@@ -23,16 +23,11 @@ export const adminRoutes = {
 	resetPassword: "/admin/reset-password",
 	// 削除から30日以内のアカウントを元に戻す
 	accountRecover: "/admin/account-recover",
-
 	// 体験申込者への連絡メール（送信履歴一覧・新規送信）
 	trialNotices: "/admin/trial-notices",
 	trialNoticesNew: "/admin/trial-notices/new",
 	// 体験申し込みの一覧（詳細は adminTrialApplicationDetailPath）
 	trialApplications: "/admin/trial-applications",
-
-	// 体験申込者への連絡メール（送信履歴一覧・新規送信）
-	trialNotices: "/admin/trial-notices",
-	trialNoticesNew: "/admin/trial-notices/new",
 
 	// owner 専用: ユーザー管理・招待・アカウント削除依頼の承認
 	users: "/admin/users",

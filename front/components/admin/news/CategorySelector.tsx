@@ -33,8 +33,6 @@ export function CategorySelector({ value, onChange }: Props) {
 	useEffect(() => {
 		apiClient<ApiSuccess<{ category: string; count: number }[]>>(
 			"/api/news-post/categories",
-			// 当面はログインなしでも管理画面を表示するため、401 でもログインへ飛ばさない
-			{ skipAuthRedirect: true },
 		)
 			.then((res) => {
 				if (res.data.length > 0) setOptions(res.data.map((r) => r.category));

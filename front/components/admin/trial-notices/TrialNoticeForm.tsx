@@ -82,8 +82,6 @@ export function TrialNoticeForm() {
 					"/api/trial-notices/candidates",
 					{
 						params: trialDate ? { trial_date: trialDate } : undefined,
-						// 当面はログインなしでも管理画面を表示するため、401 でも公開サイトの /login へ飛ばさない
-						skipAuthRedirect: true,
 					},
 				);
 				if (!ignore) setCandidates(res.data);

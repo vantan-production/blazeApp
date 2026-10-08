@@ -27,8 +27,6 @@ export function TrialNoticeDetail({ noticeId }: Props) {
 			try {
 				const res = await apiClient<ApiSuccess<TrialNoticeDetailData>>(
 					`/api/trial-notices/${noticeId}`,
-					// 当面はログインなしでも管理画面を表示するため、401 でも公開サイトの /login へ飛ばさない
-					{ skipAuthRedirect: true },
 				);
 				if (!ignore) setNotice(res.data);
 			} catch (err) {

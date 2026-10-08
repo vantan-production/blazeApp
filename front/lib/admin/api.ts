@@ -5,6 +5,7 @@
 //  - back のエラーレスポンス（{ success: false, errors }）から画面に出す文言を取り出す
 
 import { API_BASE_URL, ApiError } from "../apiClient";
+import { adminRoutes } from "./routes";
 
 /** back の一覧APIが返すページネーション */
 export type Pagination = {
@@ -55,8 +56,10 @@ export const sendFormData = async <T>(
 	const body: unknown = await response.json().catch(() => null);
 
 	if (!response.ok) {
-		// TODO: 確認のため当面はログインなしでも管理画面を表示するので、401 でもログイン画面へ飛ばさない。
-		// 公開前に「401 なら window.location.href = adminRoutes.login」のリダイレクトを戻す
+		// 未ログイン・セッション切れは管理画面のログインへ戻す
+		if (response.status === 401 && typeof window !== "undefined") {
+			window.location.href = adminRoutes.login;
+		}
 		throw new ApiError(
 			pickErrorMessage(body) ?? `API Error: ${response.statusText}`,
 			response.status,
@@ -98,8 +101,10 @@ export const sendJson = async <T>(
 	const body: unknown = await response.json().catch(() => null);
 
 	if (!response.ok) {
-		// TODO: 確認のため当面はログインなしでも管理画面を表示するので、401 でもログイン画面へ飛ばさない。
-		// 公開前に「401 なら window.location.href = adminRoutes.login」のリダイレクトを戻す
+		// 未ログイン・セッション切れは管理画面のログインへ戻す
+		if (response.status === 401 && typeof window !== "undefined") {
+			window.location.href = adminRoutes.login;
+		}
 		throw new ApiResponseError(
 			pickErrorMessage(body) ?? `API Error: ${response.statusText}`,
 			response.status,
@@ -115,7 +120,7 @@ export const sendJson = async <T>(
  * back 由来の文言があればそれを使い、無ければ fallback を返す。
  */
 export const toErrorMessage = (error: unknown, fallback: string): string => {
-	// 当面は未ログインでも管理画面を開けるため、401 はリダイレクトせずに文言で知らせる
+	// 401 はログイン画面へ移る前に一瞬出ることがあるため、ログインが必要なことを伝える
 	if (error instanceof ApiError && error.status === 401) {
 		return "ログインが必要です。ログインしてからもう一度お試しください。";
 	}

@@ -5,6 +5,7 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import {
   buildPasswordResetEmail,
+  buildInvitationEmail,
   buildTrialApplicationConfirmationEmail,
   buildTrialApplicationAdminNotification,
   buildInquiryAutoReplyEmail,
@@ -78,6 +79,27 @@ describe("buildPasswordResetEmail", () => {
     expect(buildPasswordResetEmail("admin@example.com", "t").from).toBe(
       "onboarding@resend.dev",
     );
+  });
+});
+
+describe("buildInvitationEmail", () => {
+  it("宛先・件名・送信元を設定する", () => {
+    const mail = buildInvitationEmail("new@example.com", "raw-token", "admin");
+    expect(mail.to).toBe("new@example.com");
+    expect(mail.from).toBe("noreply@nishioblaze.test");
+    expect(mail.subject).toBe("【西尾ブレイズ】アカウント作成のご案内");
+  });
+
+  it("管理画面の新規登録ページ（/admin/register）へのリンクを含む", () => {
+    const mail = buildInvitationEmail("new@example.com", "raw-token", "member");
+    expect(mail.html).toContain("https://nishioblaze.test/admin/register?token=raw-token");
+    // 旧パス（/register 直下）はフロントに存在しないので使わない
+    expect(mail.html).not.toContain("https://nishioblaze.test/register?");
+  });
+
+  it("トークンをURLエンコードする", () => {
+    const mail = buildInvitationEmail("new@example.com", "a+b/c=d&e", "admin");
+    expect(mail.html).toContain("token=a%2Bb%2Fc%3Dd%26e");
   });
 });
 

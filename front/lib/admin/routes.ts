@@ -42,6 +42,9 @@ export const adminRoutes = {
 	// 関係者向けの資料庫（規約・年間スケジュールなどの配布ファイル）
 	documents: "/admin/documents",
 	documentsNew: "/admin/documents/new",
+
+	// 関係者（member）から届いた投稿申請の承認
+	submissions: "/admin/submissions",
 } as const;
 
 /** 問い合わせ詳細のパス */

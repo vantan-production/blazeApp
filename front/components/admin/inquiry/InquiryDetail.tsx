@@ -63,18 +63,16 @@ export function InquiryDetail({ inquiryId }: Props) {
 	const [confirmOpen, setConfirmOpen] = useState(false);
 	const [updating, setUpdating] = useState(false);
 
-	const load = useCallback(async () => {
-		try {
-			const res = await apiClient<ApiSuccess<InquiryDetailData>>(
-				`/api/inquiry/${inquiryId}`,
-				// 当面はログインなしでも管理画面を表示するため、401 でも公開サイトの /login へ飛ばさない
-				{ skipAuthRedirect: true },
-			);
-			setInquiry(res.data);
-		} catch (err) {
-			setError(toErrorMessage(err, "問い合わせの取得に失敗しました。"));
-		}
-	}, [inquiryId]);
+	// setState は取得後だけで行う（effect から同期的に呼ばない: react-hooks/set-state-in-effect）
+	const load = useCallback(
+		() =>
+			apiClient<ApiSuccess<InquiryDetailData>>(`/api/inquiry/${inquiryId}`)
+				.then((res) => setInquiry(res.data))
+				.catch((err) =>
+					setError(toErrorMessage(err, "問い合わせの取得に失敗しました。")),
+				),
+		[inquiryId],
+	);
 
 	useEffect(() => {
 		load();
@@ -86,7 +84,6 @@ export function InquiryDetail({ inquiryId }: Props) {
 			await apiClient(`/api/inquiry/${inquiryId}/status`, {
 				method: "PATCH",
 				body: JSON.stringify({ status }),
-				skipAuthRedirect: true,
 			});
 			setInquiry((prev) => (prev ? { ...prev, status } : prev));
 			showToast(

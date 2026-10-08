@@ -14,30 +14,35 @@ export function TrialNoticeList() {
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 
-	const load = useCallback(async (nextPage: number) => {
-		setLoading(true);
-		setError(null);
-		try {
-			const res = await apiClient<ApiSuccess<Item[]>>("/api/trial-notices", {
+	// setState は取得後だけで行う（effect から同期的に呼ばない: react-hooks/set-state-in-effect）
+	const fetchPage = useCallback(
+		(nextPage: number) =>
+			apiClient<ApiSuccess<Item[]>>("/api/trial-notices", {
 				params: { page: nextPage },
-				// 当面はログインなしでも管理画面を表示するため、401 でも公開サイトの /login へ飛ばさない
-				skipAuthRedirect: true,
-			});
-			setNotices((prev) =>
-				nextPage === 1 ? res.data : [...prev, ...res.data],
-			);
-			setPage(nextPage);
-			setTotalPages(res.pagination?.totalPages ?? 1);
-		} catch (err) {
-			setError(toErrorMessage(err, "送信履歴の取得に失敗しました。"));
-		} finally {
-			setLoading(false);
-		}
-	}, []);
+			})
+				.then((res) => {
+					setNotices((prev) =>
+						nextPage === 1 ? res.data : [...prev, ...res.data],
+					);
+					setPage(nextPage);
+					setTotalPages(res.pagination?.totalPages ?? 1);
+					setError(null);
+				})
+				.catch((err) => {
+					setError(toErrorMessage(err, "送信履歴の取得に失敗しました。"));
+				})
+				.finally(() => setLoading(false)),
+		[],
+	);
 
 	useEffect(() => {
-		load(1);
-	}, [load]);
+		fetchPage(1);
+	}, [fetchPage]);
+
+	const loadMore = () => {
+		setLoading(true);
+		fetchPage(page + 1);
+	};
 
 	if (error) {
 		return <p className="text-[14px] text-brand-white">{error}</p>;
@@ -60,7 +65,7 @@ export function TrialNoticeList() {
 			{!loading && page < totalPages && (
 				<button
 					type="button"
-					onClick={() => load(page + 1)}
+					onClick={loadMore}
 					className="text-[14px] leading-[22px] tracking-[1px] text-brand-white underline"
 				>
 					もっと見る

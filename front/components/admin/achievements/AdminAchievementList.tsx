@@ -17,29 +17,35 @@ export function AdminAchievementList() {
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 
-	const load = useCallback(async (nextPage: number) => {
-		setLoading(true);
-		setError(null);
-		try {
-			const res = await apiClient<ApiSuccess<AchievementPost[]>>(
-				"/api/achievement",
-				{
-					params: { page: nextPage },
-				},
-			);
-			setPosts((prev) => (nextPage === 1 ? res.data : [...prev, ...res.data]));
-			setPage(nextPage);
-			setTotalPages(res.pagination?.totalPages ?? 1);
-		} catch {
-			setError("実績の取得に失敗しました。");
-		} finally {
-			setLoading(false);
-		}
-	}, []);
+	// setState は取得後だけで行う（effect から同期的に呼ばない: react-hooks/set-state-in-effect）
+	const fetchPage = useCallback(
+		(nextPage: number) =>
+			apiClient<ApiSuccess<AchievementPost[]>>("/api/achievement", {
+				params: { page: nextPage },
+			})
+				.then((res) => {
+					setPosts((prev) =>
+						nextPage === 1 ? res.data : [...prev, ...res.data],
+					);
+					setPage(nextPage);
+					setTotalPages(res.pagination?.totalPages ?? 1);
+					setError(null);
+				})
+				.catch(() => {
+					setError("実績の取得に失敗しました。");
+				})
+				.finally(() => setLoading(false)),
+		[],
+	);
 
 	useEffect(() => {
-		load(1);
-	}, [load]);
+		fetchPage(1);
+	}, [fetchPage]);
+
+	const loadMore = () => {
+		setLoading(true);
+		fetchPage(page + 1);
+	};
 
 	if (error) {
 		return <p className="text-[14px] text-brand-white">{error}</p>;
@@ -72,7 +78,7 @@ export function AdminAchievementList() {
 			{!loading && page < totalPages && (
 				<button
 					type="button"
-					onClick={() => load(page + 1)}
+					onClick={loadMore}
 					className="text-[14px] leading-[22px] tracking-[1px] text-brand-white underline"
 				>
 					もっと見る

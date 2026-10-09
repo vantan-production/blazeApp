@@ -18,10 +18,13 @@ type Props = {
 function PhotoFrame({
 	photo,
 	className,
+	imageClassName = "",
 	children,
 }: {
 	photo: GalleryPhoto;
 	className: string;
+	/** 枠の中で写真をずらすときに指定する（左右から覗かせる写真で、見えている部分に写真の中央を出すため） */
+	imageClassName?: string;
 	/** 写真の上に重ねる要素 */
 	children?: React.ReactNode;
 }) {
@@ -30,13 +33,15 @@ function PhotoFrame({
 			className={`overflow-hidden rounded-[12px] border-4 border-brand-white ${className}`}
 		>
 			<div className="relative size-full">
-				<Image
-					src={photo.src}
-					alt={photo.alt}
-					fill
-					sizes="70vw"
-					className="object-cover"
-				/>
+				<div className={`absolute inset-0 ${imageClassName}`}>
+					<Image
+						src={photo.src}
+						alt={photo.alt}
+						fill
+						sizes="70vw"
+						className="object-cover"
+					/>
+				</div>
 				{children}
 			</div>
 		</div>
@@ -71,6 +76,9 @@ function PhotoIndicator({ index, count }: { index: number; count: number }) {
 /**
  * 活動写真のカルーセル（Figma: gallery 1250:344）。
  * 中央の写真を大きく、前後の写真を画面の左右端から覗かせる。端の写真を押すとその写真が中央に来る。
+ * 最初と最後はつなげない（1枚目では左、最後の写真では右に何も出さない）。
+ * 覗かせる写真は見えている幅が狭く、そのままだと写真の端（余白など）しか見えないため、
+ * 写真の中央が見えている部分に来るようにずらして表示する。
  * 寸法はFigmaの402px幅を基準に cqw（このギャラリー幅に対する%）へ換算している。
  * 画面端まで写真を出すため、親の左右余白（px-6）を打ち消して全幅に広げる。
  * はみ出た写真は overflow-clip で切る（overflow-hidden だと端のボタンにフォーカスした時に中身がスクロールしてずれる）。
@@ -80,10 +88,10 @@ export function ActivityGallery({ photos, label = "活動写真" }: Props) {
 	const count = photos.length;
 	if (count === 0) return null;
 
-	const at = (diff: number) => photos[(index + diff + count) % count];
+	const hasPrev = index > 0;
+	const hasNext = index < count - 1;
 	const move = (diff: number) =>
-		setIndex((prev) => (prev + diff + count) % count);
-	const hasSides = count > 1;
+		setIndex((prev) => Math.min(Math.max(prev + diff, 0), count - 1));
 
 	return (
 		<div className="@container -mx-6 w-[calc(100%+48px)] self-stretch overflow-clip">
@@ -92,27 +100,37 @@ export function ActivityGallery({ photos, label = "活動写真" }: Props) {
 				aria-label={label}
 				className="relative flex h-[72.39cqw] items-center justify-center"
 			>
-				{hasSides && (
+				{/* 枠（幅59.7cqw）のうち画面に見えるのは内側の 59.7 - 51.24 = 8.46cqw だけ。
+				    写真の中央をその中央に合わせるため、写真を 59.7/2 - 8.46/2 = 25.62cqw 内側へずらす */}
+				{hasPrev && (
 					<button
 						type="button"
 						onClick={() => move(-1)}
 						aria-label="前の写真"
 						className="absolute top-1/2 left-[-51.24cqw] -translate-y-1/2 cursor-pointer"
 					>
-						<PhotoFrame photo={at(-1)} className="h-[39.8cqw] w-[59.7cqw]" />
+						<PhotoFrame
+							photo={photos[index - 1]}
+							className="h-[39.8cqw] w-[59.7cqw]"
+							imageClassName="translate-x-[25.62cqw]"
+						/>
 					</button>
 				)}
-				<PhotoFrame photo={at(0)} className="h-[46.27cqw] w-[69.65cqw]">
-					{hasSides && <PhotoIndicator index={index} count={count} />}
+				<PhotoFrame photo={photos[index]} className="h-[46.27cqw] w-[69.65cqw]">
+					{count > 1 && <PhotoIndicator index={index} count={count} />}
 				</PhotoFrame>
-				{hasSides && (
+				{hasNext && (
 					<button
 						type="button"
 						onClick={() => move(1)}
 						aria-label="次の写真"
 						className="absolute top-1/2 right-[-51.24cqw] -translate-y-1/2 cursor-pointer"
 					>
-						<PhotoFrame photo={at(1)} className="h-[39.8cqw] w-[59.7cqw]" />
+						<PhotoFrame
+							photo={photos[index + 1]}
+							className="h-[39.8cqw] w-[59.7cqw]"
+							imageClassName="-translate-x-[25.62cqw]"
+						/>
 					</button>
 				)}
 			</section>

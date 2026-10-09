@@ -1,9 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
 import { type ApiSuccess, toErrorMessage } from "@/lib/admin/api";
-import { adminRoutes } from "@/lib/admin/routes";
 import { ApiError, apiClient } from "@/lib/apiClient";
 import {
 	formatSentAt,
@@ -68,12 +66,6 @@ export function TrialNoticeDetail({ noticeId }: Props) {
 	return (
 		<main className="flex w-full flex-1 flex-col gap-[38px] px-[27px] pt-[38px] pb-12 text-white">
 			<header className="flex flex-col items-start gap-[10px]">
-				<Link
-					href={adminRoutes.trialNotices}
-					className="text-[12px] leading-[18px] tracking-[1px] text-brand-white underline"
-				>
-					送信履歴へ戻る
-				</Link>
 				<h1 className="text-[22px] leading-[26px] font-medium tracking-[1px] break-all text-brand-white">
 					{notice.title}
 				</h1>

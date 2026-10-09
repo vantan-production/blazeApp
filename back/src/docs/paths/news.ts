@@ -22,9 +22,18 @@ function createNewsTypePaths(basePath: string, tag: string, label: string): Path
         tags: [tag],
         summary: `${label}一覧`,
         description:
-          "作成日時の降順・1ページ10件。未ログインの場合は visibility='public' のみを返す（Cookie があれば関係者限定の記事も含む）。",
+          "作成日時の降順（order=asc で昇順）・1ページ10件。未ログインの場合は visibility='public' のみを返す（Cookie があれば関係者限定の記事も含む）。",
         security: [],
-        parameters: [pageParam],
+        parameters: [
+          pageParam,
+          {
+            name: "order",
+            in: "query",
+            required: false,
+            description: "並び順。asc = 古い順、desc = 新しい順（既定）",
+            schema: { type: "string", enum: ["asc", "desc"], default: "desc" },
+          },
+        ],
         responses: {
           "200": listResponse("取得成功", "#/components/schemas/NewsPost"),
         },

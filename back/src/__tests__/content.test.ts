@@ -48,6 +48,41 @@ describe("GET /api/news-post — admin_name", () => {
   });
 });
 
+describe("GET /api/news-post — 並び順", () => {
+  // created_at を明示的にずらして、並び順だけを検証する
+  async function seedThree() {
+    const cookie = await registerAndLogin("管理者", `order${D}`);
+    for (const title of ["一番古い", "真ん中", "一番新しい"]) {
+      expect((await postNews(cookie, title, "本文です。本文です。本文です。")).status).toBe(200);
+    }
+    await testPool.query(`UPDATE news SET created_at = NOW() - INTERVAL '3 days' WHERE title = '一番古い'`);
+    await testPool.query(`UPDATE news SET created_at = NOW() - INTERVAL '2 days' WHERE title = '真ん中'`);
+    await testPool.query(`UPDATE news SET created_at = NOW() - INTERVAL '1 day' WHERE title = '一番新しい'`);
+  }
+
+  async function titles(query: string) {
+    const res = await app.request(`/api/news-post${query}`);
+    expect(res.status).toBe(200);
+    const body = await res.json() as { data: Array<{ title: string }> };
+    return body.data.map((item) => item.title);
+  }
+
+  it("未指定なら新しい順", async () => {
+    await seedThree();
+    expect(await titles("")).toEqual(["一番新しい", "真ん中", "一番古い"]);
+  });
+
+  it("order=asc なら古い順", async () => {
+    await seedThree();
+    expect(await titles("?order=asc")).toEqual(["一番古い", "真ん中", "一番新しい"]);
+  });
+
+  it("不正な order は新しい順として扱う", async () => {
+    await seedThree();
+    expect(await titles("?order=random")).toEqual(["一番新しい", "真ん中", "一番古い"]);
+  });
+});
+
 describe("GET /api/news-post/:id — admin_name", () => {
   it("1件取得でも admin_name が返る", async () => {
     const cookie = await registerAndLogin("管理者", `single${D}`);

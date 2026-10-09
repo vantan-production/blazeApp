@@ -141,6 +141,13 @@
       "when": 1784850010000,
       "tag": "0019_mosaic_regions",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1784850020000,
+      "tag": "0020_trial_notice",
+      "breakpoints": true
     }
   ]
 }

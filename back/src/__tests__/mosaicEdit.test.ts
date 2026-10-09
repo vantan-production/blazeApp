@@ -240,10 +240,10 @@ describe("GET /api/gameImg/images/:imageId/mosaic", () => {
     expect(res.status).toBe(403);
   });
 
-  it("UUID でない画像IDは400（DBエラーで500にしない）", async () => {
+  it("UUID でない画像IDは404（DBエラーで500にしない。未登録のIDと区別しない）", async () => {
     const cookie = await setupOwner();
     const res = await app.request(mosaicUrl("not-a-uuid"), { headers: { Cookie: cookie } });
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(404);
   });
 
   it("存在しない画像は404", async () => {

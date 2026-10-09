@@ -19,6 +19,7 @@ import { markAsRead } from "./markRead.js";
 import { getReadStatus } from "./getReadStatus.js";
 import { notifyMembers } from "../notification/index.js";
 import type { Context } from "hono";
+import { requireUuidParams } from "../utils/uuidParam.js";
 
 const { getById, create, update, remove } = createNewsTypeHandlers(
   "notice",
@@ -40,11 +41,11 @@ app.post("/api/notices", authToken, requireAdmin, async (c: Context) => {
   return res;
 });
 
-app.get("/api/notices/:id/reads", authToken, requireAdmin, (c) => getReadStatus(c));
-app.post("/api/notices/:id/read", authToken, requireMember, (c) => markAsRead(c));
+app.get("/api/notices/:id/reads", authToken, requireAdmin, requireUuidParams, (c) => getReadStatus(c));
+app.post("/api/notices/:id/read", authToken, requireMember, requireUuidParams, (c) => markAsRead(c));
 
-app.get("/api/notices/:id", authToken, requireMember, (c) => getById(c));
-app.patch("/api/notices/:id", authToken, requireAdmin, (c) => update(c));
-app.delete("/api/notices/:id", authToken, requireAdmin, (c) => remove(c));
+app.get("/api/notices/:id", authToken, requireMember, requireUuidParams, (c) => getById(c));
+app.patch("/api/notices/:id", authToken, requireAdmin, requireUuidParams, (c) => update(c));
+app.delete("/api/notices/:id", authToken, requireAdmin, requireUuidParams, (c) => remove(c));
 
 export default app;

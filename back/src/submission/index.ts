@@ -29,6 +29,7 @@ import {
 } from "../shared/index.js";
 import { requireAdmin, requireMember } from "../db/roleGuard.js";
 import type { Context } from "hono";
+import { requireUuidParams } from "../utils/uuidParam.js";
 
 const app = new Hono();
 
@@ -190,12 +191,14 @@ app.patch(
   "/api/submissions/:id/approve",
   authToken,
   requireAdmin,
+  requireUuidParams,
   decide("published", "申請を承認し、公開しました。"),
 );
 app.patch(
   "/api/submissions/:id/reject",
   authToken,
   requireAdmin,
+  requireUuidParams,
   decide("draft", "申請を差し戻しました。"),
 );
 

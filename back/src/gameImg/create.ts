@@ -1,4 +1,8 @@
 // POST /api/gameImg — 試合風景を投稿（管理者のみ、画像必須）
+//
+// consent_confirmed=true を送ると、投稿者が「写っている全員が掲載OK」と確認したものとして
+// 画像を最初から approved（一般公開）で保存する。送らなければ従来どおり pending（掲載確認待ち）。
+// 誰が確認したかは game.admin_id（投稿者）で追える。
 
 import type { Context } from "hono";
 import {
@@ -27,6 +31,8 @@ export const create = async (c: Context) => {
 	if (imageFiles.length === 0) {
 		return c.json({ success: false, errors: "画像は必須です。" }, 400);
 	}
+
+	const consentStatus = body["consent_confirmed"] === "true" ? "approved" : "pending";
 
 	// 全画像の拡張子チェック
 	for (const file of imageFiles) {
@@ -98,7 +104,13 @@ export const create = async (c: Context) => {
 			const gameId = rows[0]!.id;
 			await tx
 				.insert(images)
-				.values(uploadedKeys.map((path) => ({ path, game_id: gameId })));
+				.values(
+					uploadedKeys.map((path) => ({
+						path,
+						game_id: gameId,
+						consent_status: consentStatus,
+					})),
+				);
 
 			return rows[0]!;
 		});

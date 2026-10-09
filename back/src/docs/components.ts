@@ -560,6 +560,60 @@ export const components: JsonSchema = {
       },
     },
 
+    TrialNotice: {
+      type: "object",
+      description: "体験申込者への連絡（送信履歴）。送信に成功した宛先があったときだけ保存される",
+      properties: {
+        id: uuidField("連絡ID"),
+        title: { type: "string" },
+        body: { type: "string" },
+        recipient_count: {
+          type: "integer",
+          description: "送信に成功したメールの通数（同じアドレスの申込は1通にまとめた数）",
+        },
+        admin_id: { type: ["string", "null"], format: "uuid" },
+        admin_name: {
+          type: "string",
+          description: "送信者名（一覧・詳細のみ。削除済みなら「元管理者」）",
+        },
+        created_at: dateTimeField("送信日時"),
+        updated_at: dateTimeField("更新日時"),
+      },
+    },
+
+    TrialNoticeRecipient: {
+      type: "object",
+      description: "体験申込者への連絡の宛先（申込1件につき1つ）。name / email / trial_date は送信時点の値",
+      properties: {
+        application_id: {
+          type: ["string", "null"],
+          format: "uuid",
+          description: "申込ID（履歴詳細では、申込が削除済みなら null）",
+        },
+        name: { type: "string" },
+        email: { type: "string", format: "email" },
+        trial_date: { type: "string", format: "date" },
+        sent_at: {
+          type: "string",
+          format: "date-time",
+          description: "送信日時（履歴詳細のみ）",
+        },
+      },
+    },
+
+    TrialNoticeCandidate: {
+      type: "object",
+      description: "送信先に選べる体験申込者",
+      properties: {
+        id: uuidField("申込ID"),
+        name: { type: "string" },
+        furigana: { type: "string" },
+        email: { type: "string", format: "email" },
+        trial_date: { type: "string", format: "date" },
+        created_at: dateTimeField("申込日時"),
+      },
+    },
+
     Achievement: {
       type: "object",
       properties: {

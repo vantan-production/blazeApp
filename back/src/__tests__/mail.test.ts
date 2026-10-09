@@ -5,11 +5,13 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import {
   buildPasswordResetEmail,
+  buildInvitationEmail,
   buildTrialApplicationConfirmationEmail,
   buildTrialApplicationAdminNotification,
   buildInquiryAutoReplyEmail,
   buildNoticeNotificationEmail,
   buildSurveyNotificationEmail,
+  buildTrialNoticeEmail,
   trialNotificationEmails,
   sendInquiryAutoReplyEmail,
   type TrialApplicationMailData,
@@ -78,6 +80,27 @@ describe("buildPasswordResetEmail", () => {
     expect(buildPasswordResetEmail("admin@example.com", "t").from).toBe(
       "onboarding@resend.dev",
     );
+  });
+});
+
+describe("buildInvitationEmail", () => {
+  it("宛先・件名・送信元を設定する", () => {
+    const mail = buildInvitationEmail("new@example.com", "raw-token", "admin");
+    expect(mail.to).toBe("new@example.com");
+    expect(mail.from).toBe("noreply@nishioblaze.test");
+    expect(mail.subject).toBe("【西尾ブレイズ】アカウント作成のご案内");
+  });
+
+  it("管理画面の新規登録ページ（/admin/register）へのリンクを含む", () => {
+    const mail = buildInvitationEmail("new@example.com", "raw-token", "member");
+    expect(mail.html).toContain("https://nishioblaze.test/admin/register?token=raw-token");
+    // 旧パス（/register 直下）はフロントに存在しないので使わない
+    expect(mail.html).not.toContain("https://nishioblaze.test/register?");
+  });
+
+  it("トークンをURLエンコードする", () => {
+    const mail = buildInvitationEmail("new@example.com", "a+b/c=d&e", "admin");
+    expect(mail.html).toContain("token=a%2Bb%2Fc%3Dd%26e");
   });
 });
 
@@ -204,6 +227,33 @@ describe("関係者への一斉通知（宛先の秘匿）", () => {
     expect(mail.bcc).toEqual(members);
     expect(mail.to).toBe("noreply@nishioblaze.test");
     expect(JSON.stringify(mail.to)).not.toContain("a@example.com");
+  });
+});
+
+describe("buildTrialNoticeEmail", () => {
+  it("宛先は1人だけで、cc / bcc を使わない", () => {
+    const mail = buildTrialNoticeEmail("parent@example.com", { title: "持ち物", body: "本文" });
+    expect(mail.to).toBe("parent@example.com");
+    expect(mail.bcc).toBeUndefined();
+    expect(mail.from).toBe("noreply@nishioblaze.test");
+  });
+
+  it("件名にタイトルを使い、改行は潰す", () => {
+    const mail = buildTrialNoticeEmail("p@example.com", {
+      title: "持ち物\r\nBcc: evil@example.com",
+      body: "本文",
+    });
+    expect(mail.subject).toBe("【西尾ブレイズ】持ち物 Bcc: evil@example.com");
+  });
+
+  it("本文をエスケープし、改行を <br /> にする", () => {
+    const mail = buildTrialNoticeEmail("p@example.com", {
+      title: "<b>件名</b>",
+      body: "1行目\n<script>x</script>",
+    });
+    expect(mail.html).toContain("&lt;b&gt;件名&lt;/b&gt;");
+    expect(mail.html).toContain("1行目<br />&lt;script&gt;");
+    expect(mail.html).not.toContain("<script>");
   });
 });
 

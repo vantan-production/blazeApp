@@ -75,6 +75,8 @@ export {
 	trialApplication,
 	trialDateSchema,
 	trialNameSchema,
+	trialNotice,
+	trialNoticeRecipient,
 	VALIDATION_LIMITS,
 	visibilitySchema,
 } from "../db/schema.js";
@@ -91,6 +93,7 @@ export {
 	sendSurveyNotificationEmail,
 	sendTrialApplicationAdminNotification,
 	sendTrialApplicationConfirmationEmail,
+	sendTrialNoticeEmail,
 } from "../utils/mail.js";
 // メディア処理ユーティリティ
 export {

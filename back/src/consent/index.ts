@@ -24,6 +24,7 @@ import {
 } from "../shared/index.js";
 import { requireAdmin, requireMember } from "../db/roleGuard.js";
 import type { Context } from "hono";
+import { requireUuidParams } from "../utils/uuidParam.js";
 
 const app = new Hono();
 
@@ -231,7 +232,7 @@ app.post("/api/consent-requests", authToken, requireMember, (c) =>
 app.get("/api/consent-requests", authToken, requireAdmin, (c) =>
   getConsentRequests(c),
 );
-app.patch("/api/consent-requests/:id", authToken, requireAdmin, (c) =>
+app.patch("/api/consent-requests/:id", authToken, requireAdmin, requireUuidParams, (c) =>
   handleConsentRequest(c),
 );
 

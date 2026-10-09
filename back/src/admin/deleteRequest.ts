@@ -9,6 +9,7 @@ import { isNull, isNotNull } from "drizzle-orm";
 import { db, admin, authToken } from "../shared/index.js";
 import { deletionRequests, deletionApprovals } from "../db/schema.js";
 import { requireOwner } from "../db/roleGuard.js";
+import { requireUuidParams } from "../utils/uuidParam.js";
 
 type Variables = { user: typeof admin.$inferSelect };
 
@@ -64,7 +65,7 @@ async function tryExecuteDeletion(requestId: string): Promise<boolean> {
 }
 
 // 削除リクエスト作成
-app.post("/api/admin/users/:userId/delete-request", authToken, requireOwner, async (c) => {
+app.post("/api/admin/users/:userId/delete-request", authToken, requireOwner, requireUuidParams, async (c) => {
   const targetId = c.req.param("userId");
   if (!targetId) {
     return c.json({ success: false, errors: "ユーザーIDが指定されていません。" }, 400);
@@ -157,7 +158,7 @@ app.get("/api/admin/delete-requests", authToken, requireOwner, async (c) => {
 });
 
 // 承認
-app.post("/api/admin/delete-requests/:requestId/approve", authToken, requireOwner, async (c) => {
+app.post("/api/admin/delete-requests/:requestId/approve", authToken, requireOwner, requireUuidParams, async (c) => {
   const requestId = c.req.param("requestId");
   if (!requestId) {
     return c.json({ success: false, errors: "リクエストIDが指定されていません。" }, 400);
@@ -210,7 +211,7 @@ app.post("/api/admin/delete-requests/:requestId/approve", authToken, requireOwne
 });
 
 // リクエストキャンセル
-app.delete("/api/admin/delete-requests/:requestId", authToken, requireOwner, async (c) => {
+app.delete("/api/admin/delete-requests/:requestId", authToken, requireOwner, requireUuidParams, async (c) => {
   const requestId = c.req.param("requestId");
   if (!requestId) {
     return c.json({ success: false, errors: "リクエストIDが指定されていません。" }, 400);

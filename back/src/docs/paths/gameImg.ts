@@ -22,7 +22,7 @@ export const gameImgPaths: Paths = {
       tags: [TAG],
       summary: "試合風景一覧",
       description:
-        "未認証時は掲載同意済み（approved）の画像のみを、モザイク適用後の状態で返す。member 以上は全画像を原本（モザイクなし）で確認できる。",
+        "未認証時は掲載同意済み（approved）の画像のみを、モザイク適用後の状態で返す。member 以上は全画像を原本（モザイクなし）で確認できる。status が published 以外（下書き・承認待ち）の投稿は admin 以上にのみ返す。",
       security: [],
       parameters: [pageParam],
       responses: {
@@ -32,7 +32,8 @@ export const gameImgPaths: Paths = {
     post: {
       tags: [TAG],
       summary: "試合風景投稿（admin 以上）",
-      description: "image を複数枚まとめて送信できる。初期の掲載同意ステータスは pending。",
+      description:
+        "image を複数枚まとめて送信できる。初期の掲載同意ステータスは pending。consent_confirmed=true のときは、投稿者が写っている全員の掲載OKを確認したものとして approved で保存し、すぐ一般公開する。",
       requestBody: formBody({
         type: "object",
         required: ["image"],
@@ -41,6 +42,11 @@ export const gameImgPaths: Paths = {
             type: "array",
             items: fields.image,
             description: "画像ファイル（複数可）",
+          },
+          consent_confirmed: {
+            type: "string",
+            enum: ["true", "false"],
+            description: "写っている全員が掲載OKであることを投稿者が確認したか。true なら approved で保存する",
           },
         },
       }),
@@ -55,6 +61,8 @@ export const gameImgPaths: Paths = {
     get: {
       tags: [TAG],
       summary: "試合風景詳細",
+      description:
+        "status が published 以外（下書き・承認待ち）の投稿は admin 未満には 404 を返す。",
       security: [],
       parameters: [pathParam("id", "試合風景ID")],
       responses: {

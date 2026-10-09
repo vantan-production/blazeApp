@@ -2,18 +2,25 @@ import Link from "next/link";
 import {
 	formatPlayedOn,
 	type MatchResult,
-	matchOutcome,
 	matchOutcomeLabel,
+	toMatchSets,
 } from "@/lib/admin/matchResults";
 import { adminMatchResultEditPath } from "@/lib/admin/routes";
+import { summarizeSets } from "@/lib/matchSets";
 
 type Props = {
 	result: MatchResult;
 };
 
-/** 試合結果一覧の一行（試合日・大会名と成績・スコア）。行全体が編集画面へのリンク */
+/**
+ * 試合結果一覧の一行（試合日・大会名と成績・スコア）。行全体が編集画面へのリンク。
+ * 対戦相手が無い結果はスコアの行を出さない
+ */
 export function MatchResultListItem({ result }: Props) {
-	const outcome = matchOutcome(result.our_score, result.opponent_score);
+	const summary =
+		result.opponent_name !== null && result.sets.length > 0
+			? summarizeSets(toMatchSets(result.sets))
+			: null;
 	return (
 		<li className="flex flex-col gap-6 after:h-px after:w-full after:bg-white">
 			<Link
@@ -34,17 +41,28 @@ export function MatchResultListItem({ result }: Props) {
 						</span>
 					)}
 				</p>
-				<p className="text-[14px] leading-[22px] tracking-[1px] break-all">
-					<span className="font-bold tabular-nums">
-						{result.our_score} - {result.opponent_score}
-					</span>
-					<span className="ml-2">vs {result.opponent_name}</span>
-					<span
-						className={`ml-2 text-[12px] ${outcome === "win" ? "text-[#ffb3b3]" : "opacity-80"}`}
-					>
-						（{matchOutcomeLabel[outcome]}）
-					</span>
-				</p>
+				{summary && (
+					<p className="text-[14px] leading-[22px] tracking-[1px] break-all">
+						<span className="font-bold tabular-nums">
+							{summary.ourScore} - {summary.opponentScore}
+						</span>
+						{summary.isSetCount && (
+							<span className="ml-1 text-[12px] tabular-nums opacity-80">
+								（
+								{result.sets
+									.map((set) => `${set.our_score}-${set.opponent_score}`)
+									.join(" / ")}
+								）
+							</span>
+						)}
+						<span className="ml-2">vs {result.opponent_name}</span>
+						<span
+							className={`ml-2 text-[12px] ${summary.outcome === "win" ? "text-[#ffb3b3]" : "opacity-80"}`}
+						>
+							（{matchOutcomeLabel[summary.outcome]}）
+						</span>
+					</p>
+				)}
 			</Link>
 		</li>
 	);

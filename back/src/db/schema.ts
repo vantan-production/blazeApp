@@ -170,6 +170,12 @@ export const achievement = pgTable("achievement", {
 // 試合結果テーブル
 // 公開サイトの実績・試合結果ページ「前回の試合結果」に、試合日が最も新しい1件を出す。
 // 大会の中の1試合を1行とし、大会での最終成績（ベスト8・優勝など）は任意で添える
+// 試合結果の1セット分の得点（match_results.sets に jsonb 配列として保存）
+export type MatchSetRecord = {
+  our_score: number;
+  opponent_score: number;
+};
+
 export const matchResults = pgTable("match_results", {
   ...withUpdatedAt,
   // 大会名（例: 〇〇市長杯ドッジボール大会）
@@ -178,9 +184,10 @@ export const matchResults = pgTable("match_results", {
   tournament_result: varchar("tournament_result", { length: 30 }),
   // 試合日（日付のみ。表示順はこの日付の新しい順）
   played_on: date("played_on").notNull(),
-  opponent_name: varchar("opponent_name", { length: 50 }).notNull(),
-  our_score: integer("our_score").notNull(),
-  opponent_score: integer("opponent_score").notNull(),
+  // 対戦相手（任意。決勝・3位決定戦など載せたい試合があるときだけ入れる）。無ければ NULL
+  opponent_name: varchar("opponent_name", { length: 50 }),
+  // セットごとの得点（対戦相手があるときは1〜3セット、無いときは空配列）
+  sets: jsonb("sets").$type<MatchSetRecord[]>().notNull().default([]),
   // 登録した管理者（アカウント削除時はNULLになる）
   admin_id: uuid("admin_id").references(() => admin.id, { onDelete: "set null" }),
 });
@@ -449,7 +456,9 @@ export const VALIDATION_LIMITS = {
   documentDescription: { max: 2000 },
   tournamentName: { min: 1, max: 100 },
   tournamentResult: { max: 30 },
-  opponentName: { min: 1, max: 50 },
+  opponentName: { max: 50 },
+  // 1試合のセット数（決勝の3セットマッチまで）
+  matchSets: { max: 3 },
   // 得点（ドッジボールで3桁を超えることはないため、入力ミスを弾く上限）
   score: { min: 0, max: 999 },
 } as const;
@@ -623,8 +632,7 @@ export const tournamentResultSchema = optionalStringField(
   VALIDATION_LIMITS.tournamentResult.max,
   "大会成績",
 );
-export const opponentNameSchema = stringField(
-  VALIDATION_LIMITS.opponentName.min,
+export const opponentNameSchema = optionalStringField(
   VALIDATION_LIMITS.opponentName.max,
   "対戦相手",
 );

@@ -37,9 +37,8 @@ type MatchResultResponse = {
 	tournament_result: string | null;
 	/** 試合日（YYYY-MM-DD） */
 	played_on: string;
-	opponent_name: string;
-	our_score: number;
-	opponent_score: number;
+	opponent_name: string | null;
+	sets: { our_score: number; opponent_score: number }[];
 };
 
 type MediaResponse = {
@@ -165,8 +164,10 @@ export async function getLastMatch(): Promise<LastMatch | null> {
 		tournamentResult: latest.tournament_result ?? undefined,
 		date: `${y}/${m}/${d}`,
 		dateTime: latest.played_on,
-		ourScore: latest.our_score,
-		opponentScore: latest.opponent_score,
-		opponentTeam: latest.opponent_name,
+		opponentTeam: latest.opponent_name ?? undefined,
+		sets: latest.sets.map((set) => ({
+			ourScore: set.our_score,
+			opponentScore: set.opponent_score,
+		})),
 	};
 }

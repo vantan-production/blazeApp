@@ -31,9 +31,24 @@ const fields = {
     type: ["string", "null"],
   },
   played_on: { type: "string", format: "date", description: "試合日（YYYY-MM-DD）" },
-  opponent_name: str(VALIDATION_LIMITS.opponentName, "対戦相手"),
-  our_score: score("自チームの得点"),
-  opponent_score: score("相手の得点"),
+  opponent_name: {
+    ...str(VALIDATION_LIMITS.opponentName, "対戦相手（任意。決勝・3位決定戦など載せたい試合があるときだけ）"),
+    type: ["string", "null"],
+  },
+  sets: {
+    type: "array",
+    maxItems: VALIDATION_LIMITS.matchSets.max,
+    description:
+      "セットごとの得点。対戦相手があるときは1〜3セット必須、無いときは空配列（省略可）",
+    items: {
+      type: "object",
+      required: ["our_score", "opponent_score"],
+      properties: {
+        our_score: score("自チームの得点"),
+        opponent_score: score("相手の得点"),
+      },
+    },
+  },
 };
 
 export const matchResultPaths: Paths = {
@@ -52,15 +67,13 @@ export const matchResultPaths: Paths = {
     post: {
       tags: [TAG],
       summary: "試合結果を登録（admin 以上）",
-      description: "tournament_result は省略・空文字なら「成績なし」（null）になる。",
+      description:
+        "tournament_result は省略・空文字なら「成績なし」（null）になる。opponent_name を省略・空文字・null にすると対戦相手なし（sets は空）。対戦相手を入れたときは sets に1〜3セットの得点が必要。",
       requestBody: jsonBody({
         type: "object",
         required: [
           "tournament_name",
           "played_on",
-          "opponent_name",
-          "our_score",
-          "opponent_score",
         ],
         properties: fields,
       }),
@@ -87,7 +100,7 @@ export const matchResultPaths: Paths = {
       tags: [TAG],
       summary: "試合結果を更新（admin 以上）",
       description:
-        "送信したフィールドのみ更新する。tournament_result に null か空文字を送ると成績を消せる。",
+        "送信したフィールドのみ更新する。tournament_result に null か空文字を送ると成績を消せる。opponent_name と sets は組み合わせで意味を持つため、変えるときは両方を送る。",
       parameters: [pathParam("id", "試合結果ID")],
       requestBody: jsonBody({ type: "object", properties: fields }),
       responses: {

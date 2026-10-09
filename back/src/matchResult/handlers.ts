@@ -5,7 +5,12 @@ import { count } from "drizzle-orm";
 import type { Context } from "hono";
 import { desc, eq, z } from "../index.js";
 import { admin, buildPagination, db, matchResults, parsePage } from "../shared/index.js";
-import { createMatchResultSchema, toFieldErrors, updateMatchResultSchema } from "./schemas.js";
+import {
+  createMatchResultSchema,
+  opponentAndSetsSchema,
+  toFieldErrors,
+  updateMatchResultSchema,
+} from "./schemas.js";
 
 // uuid 型の列に形式外の文字列を渡すと Postgres が例外を投げ 500 になるため、先に形だけ検証する
 const idSchema = z.guid();
@@ -79,10 +84,16 @@ export async function create(c: Context) {
     return c.json({ success: false, errors: toFieldErrors(result.error) }, 400);
   }
 
-  const { tournament_result, ...rest } = result.data;
+  const { tournament_result, opponent_name, sets, ...rest } = result.data;
   const inserted = await db
     .insert(matchResults)
-    .values({ ...rest, tournament_result: tournament_result ?? null, admin_id: user.id })
+    .values({
+      ...rest,
+      tournament_result: tournament_result ?? null,
+      opponent_name: opponent_name ?? null,
+      sets: sets ?? [],
+      admin_id: user.id,
+    })
     .returning();
 
   return c.json(
@@ -107,17 +118,43 @@ export async function update(c: Context) {
   }
 
   // undefined（送られていない項目）は変更しない。大会成績の null・空文字は「成績なし」に戻す
+  const { opponent_name: _opponent, sets: _sets, ...simpleFields } = result.data;
   const changes: Partial<typeof matchResults.$inferInsert> = {};
-  for (const [key, value] of Object.entries(result.data)) {
+  for (const [key, value] of Object.entries(simpleFields)) {
     if (value !== undefined) Object.assign(changes, { [key]: value });
   }
-  if (
-    body !== null &&
-    typeof body === "object" &&
-    "tournament_result" in body &&
-    result.data.tournament_result === undefined
-  ) {
+  const sent = typeof body === "object" ? (body as Record<string, unknown>) : {};
+  if ("tournament_result" in sent && result.data.tournament_result === undefined) {
     changes.tournament_result = null;
+  }
+
+  // 対戦相手と得点は組み合わせで意味を持つため、片方だけの変更は受け付けない
+  const sendsOpponent = "opponent_name" in sent;
+  const sendsSets = "sets" in sent;
+  if (sendsOpponent !== sendsSets) {
+    return c.json(
+      {
+        success: false,
+        errors: [
+          {
+            field: sendsOpponent ? "sets" : "opponent_name",
+            message: "対戦相手と得点（sets）は一緒に送ってください。",
+          },
+        ],
+      },
+      400,
+    );
+  }
+  if (sendsSets) {
+    const pair = opponentAndSetsSchema.safeParse({
+      opponent_name: sent.opponent_name,
+      sets: sent.sets,
+    });
+    if (!pair.success) {
+      return c.json({ success: false, errors: toFieldErrors(pair.error) }, 400);
+    }
+    changes.opponent_name = pair.data.opponent_name ?? null;
+    changes.sets = pair.data.sets;
   }
   if (Object.keys(changes).length === 0) {
     return c.json({ success: false, errors: "変更する項目がありません。" }, 400);

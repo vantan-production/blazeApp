@@ -23,13 +23,17 @@ const validBody = {
   tournament_result: "ベスト8",
   played_on: "2026-10-04",
   opponent_name: "元江別レッド・ソルジャー",
-  our_score: 9,
-  opponent_score: 8,
+  sets: [
+    { our_score: 9, opponent_score: 8 },
+    { our_score: 5, opponent_score: 7 },
+    { our_score: 6, opponent_score: 4 },
+  ],
 };
 
-type MatchResult = typeof validBody & {
+type MatchResult = Omit<typeof validBody, "opponent_name"> & {
   id: string;
   tournament_result: string | null;
+  opponent_name: string | null;
   admin_name: string;
 };
 
@@ -70,6 +74,21 @@ describe("POST /api/match-results", () => {
     expect((await create(cookie, { tournament_result: "" })).tournament_result).toBeNull();
   });
 
+  it("対戦相手は任意で、省略・空文字・null なら対戦相手なし（得点も空）で保存する", async () => {
+    const cookie = await setupOwner();
+    for (const opponent of [undefined, "", null]) {
+      const created = await create(cookie, { opponent_name: opponent, sets: undefined });
+      expect(created.opponent_name).toBeNull();
+      expect(created.sets).toEqual([]);
+    }
+  });
+
+  it("得点は1セットだけでも登録できる（3位決定戦など）", async () => {
+    const cookie = await setupOwner();
+    const created = await create(cookie, { sets: [{ our_score: 3, opponent_score: 1 }] });
+    expect(created.sets).toEqual([{ our_score: 3, opponent_score: 1 }]);
+  });
+
   it("未ログインは 401、member は 403", async () => {
     await setupOwner();
     const anon = await app.request("/api/match-results", {
@@ -90,11 +109,16 @@ describe("POST /api/match-results", () => {
 
   it.each([
     ["大会名が空", { tournament_name: "" }],
-    ["対戦相手が空", { opponent_name: "  " }],
-    ["得点がマイナス", { our_score: -1 }],
-    ["得点が小数", { opponent_score: 1.5 }],
-    ["得点が上限超え", { our_score: 1000 }],
-    ["得点が文字列", { our_score: "9" }],
+    ["対戦相手があるのに得点が無い", { sets: [] }],
+    ["対戦相手があるのに得点を省略", { sets: undefined }],
+    ["対戦相手が無いのに得点がある", { opponent_name: "" }],
+    ["得点が4セット", { sets: [...validBody.sets, { our_score: 1, opponent_score: 0 }] }],
+    ["得点がマイナス", { sets: [{ our_score: -1, opponent_score: 0 }] }],
+    ["得点が小数", { sets: [{ our_score: 1, opponent_score: 1.5 }] }],
+    ["得点が上限超え", { sets: [{ our_score: 1000, opponent_score: 0 }] }],
+    ["得点が文字列", { sets: [{ our_score: "9", opponent_score: 0 }] }],
+    ["得点が配列でない", { sets: { our_score: 9, opponent_score: 8 } }],
+    ["対戦相手が長すぎる", { opponent_name: "あ".repeat(51) }],
     ["試合日の形式違い", { played_on: "2026/10/04" }],
     ["大会成績が長すぎる", { tournament_result: "あ".repeat(31) }],
   ])("%s は 400", async (_label, overrides) => {
@@ -136,15 +160,58 @@ describe("PATCH /api/match-results/:id", () => {
     const res = await app.request(`/api/match-results/${created.id}`, {
       method: "PATCH",
       headers: json(cookie),
-      body: JSON.stringify({ our_score: 3, tournament_result: null }),
+      body: JSON.stringify({ played_on: "2026-10-05", tournament_result: null }),
     });
     expect(res.status).toBe(200);
     const updated = ((await res.json()) as { data: MatchResult }).data;
     expect(updated).toMatchObject({
-      our_score: 3,
+      played_on: "2026-10-05",
       tournament_result: null,
       opponent_name: validBody.opponent_name,
+      sets: validBody.sets,
     });
+  });
+
+  it("対戦相手と得点は一緒に変えられ、両方消すと対戦相手なしになる", async () => {
+    const cookie = await setupOwner();
+    const created = await create(cookie);
+
+    const patch = (body: Record<string, unknown>) =>
+      app.request(`/api/match-results/${created.id}`, {
+        method: "PATCH",
+        headers: json(cookie),
+        body: JSON.stringify(body),
+      });
+
+    const changed = await patch({ opponent_name: "B", sets: [{ our_score: 2, opponent_score: 0 }] });
+    expect(changed.status).toBe(200);
+    expect(((await changed.json()) as { data: MatchResult }).data).toMatchObject({
+      opponent_name: "B",
+      sets: [{ our_score: 2, opponent_score: 0 }],
+    });
+
+    const cleared = await patch({ opponent_name: null, sets: [] });
+    expect(cleared.status).toBe(200);
+    expect(((await cleared.json()) as { data: MatchResult }).data).toMatchObject({
+      opponent_name: null,
+      sets: [],
+    });
+  });
+
+  it.each([
+    ["対戦相手だけ", { opponent_name: "B" }],
+    ["得点だけ", { sets: [{ our_score: 1, opponent_score: 0 }] }],
+    ["対戦相手を消して得点を残す", { opponent_name: null, sets: [{ our_score: 1, opponent_score: 0 }] }],
+    ["得点を空にして対戦相手を残す", { opponent_name: "B", sets: [] }],
+  ])("%s を送ると 400", async (_label, body) => {
+    const cookie = await setupOwner();
+    const created = await create(cookie);
+    const res = await app.request(`/api/match-results/${created.id}`, {
+      method: "PATCH",
+      headers: json(cookie),
+      body: JSON.stringify(body),
+    });
+    expect(res.status).toBe(400);
   });
 
   it("何も送らないと 400、存在しないIDは 404", async () => {
@@ -161,7 +228,7 @@ describe("PATCH /api/match-results/:id", () => {
     const missing = await app.request(`/api/match-results/${crypto.randomUUID()}`, {
       method: "PATCH",
       headers: json(cookie),
-      body: JSON.stringify({ our_score: 1 }),
+      body: JSON.stringify({ played_on: "2026-10-05" }),
     });
     expect(missing.status).toBe(404);
   });

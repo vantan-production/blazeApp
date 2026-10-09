@@ -1,6 +1,8 @@
 // 試合結果・実績・試合風景・メディア情報はAPIから取得する（./api.ts）。
 // ここにはbackに対応するデータが無く、静的に持つしかないものだけを置く
 
+import type { MatchSet } from "@/lib/matchSets";
+
 /** 前回の試合結果（Figma: last time results 1031:551）。GET /api/match-results の先頭1件 */
 export type LastMatch = {
 	/** 大会名（例: 西尾市長杯ドッジボール大会） */
@@ -11,9 +13,10 @@ export type LastMatch = {
 	date: string;
 	/** <time dateTime> 用の日付（YYYY-MM-DD） */
 	dateTime: string;
-	ourScore: number;
-	opponentScore: number;
-	opponentTeam: string;
+	/** 対戦相手（任意）。無ければスコアを出さず、大会名と成績だけを表示する */
+	opponentTeam?: string;
+	/** セットごとの得点（対戦相手があるときは1〜3セット、無いときは空） */
+	sets: MatchSet[];
 };
 
 /** チーム目標。backに対応するデータが無いため固定文言 */

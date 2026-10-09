@@ -11,7 +11,7 @@ export const metadata = {
 /** 投稿済みメディア情報の一覧（ニュース一覧と同じ構成）。右下の＋から新規投稿へ */
 export default function AdminMediaPage() {
 	return (
-		<AdminPageLayout title="メディア情報">
+		<AdminPageLayout title="メディア情報" backHref={adminRoutes.top}>
 			<AdminMediaList />
 			{/* 最後の行が右下の＋ボタンに隠れないようにする余白 */}
 			<div aria-hidden className="h-12 shrink-0" />

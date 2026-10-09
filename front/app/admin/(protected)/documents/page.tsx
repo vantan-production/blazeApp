@@ -11,7 +11,7 @@ export const metadata = {
 /** 関係者向け資料庫の一覧（デザイン未作成。試合風景一覧と同じ枠で作る）。右下の＋から新規登録へ */
 export default function AdminDocumentsPage() {
 	return (
-		<AdminPageLayout title="資料庫">
+		<AdminPageLayout title="資料庫" backHref={adminRoutes.top}>
 			<p className="-mt-12 w-full text-[13px] leading-[20px] tracking-[1px] text-brand-white/80">
 				ここに登録した資料は、関係者ページからダウンロードできます（一般公開はされません）。
 			</p>

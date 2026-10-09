@@ -64,6 +64,11 @@ const menuSections: MenuSection[] = [
 				href: adminRoutes.achievements,
 				icon: icon("trophy"),
 			},
+			{
+				label: "試合結果",
+				href: adminRoutes.matchResults,
+				icon: icon("scoreboard"),
+			},
 			{ label: "試合風景更新", href: adminRoutes.game, icon: icon("camera") },
 			{ label: "メディア情報", href: adminRoutes.media, icon: icon("tv") },
 		],

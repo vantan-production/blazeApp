@@ -1,5 +1,11 @@
 import { fetchPaginatedList, type Paginated } from "@/lib/pagination";
-import type { Achievement, MatchPost, MediaItem, Photo } from "./data";
+import type {
+	Achievement,
+	LastMatch,
+	MatchPost,
+	MediaItem,
+	Photo,
+} from "./data";
 
 // 画像はS3の署名付きURL（有効期限1時間。back/src/db/s3.ts）で返ってくるため、
 // 期限切れのURLを配らないよう再取得間隔はそれより十分短くする
@@ -23,6 +29,17 @@ type GameResponse = {
 	id: string;
 	images: { id: string; url: string }[];
 	created_at: string;
+};
+
+type MatchResultResponse = {
+	id: string;
+	tournament_name: string;
+	tournament_result: string | null;
+	/** 試合日（YYYY-MM-DD） */
+	played_on: string;
+	opponent_name: string;
+	our_score: number;
+	opponent_score: number;
 };
 
 type MediaResponse = {
@@ -126,4 +143,30 @@ export async function getMediaPage(
 /** 実績・試合結果ページのメディア情報セクション用（先頭ページ） */
 export async function getMediaItems(): Promise<MediaItem[]> {
 	return (await getMediaPage(1)).items;
+}
+
+/**
+ * 前回の試合結果（GET /api/match-results の先頭1件。試合日の新しい順に並んでいる）。
+ * まだ1件も無ければ null
+ */
+export async function getLastMatch(): Promise<LastMatch | null> {
+	const { items } = await fetchPaginatedList<MatchResultResponse>(
+		"/api/match-results",
+		{ page: 1 },
+		FETCH_INIT,
+	);
+	const latest = items[0];
+	if (!latest) return null;
+
+	// 試合日は日付だけなので、タイムゾーンの変換をせずにそのまま表示する
+	const [y, m, d] = latest.played_on.split("-").map(Number);
+	return {
+		tournamentName: latest.tournament_name,
+		tournamentResult: latest.tournament_result ?? undefined,
+		date: `${y}/${m}/${d}`,
+		dateTime: latest.played_on,
+		ourScore: latest.our_score,
+		opponentScore: latest.opponent_score,
+		opponentTeam: latest.opponent_name,
+	};
 }

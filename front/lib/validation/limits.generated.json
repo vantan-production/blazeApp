@@ -72,5 +72,20 @@
 	},
 	"documentDescription": {
 		"max": 2000
+	},
+	"tournamentName": {
+		"min": 1,
+		"max": 100
+	},
+	"tournamentResult": {
+		"max": 30
+	},
+	"opponentName": {
+		"min": 1,
+		"max": 50
+	},
+	"score": {
+		"min": 0,
+		"max": 999
 	}
 }

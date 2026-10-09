@@ -16,6 +16,7 @@ import { inquiryPaths } from "./paths/inquiry.js";
 import { trialPaths } from "./paths/trial.js";
 import { achievementPaths } from "./paths/achievement.js";
 import { gameImgPaths } from "./paths/gameImg.js";
+import { matchResultPaths } from "./paths/matchResult.js";
 
 // リクエストされたオリジン（例: http://localhost:8080）を servers に埋め込んで組み立てる。
 // 相対URLだと Scalar 側の結合で `//api/...` のようなパスになりうるため、絶対URLを渡す。
@@ -68,6 +69,7 @@ export const buildOpenApiDocument = (serverUrl: string): JsonSchema => ({
     { name: "投稿申請", description: "member の投稿申請と、admin による承認・差し戻し" },
     { name: "通知設定", description: "お知らせ・アンケートのメール通知のオプトアウト" },
     { name: "実績", description: "実績投稿（画像・動画・ファイル対応）" },
+    { name: "試合結果", description: "公開サイト「前回の試合結果」に出す大会・スコア" },
     { name: "問い合わせ", description: "問い合わせの受信・対応ステータス・返信" },
     { name: "体験申し込み", description: "体験申し込みの受付と管理" },
     {
@@ -94,6 +96,7 @@ export const buildOpenApiDocument = (serverUrl: string): JsonSchema => ({
     ...submissionPaths,
     ...notificationPaths,
     ...achievementPaths,
+    ...matchResultPaths,
     ...inquiryPaths,
     ...trialPaths,
     ...gameImgPaths,

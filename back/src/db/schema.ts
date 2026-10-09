@@ -167,6 +167,24 @@ export const achievement = pgTable("achievement", {
   }),
 });
 
+// 試合結果テーブル
+// 公開サイトの実績・試合結果ページ「前回の試合結果」に、試合日が最も新しい1件を出す。
+// 大会の中の1試合を1行とし、大会での最終成績（ベスト8・優勝など）は任意で添える
+export const matchResults = pgTable("match_results", {
+  ...withUpdatedAt,
+  // 大会名（例: 〇〇市長杯ドッジボール大会）
+  tournament_name: varchar("tournament_name", { length: 100 }).notNull(),
+  // 大会での成績（例: ベスト8・準優勝）。未定・不要なら NULL
+  tournament_result: varchar("tournament_result", { length: 30 }),
+  // 試合日（日付のみ。表示順はこの日付の新しい順）
+  played_on: date("played_on").notNull(),
+  opponent_name: varchar("opponent_name", { length: 50 }).notNull(),
+  our_score: integer("our_score").notNull(),
+  opponent_score: integer("opponent_score").notNull(),
+  // 登録した管理者（アカウント削除時はNULLになる）
+  admin_id: uuid("admin_id").references(() => admin.id, { onDelete: "set null" }),
+});
+
 // 試合風景テーブル
 export const game = pgTable("game", {
   ...baseFields,
@@ -429,6 +447,11 @@ export const VALIDATION_LIMITS = {
   consentReason: { max: 500 },
   documentTitle: { min: 1, max: 100 },
   documentDescription: { max: 2000 },
+  tournamentName: { min: 1, max: 100 },
+  tournamentResult: { max: 30 },
+  opponentName: { min: 1, max: 50 },
+  // 得点（ドッジボールで3桁を超えることはないため、入力ミスを弾く上限）
+  score: { min: 0, max: 999 },
 } as const;
 
 export const emailSchema = z
@@ -589,3 +612,26 @@ export const motivationSchema = z.enum(["flyer", "instagram", "referral", "other
 
 export const trialDateSchema = dateOnlySchema("体験日");
 export const birthDateSchema = dateOnlySchema("生年月日");
+
+// 試合結果用バリデーション
+export const tournamentNameSchema = stringField(
+  VALIDATION_LIMITS.tournamentName.min,
+  VALIDATION_LIMITS.tournamentName.max,
+  "大会名",
+);
+export const tournamentResultSchema = optionalStringField(
+  VALIDATION_LIMITS.tournamentResult.max,
+  "大会成績",
+);
+export const opponentNameSchema = stringField(
+  VALIDATION_LIMITS.opponentName.min,
+  VALIDATION_LIMITS.opponentName.max,
+  "対戦相手",
+);
+export const scoreSchema = (label: string) =>
+  z
+    .number({ message: `${label}を数字で入力してください。` })
+    .int(`${label}は整数で入力してください。`)
+    .min(VALIDATION_LIMITS.score.min, `${label}は${VALIDATION_LIMITS.score.min}以上で入力してください。`)
+    .max(VALIDATION_LIMITS.score.max, `${label}は${VALIDATION_LIMITS.score.max}以下で入力してください。`);
+export const playedOnSchema = dateOnlySchema("試合日");

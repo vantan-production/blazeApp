@@ -8,7 +8,7 @@ import {
 	parsePageParam,
 	redirectIfPageOutOfRange,
 } from "@/lib/pagination";
-import { routes } from "@/lib/routes";
+import { achievementDetailPath, routes } from "@/lib/routes";
 
 export const metadata: Metadata = {
 	title: "実績 | 西尾ブレイズ",
@@ -47,6 +47,7 @@ export default async function AchievementsPage({ searchParams }: Props) {
 							number={offset + i + 1}
 							date={item.date}
 							dateTime={item.dateTime}
+							href={achievementDetailPath(item.id)}
 						/>
 					</li>
 				))}

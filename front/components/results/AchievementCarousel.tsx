@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { achievementDetailPath } from "@/lib/routes";
 import { AchievementCard } from "./AchievementCard";
 import { CarouselDots } from "./CarouselDots";
 import type { Achievement } from "./data";
@@ -26,6 +27,7 @@ export function AchievementCarousel({ items }: Props) {
 					imageSrc={item.imageSrc}
 					title={item.title}
 					number={index + 1}
+					href={achievementDetailPath(item.id)}
 				/>
 			</div>
 			<div className="flex items-center gap-4">

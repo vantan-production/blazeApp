@@ -26,6 +26,13 @@ export type Achievement = {
 	dateTime: string;
 };
 
+/** 実績の詳細ページ用（GET /api/achievement/:id） */
+export type AchievementDetail = Achievement & {
+	body: string;
+	/** サムネイル（あれば先頭）と本文の画像。1枚もなければ代替画像1枚 */
+	images: string[];
+};
+
 export type Photo = { id: string; src: string; alt: string };
 
 /**

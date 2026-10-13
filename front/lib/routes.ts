@@ -19,6 +19,11 @@ export const routes = {
 	gallery: "/gallery",
 } as const;
 
+/** 実績の詳細ページ（実績スライダー・実績一覧のカードから開く） */
+export function achievementDetailPath(id: string): string {
+	return `${routes.resultsAchievements}/${id}`;
+}
+
 export type NavItem = { label: string; href: string };
 
 /** ドロワーメニューのナビ項目。2列に分けて表示する（Figma: ドロワーメニュー 1511:458） */

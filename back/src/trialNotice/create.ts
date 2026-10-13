@@ -7,8 +7,12 @@
 //   1件も届かなければ何も保存しない（誰にも届いていない連絡が「送信済み」に見えないように）
 // - それでも失敗した宛先は failed で返し、管理画面がそのまま選び直して再送できるようにする
 // - 送信にかけてよい時間（SEND_BUDGET_MS）を超えたら残りは送らずに failed で返す
-//   （ALB のアイドルタイムアウト 60 秒を超えて 504 になり、結果が管理者に返らなくなるのを防ぐ）
+//   （ALB のアイドルタイムアウト 60 秒を超えて 504 になり、結果が管理者に返らなくなるのを防ぐ）。
+//   応答が返ってこない送信も、1回ごとに残り時間までで打ち切る
+// - 打ち切った送信は実際には届いている可能性があるため、内容と宛先から作った冪等キーを付けて送る。
+//   やり直しや管理画面からの再送で同じ内容を同じ宛先に送っても、Resend が24時間は二重に配信しない
 
+import { createHash } from "node:crypto";
 import { inArray } from "drizzle-orm";
 import type { Context } from "hono";
 import { asc, z } from "../index.js";
@@ -45,11 +49,36 @@ const RETRY_DELAYS_MS = [1000, 2000];
 // 送信に使ってよい時間。ALB のアイドルタイムアウト（既定 60 秒）に対し、
 // 打ち切り直前に始めた1通の送信と履歴の保存が終わるだけの余裕を残す
 const SEND_BUDGET_MS = 40_000;
+// 送信1回あたりの待ち時間の上限（残り時間の方が短ければそちら）
+const SEND_TIMEOUT_MS = 10_000;
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // テストでは待たない（リトライや間隔の検証で秒単位の待ちが積み上がらないように）
 const shouldWait = () => process.env.NODE_ENV !== "test";
+// テストでは応答のない送信を短い時間で打ち切る（10秒待たないように）
+const sendTimeoutMs = () => (process.env.NODE_ENV === "test" ? 50 : SEND_TIMEOUT_MS);
+
+/** ms 以内に終わらなければ reject する（送信自体は止められないが、待つのはやめる） */
+async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`送信が${ms}ms以内に終わりませんでした`)), ms);
+  });
+  try {
+    return await Promise.race([promise, timeout]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** 同じ内容を同じ宛先に送るときに同じになる冪等キー（宛先アドレスはハッシュにして載せない） */
+function idempotencyKeyFor(email: string, data: { title: string; body: string }): string {
+  const hash = createHash("sha256")
+    .update(JSON.stringify([email.toLowerCase(), data.title, data.body]))
+    .digest("hex");
+  return `trial-notice/${hash}`;
+}
 
 /** リクエストボディをJSONとして読む（不正なら null） */
 async function readJson(c: Context): Promise<unknown | null> {
@@ -93,9 +122,14 @@ async function sendWithRetry(
   data: { title: string; body: string },
   deadline: number,
 ): Promise<void> {
+  const idempotencyKey = idempotencyKeyFor(to, data);
   for (let attempt = 1; ; attempt++) {
     try {
-      await sendTrialNoticeEmail(to, data);
+      const remaining = Math.max(deadline - Date.now(), 0);
+      await withTimeout(
+        sendTrialNoticeEmail(to, data, { idempotencyKey }),
+        Math.min(sendTimeoutMs(), remaining),
+      );
       return;
     } catch (e) {
       const delay = RETRY_DELAYS_MS[attempt - 1] ?? 0;

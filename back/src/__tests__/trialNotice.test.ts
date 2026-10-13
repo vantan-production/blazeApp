@@ -467,6 +467,37 @@ describe("POST /api/trial-notices の送信", () => {
     }
   });
 
+  it("応答が返ってこない送信は打ち切って failed で返し、やり直しには同じ冪等キーを付ける", async () => {
+    const cookie = await setupOwner();
+    const ok = await seedApplication("a@example.com", "2099-01-15");
+    const hang = await seedApplication("hang@example.com", "2099-01-15", { name: "無応答" });
+    // hang@ への送信だけ、いつまでも完了しない
+    sendSpy.mockImplementation((message) =>
+      message.to === "hang@example.com" ? new Promise(() => {}) : Promise.resolve({ error: null }),
+    );
+
+    const res = await postNotice(cookie, {
+      title: "無応答",
+      body: "本文",
+      application_ids: [ok, hang],
+    });
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as SendResponse;
+    expect(body.data.sent.map((r) => r.application_id)).toEqual([ok]);
+    expect(body.data.failed.map((r) => r.application_id)).toEqual([hang]);
+
+    const keysFor = (to: string) =>
+      sendSpy.mock.calls.filter(([m]) => m.to === to).map(([, options]) => options?.idempotencyKey);
+    const hangKeys = keysFor("hang@example.com");
+    expect(hangKeys).toHaveLength(3);
+    // 打ち切った送信が実は届いていても二重に配信されないよう、やり直しは同じキーで送る
+    expect(new Set(hangKeys).size).toBe(1);
+    expect(hangKeys[0]).toMatch(/^trial-notice\/[0-9a-f]{64}$/);
+    // 宛先ごとにキーは異なる
+    expect(keysFor("a@example.com")[0]).not.toBe(hangKeys[0]);
+  });
+
   it("全員に届かなければ 502 を返し、履歴を何も保存しない", async () => {
     const cookie = await setupOwner();
     const a = await seedApplication("a@example.com", "2099-01-15");

@@ -24,6 +24,12 @@ export interface MailMessage {
   html: string;
 }
 
+// 送信時のオプション
+export interface SendOptions {
+  // 同じキーの送信は Resend が24時間は1回しか配信しない（タイムアウト後のやり直しで二重に届かないように）
+  idempotencyKey?: string;
+}
+
 // 送信元アドレス（Resend側でドメイン検証済みのものを設定する）
 // 環境変数はモジュールロード時ではなく参照時に読む（テストやスクリプトから差し替えられるようにするため）
 function mailFrom(): string {
@@ -61,12 +67,14 @@ function escapeHtml(value: string): string {
  * scripts/sendTestMail.ts からも同じ経路で送るため export している
  * @param message - buildXxx() が組み立てたメール
  * @param failureLabel - 送信失敗時のエラーメッセージに使う名称
+ * @param options - 冪等キーなど、Resend に渡す送信オプション
  */
 export async function sendMailMessage(
   message: MailMessage,
   failureLabel = "メール",
+  options: SendOptions = {},
 ): Promise<void> {
-  const { error } = await mailTransport.send(message);
+  const { error } = await mailTransport.send(message, options);
 
   if (error) {
     throw new Error(`${failureLabel}の送信に失敗しました: ${error.message}`);
@@ -79,9 +87,12 @@ export async function sendMailMessage(
  * テストで vi.spyOn(mailTransport, "send") して「誰に何通送ったか」や送信失敗を再現できるようにする。
  */
 export const mailTransport = {
-  async send(message: MailMessage): Promise<{ error: { message: string } | null }> {
+  async send(
+    message: MailMessage,
+    options: SendOptions = {},
+  ): Promise<{ error: { message: string } | null }> {
     if (process.env.NODE_ENV === "test") return { error: null };
-    const { error } = await getResendClient().emails.send(message);
+    const { error } = await getResendClient().emails.send(message, options);
     return { error };
   },
 };
@@ -452,6 +463,7 @@ export function buildTrialNoticeEmail(to: string, data: TrialNoticeMailData): Ma
 export async function sendTrialNoticeEmail(
   to: string,
   data: TrialNoticeMailData,
+  options: SendOptions = {},
 ): Promise<void> {
-  await sendMailMessage(buildTrialNoticeEmail(to, data), "体験申込者への連絡メール");
+  await sendMailMessage(buildTrialNoticeEmail(to, data), "体験申込者への連絡メール", options);
 }

@@ -6,6 +6,8 @@
 // - 履歴には送信に成功した宛先だけを、送信後にまとめて保存する。
 //   1件も届かなければ何も保存しない（誰にも届いていない連絡が「送信済み」に見えないように）
 // - それでも失敗した宛先は failed で返し、管理画面がそのまま選び直して再送できるようにする
+// - 送信にかけてよい時間（SEND_BUDGET_MS）を超えたら残りは送らずに failed で返す
+//   （ALB のアイドルタイムアウト 60 秒を超えて 504 になり、結果が管理者に返らなくなるのを防ぐ）
 
 import { inArray } from "drizzle-orm";
 import type { Context } from "hono";
@@ -21,7 +23,7 @@ import {
 } from "../shared/index.js";
 import { logAppError } from "../utils/monitoring.js";
 
-// 1回の送信で選べる上限。送信間隔（600ms）とリトライを考えても応答が現実的な時間に収まる数
+// 1回の送信で選べる上限。時間内に送り切れなかった分は SEND_BUDGET_MS で打ち切って failed で返す
 const MAX_RECIPIENTS = 100;
 
 const schema = z.object({
@@ -40,6 +42,9 @@ const SEND_INTERVAL_MS = 600;
 // 1宛先あたりの試行回数と、やり直す前の待ち時間（1回目の失敗後 1s、2回目の失敗後 2s）
 const MAX_ATTEMPTS = 3;
 const RETRY_DELAYS_MS = [1000, 2000];
+// 送信に使ってよい時間。ALB のアイドルタイムアウト（既定 60 秒）に対し、
+// 打ち切り直前に始めた1通の送信と履歴の保存が終わるだけの余裕を残す
+const SEND_BUDGET_MS = 40_000;
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -69,20 +74,37 @@ interface MailGroup {
   applications: Recipient[];
 }
 
-/** 失敗したら最大 MAX_ATTEMPTS 回まで送り直す。最後まで失敗したら最後のエラーを投げる */
-async function sendWithRetry(to: string, data: { title: string; body: string }): Promise<void> {
-  let lastError: unknown;
-  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+/** 送信を諦めたときのエラー。何回試したかをログに残すために持たせる */
+class SendFailedError extends Error {
+  constructor(
+    readonly attempts: number,
+    cause: unknown,
+  ) {
+    super(cause instanceof Error ? cause.message : String(cause), { cause });
+  }
+}
+
+/**
+ * 失敗したら最大 MAX_ATTEMPTS 回まで送り直す。最後まで失敗したら SendFailedError を投げる。
+ * 待つと deadline を過ぎる場合は、やり直さずにその時点で諦める
+ */
+async function sendWithRetry(
+  to: string,
+  data: { title: string; body: string },
+  deadline: number,
+): Promise<void> {
+  for (let attempt = 1; ; attempt++) {
     try {
       await sendTrialNoticeEmail(to, data);
       return;
     } catch (e) {
-      lastError = e;
-      const delay = RETRY_DELAYS_MS[attempt - 1];
-      if (attempt < MAX_ATTEMPTS && delay && shouldWait()) await wait(delay);
+      const delay = RETRY_DELAYS_MS[attempt - 1] ?? 0;
+      if (attempt >= MAX_ATTEMPTS || Date.now() + delay > deadline) {
+        throw new SendFailedError(attempt, e);
+      }
+      if (shouldWait()) await wait(delay);
     }
   }
-  throw lastError;
 }
 
 export async function create(c: Context) {
@@ -140,11 +162,18 @@ export async function create(c: Context) {
 
   const sent: Array<Recipient & { sent_at: Date }> = [];
   const failed: Recipient[] = [];
+  const skipped: Recipient[] = [];
   let sentMailCount = 0;
+  const deadline = Date.now() + SEND_BUDGET_MS;
   for (const [i, group] of [...groups.values()].entries()) {
+    // 時間切れの宛先には送らない（最初の1通は必ず試すので、誰にも送らずに終わることはない）
+    if (i > 0 && Date.now() + SEND_INTERVAL_MS > deadline) {
+      skipped.push(...group.applications);
+      continue;
+    }
     if (i > 0 && shouldWait()) await wait(SEND_INTERVAL_MS);
     try {
-      await sendWithRetry(group.email, { title, body });
+      await sendWithRetry(group.email, { title, body }, deadline);
       // 履歴の sent_at は実際に届いた時刻にする（保存時刻だと全員同じ時刻になってしまう）
       const sentAt = new Date();
       sentMailCount++;
@@ -152,11 +181,21 @@ export async function create(c: Context) {
     } catch (e) {
       failed.push(...group.applications);
       // 宛先アドレスは個人情報なのでログには出さない。申込IDで追えるようにする
-      logAppError("trialNotice.send", e, {
+      logAppError("trialNotice.send", e instanceof SendFailedError ? e.cause : e, {
         application_ids: group.applications.map((a) => a.application_id),
-        attempts: MAX_ATTEMPTS,
+        attempts: e instanceof SendFailedError ? e.attempts : MAX_ATTEMPTS,
       });
     }
+  }
+
+  // 時間切れで送らなかった宛先も failed として返し、管理画面から再送できるようにする
+  if (skipped.length > 0) {
+    failed.push(...skipped);
+    logAppError(
+      "trialNotice.timeBudget",
+      new Error("送信時間の上限に達したため残りを送信しませんでした"),
+      { application_ids: skipped.map((a) => a.application_id), budget_ms: SEND_BUDGET_MS },
+    );
   }
 
   if (sent.length === 0) {

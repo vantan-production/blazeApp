@@ -421,6 +421,52 @@ describe("POST /api/trial-notices の送信", () => {
     ]);
   });
 
+  it("送信時間の上限（40秒）を超えたら残りは送らず、failed で返して再送できるようにする", async () => {
+    const cookie = await setupOwner();
+    const a = await seedApplication("a@example.com", "2099-01-15");
+    const b = await seedApplication("b@example.com", "2099-01-16");
+    const c = await seedApplication("c@example.com", "2099-01-17", { name: "時間切れ" });
+    // 1通の送信に25秒かかる状況を再現する（2通目を送った時点で上限の40秒を超える）
+    let elapsed = 0;
+    const base = Date.now();
+    const nowSpy = vi.spyOn(Date, "now").mockImplementation(() => base + elapsed);
+    sendSpy.mockImplementation(async () => {
+      elapsed += 25_000;
+      return { error: null };
+    });
+    const logs: string[] = [];
+    setMonitoringSink((line) => logs.push(line));
+
+    try {
+      const res = await postNotice(cookie, {
+        title: "時間切れ",
+        body: "本文",
+        application_ids: [a, b, c],
+      });
+
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as SendResponse;
+      expect(body.message).toBe("3件中1件の送信に失敗しました。失敗した方に再送してください。");
+      expect(body.data.sent.map((r) => r.application_id).sort()).toEqual([a, b].sort());
+      expect(body.data.failed).toEqual([
+        { application_id: c, name: "時間切れ", email: "c@example.com", trial_date: "2099-01-17" },
+      ]);
+      // 時間切れの宛先には送ろうとしない
+      expect(sentNoticeMails("時間切れ").map((m) => m.to)).toEqual(["a@example.com", "b@example.com"]);
+      expect((await recipientRows()).map((r) => r.email).sort()).toEqual([
+        "a@example.com",
+        "b@example.com",
+      ]);
+
+      const errors = logs.map((l) => JSON.parse(l)).filter((l) => l.scope === "trialNotice.timeBudget");
+      expect(errors).toHaveLength(1);
+      expect(errors[0]).toMatchObject({ type: "APP_ERROR", application_ids: [c] });
+      expect(logs.join("\n")).not.toContain("@example.com");
+    } finally {
+      nowSpy.mockRestore();
+    }
+  });
+
   it("全員に届かなければ 502 を返し、履歴を何も保存しない", async () => {
     const cookie = await setupOwner();
     const a = await seedApplication("a@example.com", "2099-01-15");

@@ -2,17 +2,51 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEffect, useId, useState } from "react";
+import { HERO_SECTION_ID } from "@/components/top/HeroSection";
 import { routes } from "@/lib/routes";
 import { DrawerMenu } from "./DrawerMenu";
+
+/** ヘッダーの高さ（ロゴ64px＋上下の余白）。ファーストビューがこの下まで流れたら体験ボタンを出す */
+const HEADER_HEIGHT = 96;
+
+/**
+ * トップページで、ファーストビューがヘッダーの下まで流れたら true。
+ * 他のページ（ファーストビューが無い）では常に false
+ */
+function usePastHero(enabled: boolean): boolean {
+	const [isPast, setIsPast] = useState(false);
+
+	useEffect(() => {
+		const hero = enabled ? document.getElementById(HERO_SECTION_ID) : null;
+		if (!hero) {
+			setIsPast(false);
+			return;
+		}
+		const observer = new IntersectionObserver(
+			([entry]) => setIsPast(!entry.isIntersecting),
+			{ rootMargin: `-${HEADER_HEIGHT}px 0px 0px 0px` },
+		);
+		observer.observe(hero);
+		return () => observer.disconnect();
+	}, [enabled]);
+
+	return isPast;
+}
 
 /**
  * サイト共通ヘッダー（Figma: header 1511:429）。
  * メニューボタンでドロワー（state=selected の×アイコン）を開閉する。
+ * トップページではファーストビューを過ぎると、ロゴとメニューの間に体験フォームへのボタンを出す。
  */
 export function SiteHeader() {
 	const [isOpen, setIsOpen] = useState(false);
 	const drawerId = useId();
+	const pathname = usePathname();
+	const isPastHero = usePastHero(pathname === routes.top);
+	// ドロワーには体験バナーがあるため、開いている間は出さない
+	const showTrial = isPastHero && !isOpen;
 
 	useEffect(() => {
 		document.body.style.overflow = isOpen ? "hidden" : "";
@@ -39,6 +73,18 @@ export function SiteHeader() {
 							height={64}
 							preload
 						/>
+					</Link>
+					<Link
+						href={routes.trial}
+						inert={!showTrial}
+						aria-hidden={!showTrial}
+						className={`flex h-10 items-center justify-center rounded-[1000px] bg-brand-yellow px-3 text-[14px] font-medium tracking-[1px] whitespace-nowrap text-brand-blue shadow-[0_2px_6px_rgba(0,0,0,0.25)] transition-[opacity,translate] duration-300 ${
+							showTrial
+								? "translate-y-0 opacity-100"
+								: "pointer-events-none -translate-y-2 opacity-0"
+						}`}
+					>
+						体験はこちら
 					</Link>
 					<button
 						type="button"

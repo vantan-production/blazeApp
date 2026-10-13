@@ -4,6 +4,9 @@ import Image from "next/image";
 const catchLineClass =
 	"block -rotate-[17.94deg] text-[5.97cqw] leading-[5.47cqw] font-medium tracking-[1px] whitespace-nowrap text-shadow-[2px_4px_5px_rgba(0,0,0,0.45)]";
 
+/** ヘッダーがスクロール位置の判定に使うファーストビューのid */
+export const HERO_SECTION_ID = "top-hero";
+
 /**
  * トップページのファーストビュー（Figma: fast-view 978:352）。
  * 選手写真と体育館写真（Vector 2）を重ね、斜めのキャッチコピーと縦書きの scroll 表示を載せる。
@@ -12,7 +15,10 @@ const catchLineClass =
  */
 export function HeroSection() {
 	return (
-		<section className="@container relative flex w-full justify-center overflow-hidden">
+		<section
+			id={HERO_SECTION_ID}
+			className="@container relative flex w-full justify-center overflow-hidden"
+		>
 			<div className="grid shrink-0 place-items-start">
 				{/* 選手写真（players_img05）。元画像が横向きのため回転＋反転して縦長に見せる */}
 				<div className="col-start-1 row-start-1 flex h-[156.48cqw] w-[119.45cqw] items-center justify-center">

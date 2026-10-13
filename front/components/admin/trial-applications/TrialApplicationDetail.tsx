@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AdminButtonLink } from "@/components/admin/AdminButton";
 import type { ApiSuccess } from "@/lib/admin/api";
@@ -83,22 +82,8 @@ export function TrialApplicationDetail({ id }: Props) {
 		};
 	}, [id]);
 
-	const backLink = (
-		<Link
-			href={adminRoutes.trialApplications}
-			className="text-[14px] leading-[22px] tracking-[1px] text-brand-white underline"
-		>
-			体験申し込み一覧に戻る
-		</Link>
-	);
-
 	if (error) {
-		return (
-			<div className="flex w-full flex-col items-center gap-6">
-				<p className="text-[14px] text-brand-white">{error}</p>
-				{backLink}
-			</div>
-		);
+		return <p className="text-[14px] text-brand-white">{error}</p>;
 	}
 
 	if (!application) {
@@ -194,8 +179,6 @@ export function TrialApplicationDetail({ id }: Props) {
 					）を選ぶと、この方を宛先に選べます。
 				</p>
 			</section>
-
-			{backLink}
 		</article>
 	);
 }

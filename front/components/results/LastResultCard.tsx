@@ -65,9 +65,16 @@ export function LastResultCard({
 								team={ourTeam}
 								highlight={summary.outcome === "win"}
 							/>
-							<span className="font-savate text-[clamp(18px,5.5vw,22px)] text-brand-blue/50">
-								VS
-							</span>
+							{summary.isSetCount ? (
+								// セット数（例: 2-1）はスコアのように「-」でつなぐ。数字と同じ大きさ・行にそろえる
+								<span className="self-start font-inter text-[clamp(48px,16vw,64px)] leading-none font-black text-brand-blue/50">
+									-
+								</span>
+							) : (
+								<span className="font-savate text-[clamp(18px,5.5vw,22px)] text-brand-blue/50">
+									VS
+								</span>
+							)}
 							<TeamScore
 								score={summary.opponentScore}
 								team={opponentTeam}

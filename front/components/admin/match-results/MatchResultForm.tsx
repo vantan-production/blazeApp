@@ -22,6 +22,7 @@ import {
 	toMatchResultPayload,
 	validateMatchResultForm,
 } from "@/lib/admin/matchResults";
+import { revalidateMatchResults } from "@/lib/admin/revalidateMatchResults";
 import { adminRoutes } from "@/lib/admin/routes";
 import { apiClient } from "@/lib/apiClient";
 import { useToastStore } from "@/lib/store/useToastStore";
@@ -82,6 +83,15 @@ export function MatchResultForm({ result }: Props) {
 		setErrors({});
 	};
 
+	// 公開ページの「前回の試合結果」のキャッシュを捨てる。失敗しても保存は済んでいるので画面は進める
+	const refreshPublicPage = async () => {
+		try {
+			await revalidateMatchResults();
+		} catch (error) {
+			console.error("公開ページのキャッシュを更新できませんでした", error);
+		}
+	};
+
 	const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
 		event.preventDefault();
 		setSubmitError(null);
@@ -100,6 +110,7 @@ export function MatchResultForm({ result }: Props) {
 				await sendJson("/api/match-results", payload, "POST");
 				showToast("試合結果を登録しました。");
 			}
+			await refreshPublicPage();
 			router.push(adminRoutes.matchResults);
 		} catch (error) {
 			setSubmitError(
@@ -118,6 +129,7 @@ export function MatchResultForm({ result }: Props) {
 		try {
 			await apiClient(`/api/match-results/${result.id}`, { method: "DELETE" });
 			showToast("試合結果を削除しました。");
+			await refreshPublicPage();
 			router.push(adminRoutes.matchResults);
 		} catch (error) {
 			setSubmitError(toErrorMessage(error, "削除に失敗しました。"));

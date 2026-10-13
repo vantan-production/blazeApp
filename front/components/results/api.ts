@@ -1,3 +1,4 @@
+import { MATCH_RESULTS_CACHE_TAG } from "@/lib/cacheTags";
 import { fetchPaginatedList, type Paginated } from "@/lib/pagination";
 import type {
 	Achievement,
@@ -10,6 +11,12 @@ import type {
 // 画像はS3の署名付きURL（有効期限1時間。back/src/db/s3.ts）で返ってくるため、
 // 期限切れのURLを配らないよう再取得間隔はそれより十分短くする
 const FETCH_INIT: RequestInit = { next: { revalidate: 300 } };
+
+// 試合結果は画像が無いので署名付きURLの期限は気にしなくてよい。管理画面で変えたときに
+// lib/admin/revalidateMatchResults.ts がこのタグでキャッシュを捨て、すぐ最新を出す
+const MATCH_RESULTS_FETCH_INIT: RequestInit = {
+	next: { revalidate: 300, tags: [MATCH_RESULTS_CACHE_TAG] },
+};
 
 /** 画像が未登録の実績に出す代替画像 */
 const ACHIEVEMENT_FALLBACK_IMAGE = "/images/photo-placeholder.png";
@@ -152,7 +159,7 @@ export async function getLastMatch(): Promise<LastMatch | null> {
 	const { items } = await fetchPaginatedList<MatchResultResponse>(
 		"/api/match-results",
 		{ page: 1 },
-		FETCH_INIT,
+		MATCH_RESULTS_FETCH_INIT,
 	);
 	const latest = items[0];
 	if (!latest) return null;

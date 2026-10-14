@@ -49,6 +49,7 @@ export async function cleanDb() {
       files,
       news,
       achievement,
+      match_results,
       game,
       inquiry,
       trial_application,

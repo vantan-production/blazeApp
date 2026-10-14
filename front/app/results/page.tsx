@@ -3,14 +3,11 @@ import { PageShell } from "@/components/layout/PageShell";
 import { AchievementCarousel } from "@/components/results/AchievementCarousel";
 import {
 	getAchievements,
+	getLastMatch,
 	getMatchPhotos,
 	getMediaItems,
 } from "@/components/results/api";
-import {
-	highlightPhotos,
-	lastMatch,
-	teamGoal,
-} from "@/components/results/data";
+import { highlightPhotos, teamGoal } from "@/components/results/data";
 import { EmptyNote } from "@/components/results/EmptyNote";
 import { LastResultCard } from "@/components/results/LastResultCard";
 import { MediaList } from "@/components/results/MediaList";
@@ -27,7 +24,8 @@ export const metadata: Metadata = {
 /** 実績・試合結果ページ（ベース: Figma 実績・試合結果 1030:334） */
 export default async function ResultsPage() {
 	// 互いに依存しないので並列に取得する
-	const [achievements, matchPhotos, mediaItems] = await Promise.all([
+	const [lastMatch, achievements, matchPhotos, mediaItems] = await Promise.all([
+		getLastMatch(),
 		getAchievements(),
 		getMatchPhotos(),
 		getMediaItems(),
@@ -39,7 +37,11 @@ export default async function ResultsPage() {
 				<PageTitle>実績・試合結果</PageTitle>
 				<div className="flex w-full flex-col px-[clamp(16px,5.97vw,24px)]">
 					<ResultSection title="前回の試合結果">
-						<LastResultCard {...lastMatch} />
+						{lastMatch ? (
+							<LastResultCard {...lastMatch} />
+						) : (
+							<EmptyNote>試合結果は準備中です</EmptyNote>
+						)}
 					</ResultSection>
 					<ResultSection title="チーム目標">
 						<div className="relative w-full rounded-[20px] bg-brand-yellow px-6 py-8 text-brand-blue">

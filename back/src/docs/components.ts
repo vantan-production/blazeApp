@@ -560,6 +560,38 @@ export const components: JsonSchema = {
       },
     },
 
+    MatchResult: {
+      type: "object",
+      properties: {
+        id: uuidField("試合結果ID"),
+        tournament_name: { type: "string", description: "大会名" },
+        tournament_result: {
+          type: ["string", "null"],
+          description: "大会での成績（例: ベスト8）。未登録なら null",
+        },
+        played_on: { type: "string", format: "date", description: "試合日（YYYY-MM-DD）" },
+        opponent_name: {
+          type: ["string", "null"],
+          description: "対戦相手（任意）。無ければ null",
+        },
+        sets: {
+          type: "array",
+          description: "セットごとの得点（対戦相手があるときは1〜3セット、無いときは空配列）",
+          items: {
+            type: "object",
+            properties: {
+              our_score: { type: "integer", description: "自チームの得点" },
+              opponent_score: { type: "integer", description: "相手の得点" },
+            },
+          },
+        },
+        admin_id: { type: ["string", "null"], format: "uuid" },
+        admin_name: { type: "string", description: "登録した管理者（退会済みは「元管理者」）" },
+        created_at: dateTimeField("作成日時"),
+        updated_at: dateTimeField("更新日時"),
+      },
+    },
+
     TrialNotice: {
       type: "object",
       description: "体験申込者への連絡（送信履歴）。送信に成功した宛先があったときだけ保存される",

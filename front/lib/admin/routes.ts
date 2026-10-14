@@ -40,6 +40,10 @@ export const adminRoutes = {
 
 	// 関係者（member）から届いた投稿申請の承認
 	submissions: "/admin/submissions",
+
+	// 公開サイト「前回の試合結果」に出す試合結果（大会名・成績・スコア）
+	matchResults: "/admin/match-results",
+	matchResultsNew: "/admin/match-results/new",
 } as const;
 
 /** 問い合わせ詳細のパス */
@@ -63,6 +67,10 @@ export const adminAchievementDetailPath = (id: string) =>
 /** メディア情報詳細のパス */
 export const adminMediaDetailPath = (id: string) =>
 	`${adminRoutes.media}/${id}`;
+
+/** 試合結果の編集（削除もここから）のパス */
+export const adminMatchResultEditPath = (id: string) =>
+	`${adminRoutes.matchResults}/${id}`;
 
 /** 試合風景詳細のパス */
 export const adminGameDetailPath = (id: string) => `${adminRoutes.game}/${id}`;

@@ -36,6 +36,7 @@ import inquiryApp from "./inquiry/index.js";
 import trialApp from "./trial/index.js";
 import trialNoticeApp from "./trialNotice/index.js";
 import achievementApp from "./achievement/index.js";
+import matchResultApp from "./matchResult/index.js";
 import gameImgApp from "./gameImg/index.js";
 import mediaApp from "./media/index.js";
 
@@ -113,6 +114,7 @@ app.route("/", inquiryApp);
 app.route("/", trialApp);
 app.route("/", trialNoticeApp);
 app.route("/", achievementApp);
+app.route("/", matchResultApp);
 app.route("/", gameImgApp);
 app.route("/", mediaApp);
 

@@ -1,10 +1,12 @@
 import { unstable_rethrow } from "next/navigation";
 import { cache } from "react";
 import { API_BASE_URL } from "@/lib/apiClient";
+import { MATCH_RESULTS_CACHE_TAG } from "@/lib/cacheTags";
 import { fetchPaginatedList, type Paginated } from "@/lib/pagination";
 import type {
 	Achievement,
 	AchievementDetail,
+	LastMatch,
 	MatchPost,
 	MediaItem,
 	Photo,
@@ -13,6 +15,12 @@ import type {
 // 画像はS3の署名付きURL（有効期限1時間。back/src/db/s3.ts）で返ってくるため、
 // 期限切れのURLを配らないよう再取得間隔はそれより十分短くする
 const FETCH_INIT: RequestInit = { next: { revalidate: 300 } };
+
+// 試合結果は画像が無いので署名付きURLの期限は気にしなくてよい。管理画面で変えたときに
+// lib/admin/revalidateMatchResults.ts がこのタグでキャッシュを捨て、すぐ最新を出す
+const MATCH_RESULTS_FETCH_INIT: RequestInit = {
+	next: { revalidate: 300, tags: [MATCH_RESULTS_CACHE_TAG] },
+};
 
 /** 画像が未登録の実績に出す代替画像 */
 const ACHIEVEMENT_FALLBACK_IMAGE = "/images/photo-placeholder.png";
@@ -38,6 +46,16 @@ type GameResponse = {
 	id: string;
 	images: { id: string; url: string }[];
 	created_at: string;
+};
+
+type MatchResultResponse = {
+	id: string;
+	tournament_name: string;
+	tournament_result: string | null;
+	/** 試合日（YYYY-MM-DD） */
+	played_on: string;
+	opponent_name: string | null;
+	sets: { our_score: number; opponent_score: number }[];
 };
 
 type MediaResponse = {
@@ -176,4 +194,32 @@ export async function getMediaPage(
 /** 実績・試合結果ページのメディア情報セクション用（先頭ページ） */
 export async function getMediaItems(): Promise<MediaItem[]> {
 	return (await getMediaPage(1)).items;
+}
+
+/**
+ * 前回の試合結果（GET /api/match-results の先頭1件。試合日の新しい順に並んでいる）。
+ * まだ1件も無ければ null
+ */
+export async function getLastMatch(): Promise<LastMatch | null> {
+	const { items } = await fetchPaginatedList<MatchResultResponse>(
+		"/api/match-results",
+		{ page: 1 },
+		MATCH_RESULTS_FETCH_INIT,
+	);
+	const latest = items[0];
+	if (!latest) return null;
+
+	// 試合日は日付だけなので、タイムゾーンの変換をせずにそのまま表示する
+	const [y, m, d] = latest.played_on.split("-").map(Number);
+	return {
+		tournamentName: latest.tournament_name,
+		tournamentResult: latest.tournament_result ?? undefined,
+		date: `${y}/${m}/${d}`,
+		dateTime: latest.played_on,
+		opponentTeam: latest.opponent_name ?? undefined,
+		sets: latest.sets.map((set) => ({
+			ourScore: set.our_score,
+			opponentScore: set.opponent_score,
+		})),
+	};
 }

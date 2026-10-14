@@ -13,8 +13,17 @@ const SCHEDULE_ICAL_URL = process.env.SCHEDULE_ICAL_URL;
 const MONTHS_BEFORE = 3;
 const MONTHS_AFTER = 12;
 
-/** 毎週の予定などの繰り返しを展開する上限（壊れたデータで無限に回らないようにする） */
+/** 毎週の予定などの繰り返しを、取り込む期間内で展開する上限 */
 const MAX_OCCURRENCES = 5000;
+
+/**
+ * 繰り返しをたどる回数の上限（壊れたデータで無限に回らないようにする）。
+ * 期間より前の回もたどるため、何年も前から続く毎日の予定でも期間に届く大きさにする
+ */
+const MAX_ITERATIONS = 100_000;
+
+/** ICSの取得を待つ上限。応答が無いときは諦めて曜日だけの表示にする */
+const FETCH_TIMEOUT_MS = 10_000;
 
 const jstFormatter = new Intl.DateTimeFormat("en-CA", {
 	timeZone: "Asia/Tokyo",
@@ -186,11 +195,15 @@ export function parseScheduleEvents(
 			continue;
 		}
 		const iterator = event.iterator();
-		for (let i = 0; i < MAX_OCCURRENCES; i++) {
+		let occurrences = 0;
+		for (let i = 0; i < MAX_ITERATIONS && occurrences < MAX_OCCURRENCES; i++) {
 			const next = iterator.next();
 			if (!next) break;
 			const details = event.getOccurrenceDetails(next);
 			if (toJst(details.startDate).date > to) break;
+			// 期間より前に終わる回は、期間内の回の上限に数えずに飛ばす
+			if (toJst(details.endDate).date < from) continue;
+			occurrences++;
 			if (isCancelled(details.item)) continue;
 			daily.push(
 				...toDailyEvents(details.item, details.startDate, details.endDate),
@@ -228,6 +241,7 @@ const loadScheduleEvents = unstable_cache(
 		// iCloud の共有リンクは webcal:// のため https:// に読み替える
 		const res = await fetch(url.replace(/^webcal:\/\//, "https://"), {
 			cache: "no-store",
+			signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
 		});
 		if (!res.ok)
 			throw new Error(`カレンダーの取得に失敗しました: ${res.status}`);

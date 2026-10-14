@@ -4,6 +4,7 @@ import type { NextConfig } from "next";
 // 画像の最適化を許可するS3バケット名（backと同じ AWS_S3_BUCKET）。ビルド時に読まれるため、
 // Vercel等のビルド環境にも設定が必要。未設定ならS3画像は最適化対象にしない
 const s3Bucket = process.env.AWS_S3_BUCKET;
+const isDev = process.env.NODE_ENV === "development";
 
 const nextConfig: NextConfig = {
 	// ホームディレクトリ直下に無関係なpackage-lock.jsonがあり、Turbopackがそれを
@@ -16,15 +17,29 @@ const nextConfig: NextConfig = {
 		// next/image で最適化するにはホストを許可する必要がある。
 		// 署名のクエリは毎回変わるため search は指定せず、クエリ付きURLをそのまま通す
 		// 他人のバケットの画像まで最適化させないよう、ホストはアプリのバケットに限定する
-		remotePatterns: s3Bucket
-			? [
-					{
-						protocol: "https",
-						hostname: `${s3Bucket}.s3.ap-northeast-1.amazonaws.com`,
-						pathname: "/**",
-					},
-				]
-			: [],
+		remotePatterns: [
+			...(s3Bucket
+				? [
+						{
+							protocol: "https" as const,
+							hostname: `${s3Bucket}.s3.ap-northeast-1.amazonaws.com`,
+							pathname: "/**",
+						},
+					]
+				: []),
+			// 開発時はbackがローカルのS3互換ストレージ（http://<bucket>.localhost:<port>/...）のURLを返す
+			...(isDev
+				? [
+						{
+							protocol: "http" as const,
+							hostname: "*.localhost",
+							pathname: "/**",
+						},
+					]
+				: []),
+		],
+		// ローカルホストの画像を最適化するのに必要（Next.js 16から既定で拒否）。本番では許可しない
+		dangerouslyAllowLocalIP: isDev,
 	},
 	experimental: {
 		// app/unauthorized.tsx（401ページ）を unauthorized() で表示するために必要

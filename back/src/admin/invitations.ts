@@ -1,7 +1,8 @@
 // 招待 API（owner専用。verify のみ認証不要）
-// POST   /api/admin/invitations        — 招待発行＋招待メール送信
-// GET    /api/admin/invitations        — 招待一覧
-// DELETE /api/admin/invitations/:id    — 招待の失効
+// POST   /api/admin/invitations            — 招待発行＋招待メール送信
+// GET    /api/admin/invitations            — 招待一覧
+// POST   /api/admin/invitations/:id/resend — 招待メールの再送（新しいリンクで発行し直す）
+// DELETE /api/admin/invitations/:id        — 招待の失効
 // GET    /api/admin/invitations/verify — トークンの有効性確認（登録画面の表示判定用）
 
 import { randomBytes } from "node:crypto";
@@ -22,6 +23,7 @@ import { hashToken } from "../db/token.js";
 import { requireUuidParams } from "../utils/uuidParam.js";
 
 type Variables = { user: typeof admin.$inferSelect };
+type InvitationRole = z.infer<typeof invitationRoleSchema>;
 
 const app = new Hono<{ Variables: Variables }>();
 
@@ -38,6 +40,64 @@ const invitationStatus = (
   if (used_at) return "used";
   return expires_at.getTime() < Date.now() ? "expired" : "pending";
 };
+
+// 招待を発行して招待メールを送る（新規発行・再送で共通）。
+// 同じアドレス宛の未使用招待は、新規発行時に無効化する（削除と挿入を原子化）。
+// 招待メールを送り直したときに古いリンクが生き残らないようにするため。
+const issueInvitation = async (
+  email: string,
+  role: InvitationRole,
+  invitedBy: string,
+) => {
+  const rawToken = randomBytes(32).toString("hex");
+  const expiresAt = new Date(Date.now() + INVITATION_TTL_MS);
+
+  await db.transaction(async (tx) => {
+    await tx
+      .delete(invitations)
+      .where(and(eq(invitations.email, email), isNull(invitations.used_at)));
+
+    await tx.insert(invitations).values({
+      email,
+      token_hash: hashToken(rawToken),
+      role,
+      invited_by: invitedBy,
+      expires_at: expiresAt,
+    });
+  });
+
+  // 招待自体は発行済みなので送信失敗でもエラーにはせず、mail_sent で画面に伝える（owner は再送で対応できる）
+  let mailSent = true;
+  try {
+    await sendInvitationEmail(email, rawToken, role);
+  } catch (e) {
+    console.error("[invitations] 招待メール送信失敗:", e);
+    mailSent = false;
+  }
+
+  return { rawToken, expiresAt, mailSent };
+};
+
+// 発行・再送のレスポンス本体
+const issuedResponse = (
+  email: string,
+  role: InvitationRole,
+  issued: Awaited<ReturnType<typeof issueInvitation>>,
+  message: string,
+) => ({
+  success: true,
+  message: issued.mailSent
+    ? message
+    : "招待は発行しましたが、招待メールを送れませんでした。",
+  data: {
+    email,
+    role,
+    expires_at: issued.expiresAt,
+    mail_sent: issued.mailSent,
+    // テスト環境でのみ、実メール送信を介さずトークンを検証できるようレスポンスに含める
+    ...(process.env.NODE_ENV === "test" && { token: issued.rawToken }),
+  },
+});
 
 // 招待発行
 app.post("/api/admin/invitations", authToken, requireOwner, async (c) => {
@@ -76,47 +136,8 @@ app.post("/api/admin/invitations", authToken, requireOwner, async (c) => {
     );
   }
 
-  const rawToken = randomBytes(32).toString("hex");
-  const expiresAt = new Date(Date.now() + INVITATION_TTL_MS);
-  const invitedBy = c.get("user").id;
-
-  // 同じアドレス宛の未使用招待は、新規発行時に無効化する（削除と挿入を原子化）。
-  // 招待メールを送り直したときに古いリンクが生き残らないようにするため。
-  await db.transaction(async (tx) => {
-    await tx
-      .delete(invitations)
-      .where(and(eq(invitations.email, email), isNull(invitations.used_at)));
-
-    await tx.insert(invitations).values({
-      email,
-      token_hash: hashToken(rawToken),
-      role,
-      invited_by: invitedBy,
-      expires_at: expiresAt,
-    });
-  });
-
-  try {
-    await sendInvitationEmail(email, rawToken, role);
-  } catch (e) {
-    // 招待自体は発行済みなので成功として返し、送信失敗はログに残す（owner は再発行で対応できる）
-    console.error("[invitations] 招待メール送信失敗:", e);
-  }
-
-  return c.json(
-    {
-      success: true,
-      message: "招待を発行しました。",
-      data: {
-        email,
-        role,
-        expires_at: expiresAt,
-        // テスト環境でのみ、実メール送信を介さずトークンを検証できるようレスポンスに含める
-        ...(process.env.NODE_ENV === "test" && { token: rawToken }),
-      },
-    },
-    200,
-  );
+  const issued = await issueInvitation(email, role, c.get("user").id);
+  return c.json(issuedResponse(email, role, issued, "招待を発行しました。"), 200);
 });
 
 // 招待一覧（新しい順）
@@ -175,6 +196,55 @@ app.get("/api/admin/invitations/verify", async (c) => {
     200,
   );
 });
+
+// 招待メールの再送（未使用・期限切れのもの）。
+// 同じ宛先・ロールで発行し直すため、古いリンクは使えなくなり、有効期限も発行時点から7日に戻る
+app.post(
+  "/api/admin/invitations/:id/resend",
+  authToken,
+  requireOwner,
+  requireUuidParams,
+  async (c) => {
+    const id = c.req.param("id");
+    if (!id) {
+      return c.json({ success: false, errors: "招待IDが指定されていません。" }, 400);
+    }
+
+    const rows = await db.select().from(invitations).where(eq(invitations.id, id));
+    const invitation = rows[0];
+
+    if (!invitation) {
+      return c.json({ success: false, errors: "招待が見つかりません。" }, 404);
+    }
+
+    if (invitation.used_at) {
+      return c.json(
+        { success: false, errors: "使用済みの招待は再送できません。" },
+        400,
+      );
+    }
+
+    // 招待以外の経路で登録済みになったアドレスには送らない（新規発行と同じ判定）
+    const existingUsers = await db
+      .select()
+      .from(admin)
+      .where(eq(admin.email, invitation.email));
+    if (existingUsers.length > 0) {
+      return c.json(
+        { success: false, errors: "このメールアドレスは既に登録されています。" },
+        409,
+      );
+    }
+
+    // DB の role は text なので、発行時と同じスキーマで絞り込んでから使う
+    const role = invitationRoleSchema.parse(invitation.role);
+    const issued = await issueInvitation(invitation.email, role, c.get("user").id);
+    return c.json(
+      issuedResponse(invitation.email, role, issued, "招待メールを再送しました。"),
+      200,
+    );
+  },
+);
 
 // 招待の失効（未使用のものだけ。使用済みは登録の履歴として残す）
 app.delete("/api/admin/invitations/:id", authToken, requireOwner, requireUuidParams, async (c) => {

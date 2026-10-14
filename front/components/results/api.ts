@@ -2,7 +2,11 @@ import { unstable_rethrow } from "next/navigation";
 import { cache } from "react";
 import { API_BASE_URL } from "@/lib/apiClient";
 import { MATCH_RESULTS_CACHE_TAG } from "@/lib/cacheTags";
-import { fetchPaginatedList, type Paginated } from "@/lib/pagination";
+import {
+	fetchPaginatedList,
+	PAGE_SIZE,
+	type Paginated,
+} from "@/lib/pagination";
 import type {
 	Achievement,
 	AchievementDetail,
@@ -80,9 +84,19 @@ function formatDate(iso: string): string {
 /** 取得結果の各項目を画面用の形に変換する（ページ情報はそのまま） */
 function mapItems<T, U>(
 	result: Paginated<T>,
-	convert: (item: T) => U,
+	convert: (item: T, index: number) => U,
 ): Paginated<U> {
 	return { ...result, items: result.items.map(convert) };
+}
+
+/**
+ * 実績カードの番号バッジ。一番古い実績を 01 とし、新しいほど大きくする。
+ * 桁数は総件数の桁数に揃える（最低2桁。総件数が3桁なら 001 から）
+ * @param indexFromNewest 全実績を新しい順に並べたときの位置（0始まり）
+ */
+function achievementNumber(indexFromNewest: number, total: number): string {
+	const digits = Math.max(2, String(total).length);
+	return String(total - indexFromNewest).padStart(digits, "0");
 }
 
 /** 実績一覧の1ページ分（GET /api/achievement。新しい順・10件ずつ） */
@@ -94,8 +108,12 @@ export async function getAchievementsPage(
 		{ page },
 		FETCH_INIT,
 	);
-	return mapItems(result, (item) => ({
+	// 番号はページをまたいで通しにするため、前のページまでの件数と総件数から求める
+	const { page: currentPage, total } = result.pagination;
+	const offset = (currentPage - 1) * PAGE_SIZE;
+	return mapItems(result, (item, i) => ({
 		id: item.id,
+		number: achievementNumber(offset + i, total),
 		imageSrc: item.img_url ?? ACHIEVEMENT_FALLBACK_IMAGE,
 		title: item.title,
 		date: formatDate(item.created_at),

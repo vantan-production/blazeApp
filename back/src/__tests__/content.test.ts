@@ -292,3 +292,108 @@ describe("問い合わせ対応ステータス", () => {
     expect(res.status).toBe(400);
   });
 });
+
+// --- 問い合わせ一覧の検索・タブ件数 ---
+
+describe("問い合わせ一覧の検索", () => {
+  type ListJson = {
+    data: Array<{ id: string; title: string }>;
+    pagination: { total: number; totalPages: number };
+    counts: { all: number; pending: number; in_progress: number; resolved: number };
+  };
+
+  /** 問い合わせを作ってIDを返す */
+  async function createInquiryId(overrides: Record<string, string> = {}): Promise<string> {
+    const json = (await (await postInquiry(overrides)).json()) as { data: { id: string } };
+    return json.data.id;
+  }
+
+  async function list(cookie: string, query: Record<string, string>) {
+    const res = await app.request(`/api/inquiry?${new URLSearchParams(query)}`, {
+      headers: { Cookie: cookie },
+    });
+    return { status: res.status, json: (await res.json()) as ListJson };
+  }
+
+  async function patchStatus(cookie: string, id: string, status: string) {
+    return app.request(`/api/inquiry/${id}/status`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Cookie: cookie, Origin: ORIGIN },
+      body: JSON.stringify({ status }),
+    });
+  }
+
+  it("名前・メールアドレス・件名・本文を部分一致（大文字小文字を区別しない）で検索できる", async () => {
+    const cookie = await registerAndLogin("Owner", `search-owner${D}`);
+    const byName = await createInquiryId({ name: "山田 太郎" });
+    const byEmail = await createInquiryId({ email: "Yamada.Hanako@example.com" });
+    const byTitle = await createInquiryId({ title: "練習場所について" });
+    const byBody = await createInquiryId({ body: "見学は可能ですか？" });
+
+    const ids = async (q: string) => (await list(cookie, { q })).json.data.map((d) => d.id);
+    expect(await ids("山田")).toEqual([byName]);
+    expect(await ids("yamada.hanako")).toEqual([byEmail]);
+    expect(await ids("練習場所")).toEqual([byTitle]);
+    expect(await ids("見学")).toEqual([byBody]);
+    expect((await list(cookie, { q: "該当なし" })).json.pagination.total).toBe(0);
+  });
+
+  it("% _ \\ はワイルドカードではなく文字として検索する", async () => {
+    const cookie = await registerAndLogin("Owner", `search-owner2${D}`);
+    const percent = await createInquiryId({ title: "割引は50%ですか" });
+    const underscore = await createInquiryId({ title: "a_b について" });
+    const backslash = await createInquiryId({ title: "C:\\path について" });
+    await createInquiryId({ title: "ab について" });
+
+    const ids = async (q: string) => (await list(cookie, { q })).json.data.map((d) => d.id);
+    expect(await ids("%")).toEqual([percent]);
+    expect(await ids("a_b")).toEqual([underscore]);
+    expect(await ids("_")).toEqual([underscore]);
+    expect(await ids("\\")).toEqual([backslash]);
+  });
+
+  it("空白だけの検索語は検索しない", async () => {
+    const cookie = await registerAndLogin("Owner", `search-owner3${D}`);
+    await createInquiryId();
+    await createInquiryId();
+    expect((await list(cookie, { q: "  " })).json.pagination.total).toBe(2);
+  });
+
+  it("101文字以上の検索語は400", async () => {
+    const cookie = await registerAndLogin("Owner", `search-owner4${D}`);
+    expect((await list(cookie, { q: "あ".repeat(101) })).status).toBe(400);
+  });
+
+  it("status と併用でき、件数とページ数は両方の条件で数える", async () => {
+    const cookie = await registerAndLogin("Owner", `search-owner5${D}`);
+    const ids: string[] = [];
+    for (let i = 0; i < 12; i++) ids.push(await createInquiryId({ title: `体験の申し込み${i}` }));
+    await createInquiryId({ title: "別件" });
+    for (const id of ids.slice(0, 11)) await patchStatus(cookie, id, "resolved");
+
+    const page1 = await list(cookie, { q: "体験", status: "resolved" });
+    expect(page1.json.pagination).toMatchObject({ total: 11, totalPages: 2 });
+    expect(page1.json.data).toHaveLength(10);
+    const page2 = await list(cookie, { q: "体験", status: "resolved", page: "2" });
+    expect(page2.json.data).toHaveLength(1);
+    expect(page2.json.data[0]?.title).toMatch(/^体験の申し込み/);
+
+    const pending = await list(cookie, { q: "体験", status: "pending" });
+    expect(pending.json.data.map((d) => d.id)).toEqual([ids[11]]);
+  });
+
+  it("counts は検索条件だけで数えたステータスごとの件数（status の絞り込みには左右されない）", async () => {
+    const cookie = await registerAndLogin("Owner", `search-owner6${D}`);
+    const a = await createInquiryId({ title: "体験A" });
+    const b = await createInquiryId({ title: "体験B" });
+    await createInquiryId({ title: "体験C" });
+    await createInquiryId({ title: "別件" });
+    await patchStatus(cookie, a, "in_progress");
+    await patchStatus(cookie, b, "resolved");
+
+    const expected = { all: 3, pending: 1, in_progress: 1, resolved: 1 };
+    expect((await list(cookie, { q: "体験" })).json.counts).toEqual(expected);
+    expect((await list(cookie, { q: "体験", status: "resolved" })).json.counts).toEqual(expected);
+    expect((await list(cookie, {})).json.counts).toEqual({ ...expected, all: 4, pending: 2 });
+  });
+});

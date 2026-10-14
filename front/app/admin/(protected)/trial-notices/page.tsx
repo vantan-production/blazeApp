@@ -10,7 +10,7 @@ export const metadata = {
 /** 体験申込者への連絡メールの送信履歴（Figma なし。問い合わせ一覧の見た目に合わせている） */
 export default function AdminTrialNoticesPage() {
 	return (
-		<AdminPageLayout title="体験申込者への連絡">
+		<AdminPageLayout title="体験申込者への連絡" backHref={adminRoutes.top}>
 			<div className="flex w-full flex-col items-center gap-9">
 				<div className="w-full px-5">
 					<AdminButtonLink

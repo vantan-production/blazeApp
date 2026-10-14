@@ -1,5 +1,4 @@
 import { redirect } from "next/navigation";
-import { AdminBackLink } from "@/components/admin/AdminBackLink";
 import { AdminPageLayout } from "@/components/admin/AdminPageLayout";
 import { AccountDeleteSection } from "@/components/admin/account/AccountDeleteSection";
 import { AccountProfileCard } from "@/components/admin/account/AccountProfileCard";
@@ -19,24 +18,19 @@ export default async function AdminAccountPage() {
 	if (!user) redirect(adminRoutes.login);
 
 	return (
-		// 左上の「戻る」（AdminBackLink は absolute のため relative の枠で包む。
-		// AdminPageLayout の backHref は front/admin-game にだけあるので、ここでは直接置く）
-		<div className="relative flex w-full flex-1 flex-col">
-			<AdminBackLink href={adminRoutes.top} />
-			<AdminPageLayout title="アカウント">
-				<div className="-mt-12 flex w-full flex-col gap-10">
-					<section
-						aria-label="ログイン中のアカウント"
-						className="flex flex-col gap-3"
-					>
-						<AccountProfileCard user={user} />
-						<LogoutButton />
-					</section>
-					<NotificationSettingsCard />
-					<div aria-hidden className="h-px w-full bg-brand-white/40" />
-					<AccountDeleteSection isOwner={user.role === "owner"} />
-				</div>
-			</AdminPageLayout>
-		</div>
+		<AdminPageLayout title="アカウント" backHref={adminRoutes.top}>
+			<div className="-mt-12 flex w-full flex-col gap-10">
+				<section
+					aria-label="ログイン中のアカウント"
+					className="flex flex-col gap-3"
+				>
+					<AccountProfileCard user={user} />
+					<LogoutButton />
+				</section>
+				<NotificationSettingsCard />
+				<div aria-hidden className="h-px w-full bg-brand-white/40" />
+				<AccountDeleteSection isOwner={user.role === "owner"} />
+			</div>
+		</AdminPageLayout>
 	);
 }

@@ -91,8 +91,16 @@ const menuSections: MenuSection[] = [
 	{
 		title: "関係者向け",
 		items: [
-			{ label: "お知らせ", href: menuPath.notices, icon: icon("bell") },
-			{ label: "アンケート", href: menuPath.surveys, icon: icon("checklist") },
+			{
+				label: "関係者向けお知らせ",
+				href: menuPath.notices,
+				icon: icon("bell"),
+			},
+			{
+				label: "アンケート・出欠確認",
+				href: menuPath.surveys,
+				icon: icon("checklist"),
+			},
 			{ label: "資料庫", href: menuPath.documents, icon: icon("folder") },
 			{ label: "投稿申請", href: menuPath.submissions, icon: icon("inbox") },
 		],

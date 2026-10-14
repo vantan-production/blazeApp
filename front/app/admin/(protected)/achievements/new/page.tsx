@@ -3,7 +3,7 @@ import { AchievementPostForm } from "@/components/admin/achievements/Achievement
 import { adminRoutes } from "@/lib/admin/routes";
 
 export const metadata = {
-	title: "実績を投稿 | 西尾ブレイズ 管理画面",
+	title: "実績作成 | 西尾ブレイズ 管理画面",
 };
 
 /** 実績の新規投稿（Figma: achievements 2034:1621） */

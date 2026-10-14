@@ -23,7 +23,7 @@ export default function AdminDocumentsPage() {
 			<div className="pointer-events-none fixed inset-x-0 bottom-6 mx-auto flex w-full max-w-sp justify-end px-6">
 				<Link
 					href={adminRoutes.documentsNew}
-					aria-label="資料を新規登録"
+					aria-label="資料を新規作成"
 					className="pointer-events-auto flex size-20 items-center justify-center rounded-full bg-white shadow-[0px_6px_10px_rgba(0,0,0,0.35)]"
 				>
 					<Image

@@ -12,6 +12,7 @@ import { PageTabs } from "@/components/features/activities/PageTabs";
 import { ScheduleCalendar } from "@/components/features/activities/ScheduleCalendar";
 import { PageShell } from "@/components/layout/PageShell";
 import { PillHeading } from "@/components/ui/PillHeading";
+import { fetchScheduleEvents } from "@/lib/schedule";
 
 export const metadata: Metadata = {
 	title: "活動内容・スケジュール | 西尾ブレイズ",
@@ -21,7 +22,9 @@ export const metadata: Metadata = {
  * 活動内容・スケジュールページ（Figma: 活動内容 978:282）。
  * トップページと同じ黄色のピル見出し・白パネル・お知らせ行のデザインで組んでいる。
  */
-export default function ActivitiesPage() {
+export default async function ActivitiesPage() {
+	const events = await fetchScheduleEvents();
+
 	return (
 		<PageShell>
 			<main className="flex w-full flex-col items-center gap-12 pb-10">
@@ -53,7 +56,7 @@ export default function ActivitiesPage() {
 
 				<section className="flex w-full flex-col items-center gap-8 px-6">
 					<PillHeading>スケジュール</PillHeading>
-					<ScheduleCalendar />
+					<ScheduleCalendar events={events} />
 				</section>
 
 				<section className="w-full px-6">

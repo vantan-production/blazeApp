@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useSyncExternalStore } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 import { activitySlots } from "./data";
 import { PracticeDayDialog } from "./PracticeDayDialog";
+import { toDateValue } from "./practiceDates";
+import { type ScheduleEvent, scheduleLabel } from "./scheduleEvents";
 
 const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
 
@@ -43,13 +45,17 @@ function parseTodayKey(key: string): YearMonth & { date: number } {
 	return { year, month, date };
 }
 
+type Props = {
+	/** カレンダー（Google / iCloud）から取り込んだ予定。null なら活動日時の曜日に印を付ける */
+	events: ScheduleEvent[] | null;
+};
+
 /**
  * 月表示の練習カレンダー（Figma: calendar 1030:376）。
- * Figmaでは362x240のグレー枠のみのため、活動日時の曜日に印を付ける仮実装。
- * 練習日をタップすると、練習時間・場所・体験フォームへの導線をモーダルで表示する。
- * TODO: 大会・休みなどの予定データが決まったらAPIから取得して表示する
+ * 予定のある日に黄色の丸を付け、日付の下に体育館名・大会名を表示する（長い名前は2行で「…」に省略）。
+ * 予定の日をタップすると、時間・場所・体験フォームへの導線をモーダルで表示する。
  */
-export function ScheduleCalendar() {
+export function ScheduleCalendar({ events }: Props) {
 	// 表示月はビルド時と閲覧時でずれるため、今日はクライアントでのみ取得する（サーバーでは null）
 	const todayKey = useSyncExternalStore(
 		subscribeNothing,
@@ -60,6 +66,16 @@ export function ScheduleCalendar() {
 	// 今月からの表示月のずれ
 	const [offset, setOffset] = useState(0);
 	const [selected, setSelected] = useState<Date | null>(null);
+
+	const eventsByDate = useMemo(() => {
+		const map = new Map<string, ScheduleEvent[]>();
+		for (const event of events ?? []) {
+			map.set(event.date, [...(map.get(event.date) ?? []), event]);
+		}
+		return map;
+	}, [events]);
+	const selectedEvents =
+		events && selected ? (eventsByDate.get(toDateValue(selected)) ?? []) : null;
 
 	const current: YearMonth | null = today
 		? (() => {
@@ -96,7 +112,7 @@ export function ScheduleCalendar() {
 					›
 				</button>
 			</div>
-			<div className="grid grid-cols-7 gap-y-2 text-center text-[15px] leading-[22px]">
+			<div className="grid grid-cols-7 gap-y-3 text-center text-[15px] leading-[22px]">
 				{weekdays.map((day, i) => (
 					<span key={day} className={i === 0 ? "text-brand-red" : undefined}>
 						{day}
@@ -104,27 +120,56 @@ export function ScheduleCalendar() {
 				))}
 				{current &&
 					buildCells(current).map((cell, i) => {
+						if (cell.date === null) return <span key={cell.key} />;
+						const date = new Date(current.year, current.month, cell.date);
+						const dayEvents = events
+							? (eventsByDate.get(toDateValue(date)) ?? [])
+							: [];
+						// カレンダー未連携のときは活動日時の曜日を練習日とする
+						const isMarked = events
+							? dayEvents.length > 0
+							: practiceDays.has(i % 7);
+						const label = dayEvents[0] ? scheduleLabel(dayEvents[0]) : null;
 						const isToday =
 							today !== null &&
 							cell.date === today.date &&
 							current.year === today.year &&
 							current.month === today.month;
-						const isPractice = cell.date !== null && practiceDays.has(i % 7);
-						const cellClass = `mx-auto flex size-[clamp(30px,10vw,40px)] items-center justify-center rounded-full ${
-							isPractice ? "bg-brand-yellow font-medium" : ""
+						const circleClass = `mx-auto flex size-[clamp(30px,10vw,40px)] shrink-0 items-center justify-center rounded-full ${
+							isMarked ? "bg-brand-yellow font-medium" : ""
 						} ${isToday ? "border-2 border-brand-red" : ""}`;
-						if (isPractice && cell.date !== null) {
-							const date = new Date(current.year, current.month, cell.date);
+						const content = (
+							<>
+								<span className={circleClass}>{cell.date}</span>
+								{label && (
+									<span
+										className={`w-full px-0.5 text-[10px] leading-[12px] font-medium tracking-normal break-all ${
+											dayEvents.length > 1 ? "line-clamp-1" : "line-clamp-2"
+										}`}
+									>
+										{label}
+									</span>
+								)}
+								{/* 同じ日に複数の予定があるときは、1件目の名前と残りの件数を出す */}
+								{dayEvents.length > 1 && (
+									<span className="text-[10px] leading-[12px] tracking-normal">
+										{`+${dayEvents.length - 1}件`}
+									</span>
+								)}
+							</>
+						);
+						if (isMarked) {
+							const names = dayEvents.map(scheduleLabel).join("、");
 							return (
 								<button
 									key={cell.key}
 									type="button"
 									onClick={() => setSelected(date)}
 									aria-current={isToday ? "date" : undefined}
-									aria-label={`${current.month + 1}月${cell.date}日 練習日の詳細を見る`}
-									className={`${cellClass} cursor-pointer active:opacity-70`}
+									aria-label={`${current.month + 1}月${cell.date}日${names ? ` ${names}` : ""} 詳細を見る`}
+									className="flex min-w-0 cursor-pointer flex-col items-center gap-0.5 active:opacity-70"
 								>
-									{cell.date}
+									{content}
 								</button>
 							);
 						}
@@ -132,18 +177,22 @@ export function ScheduleCalendar() {
 							<span
 								key={cell.key}
 								aria-current={isToday ? "date" : undefined}
-								className={cellClass}
+								className="flex min-w-0 flex-col items-center"
 							>
-								{cell.date}
+								{content}
 							</span>
 						);
 					})}
 			</div>
 			<p className="flex items-center gap-1 self-end text-[12px] leading-4">
 				<span aria-hidden className="size-3 rounded-full bg-brand-yellow" />
-				練習日（タップで詳細）
+				{events ? "予定あり" : "練習日"}（タップで詳細）
 			</p>
-			<PracticeDayDialog date={selected} onClose={() => setSelected(null)} />
+			<PracticeDayDialog
+				date={selected}
+				events={selectedEvents}
+				onClose={() => setSelected(null)}
+			/>
 		</div>
 	);
 }

@@ -3,13 +3,13 @@ import { InquiryList } from "@/components/admin/inquiry/InquiryList";
 import { adminRoutes } from "@/lib/admin/routes";
 
 export const metadata = {
-	title: "問い合わせ返信 | 西尾ブレイズ 管理画面",
+	title: "問い合わせ一覧 | 西尾ブレイズ 管理画面",
 };
 
 /** 問い合わせ一覧（Figma: inquiry 2020:1033） */
 export default function AdminInquiryPage() {
 	return (
-		<AdminPageLayout title="問い合わせ返信" backHref={adminRoutes.top}>
+		<AdminPageLayout title="問い合わせ一覧" backHref={adminRoutes.top}>
 			<InquiryList />
 		</AdminPageLayout>
 	);

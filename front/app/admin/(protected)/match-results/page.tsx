@@ -5,13 +5,13 @@ import { MatchResultList } from "@/components/admin/match-results/MatchResultLis
 import { adminRoutes } from "@/lib/admin/routes";
 
 export const metadata = {
-	title: "試合結果 | 西尾ブレイズ 管理画面",
+	title: "試合結果投稿 | 西尾ブレイズ 管理画面",
 };
 
 /** 試合結果の一覧（アンケート一覧と同じ構成）。右下の＋から新規登録へ */
 export default function AdminMatchResultsPage() {
 	return (
-		<AdminPageLayout title="試合結果" backHref={adminRoutes.top}>
+		<AdminPageLayout title="試合結果投稿" backHref={adminRoutes.top}>
 			<MatchResultList />
 			{/* 最後の行が右下の＋ボタンに隠れないようにする余白 */}
 			<div aria-hidden className="h-12 shrink-0" />

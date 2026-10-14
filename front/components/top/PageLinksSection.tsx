@@ -25,9 +25,9 @@ const pageLinks: {
 		imagePosition: "center 20%",
 	},
 	{
-		title: "ニュース",
+		title: "お知らせ",
 		subtitle: "NEWS",
-		href: routes.news,
+		href: routes.notice,
 		imageSrc: "/images/audience.jpeg",
 		// 応援している観客が入る高さに合わせる
 		imagePosition: "center 40%",

@@ -19,7 +19,7 @@ type Props = {
 	order: SortOrder;
 };
 
-/** 並び替えリンク＋ニュースカード一覧＋ページ送り */
+/** 並び替えリンク＋お知らせのカード一覧＋ページ送り */
 export function NewsList({ items, pagination, order }: Props) {
 	// 並び順を変えると1ページ目の中身が別物になるため、ページは1に戻す
 	const toggledOrder = order === "desc" ? "asc" : "desc";
@@ -29,7 +29,7 @@ export function NewsList({ items, pagination, order }: Props) {
 		<>
 			<div className="px-5 py-5">
 				<SortableHeading
-					title="ニュース"
+					title="お知らせ"
 					titleAs="h1"
 					align="center"
 					order={order}
@@ -43,7 +43,7 @@ export function NewsList({ items, pagination, order }: Props) {
 				{/* back未接続や記事0件のときに、空白だけのページにならないようにする */}
 				{items.length === 0 && (
 					<p className="py-10 text-[14px] text-brand-white">
-						ニュースはまだありません
+						お知らせはまだありません
 					</p>
 				)}
 				<ul className="flex w-full flex-col gap-4">
@@ -61,7 +61,7 @@ export function NewsList({ items, pagination, order }: Props) {
 				<Pagination
 					currentPage={pagination.page}
 					totalPages={pagination.totalPages}
-					pathname={routes.news}
+					pathname={routes.notice}
 					params={newsListParams(order)}
 				/>
 			</div>

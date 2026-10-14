@@ -83,7 +83,7 @@ export function newsListParams(order: SortOrder) {
 
 /** ニュース一覧の指定ページ・並び順のURL */
 export function newsListHref(page: number, order: SortOrder): string {
-	return pageHref(routes.news, page, newsListParams(order));
+	return pageHref(routes.notice, page, newsListParams(order));
 }
 
 /**
@@ -134,5 +134,5 @@ export function formatNewsDate(publishedAt: string): string {
 }
 
 export function newsDetailPath(id: string): string {
-	return `${routes.news}/${id}`;
+	return `${routes.notice}/${id}`;
 }

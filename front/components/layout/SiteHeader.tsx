@@ -20,19 +20,21 @@ function usePastHero(enabled: boolean): boolean {
 
 	useEffect(() => {
 		const hero = enabled ? document.getElementById(HERO_SECTION_ID) : null;
-		if (!hero) {
-			setIsPast(false);
-			return;
-		}
+		if (!hero) return;
 		const observer = new IntersectionObserver(
 			([entry]) => setIsPast(!entry.isIntersecting),
 			{ rootMargin: `-${HEADER_HEIGHT}px 0px 0px 0px` },
 		);
 		observer.observe(hero);
-		return () => observer.disconnect();
+		return () => {
+			observer.disconnect();
+			// トップへ戻ってきたとき、前回の値で一瞬ボタンが出ないようにする
+			setIsPast(false);
+		};
 	}, [enabled]);
 
-	return isPast;
+	// トップ以外では、前の値が残っていても出さない
+	return enabled && isPast;
 }
 
 /**

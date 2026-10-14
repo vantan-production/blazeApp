@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useEffect, useRef } from "react";
 import { PillHeading } from "@/components/ui/PillHeading";
 import { routes } from "@/lib/routes";
-import { activityPlace, activitySlots } from "./data";
+import { activityPlaces, activitySlots } from "./data";
 import { toDateValue } from "./practiceDates";
 import {
 	isTrialEvent,
@@ -52,7 +52,6 @@ export function PracticeDayDialog({ date, events, onClose }: Props) {
 	const slot = date
 		? activitySlots.find((s) => s.days.includes(date.getDay()))
 		: undefined;
-	const mapLink = activityPlace.links[0];
 	// カレンダー連携時は、通常練習・体験会のある日だけ体験の申し込みを案内する
 	const canTrial = events ? events.some(isTrialEvent) : true;
 
@@ -134,13 +133,23 @@ export function PracticeDayDialog({ date, events, onClose }: Props) {
 										練習場所
 									</PillHeading>
 								</dt>
-								<dd className="flex flex-col items-center gap-2">
-									<span className="text-[18px] font-medium tracking-[1px]">
-										{activityPlace.name}
-									</span>
-									{mapLink && (
-										<MapLink href={mapLink.href} label={mapLink.label} />
-									)}
+								<dd className="flex flex-col items-center gap-3">
+									{activityPlaces.map((place) => {
+										const mapLink = place.links[0];
+										return (
+											<div
+												key={place.name}
+												className="flex flex-col items-center gap-2"
+											>
+												<span className="text-[18px] font-medium tracking-[1px]">
+													{place.name}
+												</span>
+												{mapLink && (
+													<MapLink href={mapLink.href} label={mapLink.label} />
+												)}
+											</div>
+										);
+									})}
 								</dd>
 							</div>
 						</dl>

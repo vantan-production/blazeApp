@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { TrialBanner } from "@/components/ui/TrialBanner";
 
 /** キャッチコピーの共通スタイル（Figma: h1 bold + ドロップシャドウ、-17.94deg 回転） */
 const catchLineClass =
@@ -12,6 +13,7 @@ export const HERO_SECTION_ID = "top-hero";
  * 選手写真と体育館写真（Vector 2）を重ね、斜めのキャッチコピーと縦書きの scroll 表示を載せる。
  * 画像群は402px幅より広いため、左右はみ出た分を切り抜く。
  * 寸法はFigmaの402px幅を基準に cqw（このセクション幅に対する%）へ換算し、スマホ幅に比例して伸縮させる。
+ * ファーストビューは画面より縦に長いため、体験バナーはキャッチコピーの下に重ね、開いた直後から見えるようにする。
  */
 export function HeroSection() {
 	return (
@@ -55,6 +57,11 @@ export function HeroSection() {
 					<span className={catchLineClass}>みんなで楽しもう！！</span>
 				</span>
 			</h1>
+
+			{/* 画面が低い端末でも最初の画面に収まるよう、画面下端（バナー高さ44px＋余白16px）より上に置く */}
+			<div className="absolute inset-x-[10px] top-[min(146cqw,calc(100svh-60px))]">
+				<TrialBanner />
+			</div>
 
 			<ScrollIndicator />
 		</section>

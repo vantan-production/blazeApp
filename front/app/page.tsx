@@ -5,7 +5,6 @@ import { LatestNewsSection } from "@/components/top/LatestNewsSection";
 import { PageLinksSection } from "@/components/top/PageLinksSection";
 import { ContentPanel } from "@/components/ui/ContentPanel";
 import { PillHeading } from "@/components/ui/PillHeading";
-import { TrialBanner } from "@/components/ui/TrialBanner";
 
 // TODO: 活動写真が用意できたら差し替える（今はFigmaのプレースホルダー画像）
 const galleryPhotos = [1, 2, 3].map((n) => ({
@@ -19,11 +18,7 @@ export default function Home() {
 		<PageShell offsetHeader={false}>
 			<HeroSection />
 
-			<div className="px-[10px] py-4">
-				<TrialBanner />
-			</div>
-
-			<main className="flex flex-1 flex-col items-center gap-8 px-6 pb-10">
+			<main className="flex flex-1 flex-col items-center gap-8 px-6 pt-8 pb-10">
 				<LatestNewsSection />
 
 				<section className="flex w-full flex-col items-center gap-8">

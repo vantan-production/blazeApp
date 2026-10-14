@@ -89,6 +89,7 @@ describe("個別ルーターの不正なID（owner）", () => {
     ["PATCH", "/api/inquiry/abc/status"],
     ["POST", "/api/inquiry/abc/reply"],
     ["DELETE", `/api/inquiry/${VALID_ID}/reply/abc`],
+    ["POST", `/api/inquiry/${VALID_ID}/reply/abc/mail`],
     ["GET", "/api/trial-application/abc"],
     ["GET", "/api/notices/abc"],
     ["GET", "/api/notices/abc/reads"],

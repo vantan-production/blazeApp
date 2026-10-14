@@ -1,4 +1,8 @@
 // POST /api/inquiry/:id/reply — 問い合わせへの返信（管理者のみ）
+//
+// 返信を保存したあと、同じ内容を問い合わせ元のメールアドレスへ送る（replyMail.ts）。
+// 送信に失敗しても返信は保存したまま 200 を返し、mail_status と message で管理画面に結果を伝える
+// （失敗した返信は POST /api/inquiry/:id/reply/:reply_id/mail で再送できる）
 
 import { z, eq } from "../index.js";
 import {
@@ -11,6 +15,7 @@ import {
   processFileUpload,
 } from "../shared/index.js";
 import type { Context } from "hono";
+import { deliverReplyMail, REPLY_MAIL_MESSAGES } from "./replyMail.js";
 
 export const createReply = async (c: Context) => {
   const inquiryId = c.req.param("id");
@@ -22,7 +27,8 @@ export const createReply = async (c: Context) => {
 
   // 対象の問い合わせが存在するか確認
   const existing = await db.select().from(inquiry).where(eq(inquiry.id, inquiryId));
-  if (existing.length === 0) {
+  const target = existing[0];
+  if (!target) {
     return c.json({ success: false, errors: "問い合わせが見つかりません。" }, 404);
   }
 
@@ -82,6 +88,13 @@ export const createReply = async (c: Context) => {
       file: filePath,
     })
     .returning();
+  const saved = inserted[0];
+  if (!saved) throw new Error("返信の保存に失敗しました。");
 
-  return c.json({ success: true, message: "返信を投稿しました。", data: inserted[0] }, 200);
+  const { status, reply: delivered } = await deliverReplyMail(target, saved);
+
+  return c.json(
+    { success: true, message: REPLY_MAIL_MESSAGES[status], mail_status: status, data: delivered },
+    200,
+  );
 };

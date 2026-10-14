@@ -123,6 +123,8 @@ export const reply = pgTable("reply", {
   img: s3Path("img"),
   // ファイルのS3パス（任意）
   file: s3Path("file"),
+  // 返信メールが問い合わせ元に届いた時刻。未送信・送信失敗・宛先なしは NULL（inquiry/replyMail.ts）
+  mail_sent_at: timestamp("mail_sent_at"),
 });
 
 // 体験申し込みテーブル

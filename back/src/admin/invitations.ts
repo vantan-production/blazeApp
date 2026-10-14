@@ -19,6 +19,7 @@ import {
 } from "../shared/index.js";
 import { requireOwner } from "../db/roleGuard.js";
 import { hashToken } from "../db/token.js";
+import { requireUuidParams } from "../utils/uuidParam.js";
 
 type Variables = { user: typeof admin.$inferSelect };
 
@@ -176,7 +177,7 @@ app.get("/api/admin/invitations/verify", async (c) => {
 });
 
 // 招待の失効（未使用のものだけ。使用済みは登録の履歴として残す）
-app.delete("/api/admin/invitations/:id", authToken, requireOwner, async (c) => {
+app.delete("/api/admin/invitations/:id", authToken, requireOwner, requireUuidParams, async (c) => {
   const id = c.req.param("id");
   if (!id) {
     return c.json({ success: false, errors: "招待IDが指定されていません。" }, 400);

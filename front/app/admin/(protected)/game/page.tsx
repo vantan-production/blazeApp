@@ -11,7 +11,7 @@ export const metadata = {
 /** 投稿済み試合風景の一覧（ニュース一覧と同じ構成）。右下の＋から新規投稿へ */
 export default function AdminGamePage() {
 	return (
-		<AdminPageLayout title="試合風景">
+		<AdminPageLayout title="試合風景" backHref={adminRoutes.top}>
 			{/* 関係者から届いた掲載取り下げ依頼へ */}
 			<Link
 				href={adminRoutes.gameConsentRequests}

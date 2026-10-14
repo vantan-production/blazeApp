@@ -30,6 +30,7 @@ import {
 } from "../shared/index.js";
 import { requireAdmin, requireMember } from "../db/roleGuard.js";
 import type { Context } from "hono";
+import { requireUuidParams } from "../utils/uuidParam.js";
 
 const app = new Hono();
 
@@ -268,13 +269,13 @@ async function removeDocument(c: Context) {
 }
 
 // :id 単体より先に、サブパスを持つルートを登録する
-app.get("/api/documents/:id/download", authToken, requireMember, (c) =>
+app.get("/api/documents/:id/download", authToken, requireMember, requireUuidParams, (c) =>
   downloadDocument(c),
 );
 
 app.get("/api/documents", authToken, requireMember, (c) => getAllDocuments(c));
 app.post("/api/documents", authToken, requireAdmin, (c) => createDocument(c));
-app.patch("/api/documents/:id", authToken, requireAdmin, (c) => updateDocument(c));
-app.delete("/api/documents/:id", authToken, requireAdmin, (c) => removeDocument(c));
+app.patch("/api/documents/:id", authToken, requireAdmin, requireUuidParams, (c) => updateDocument(c));
+app.delete("/api/documents/:id", authToken, requireAdmin, requireUuidParams, (c) => removeDocument(c));
 
 export default app;

@@ -1,9 +1,10 @@
 // GET /api/gameImg — 全ての試合風景を取得
 // member 以上: 全画像 + consent_status + 原本を返す
 // 一般: approved のみ表示（approved 画像が0件の投稿は非表示）
+// admin 未満: status='published' の投稿のみ（下書き・承認待ちは news と同じく管理者だけが見られる）
 
 import { desc, eq, and } from "../index.js";
-import { count, exists, getTableColumns } from "drizzle-orm";
+import { count, exists, getTableColumns, type SQL } from "drizzle-orm";
 import {
   db,
   game,
@@ -23,15 +24,24 @@ export const getAll = async (c: Context) => {
   // 関係者（member 以上）は全件と原本を見られる（設計書 §9 C）
   const canViewAll = isMemberOrAbove(user);
 
+  // 承認待ち・下書きの投稿は公開APIに出さない（news/getAll と同じ基準）。
+  // admin 以上は管理画面から確認できるよう status を問わない。
+  const isAdmin = user?.role === "owner" || user?.role === "admin";
+
+  const conditions: SQL[] = [];
+  if (!isAdmin) conditions.push(eq(game.status, "published"));
   // 一般ユーザーは approved 画像が1枚もない投稿を非表示にするため、DB側でEXISTS絞り込みする
-  const visibleCondition = canViewAll
-    ? undefined
-    : exists(
+  if (!canViewAll) {
+    conditions.push(
+      exists(
         db
           .select({ id: images.id })
           .from(images)
           .where(and(eq(images.game_id, game.id), eq(images.consent_status, "approved"))),
-      );
+      ),
+    );
+  }
+  const visibleCondition = and(...conditions);
 
   const [all, totalResult] = await Promise.all([
     db

@@ -24,6 +24,12 @@ export interface MailMessage {
   html: string;
 }
 
+// 送信時のオプション
+export interface SendOptions {
+  // 同じキーの送信は Resend が24時間は1回しか配信しない（タイムアウト後のやり直しで二重に届かないように）
+  idempotencyKey?: string;
+}
+
 // 送信元アドレス（Resend側でドメイン検証済みのものを設定する）
 // 環境変数はモジュールロード時ではなく参照時に読む（テストやスクリプトから差し替えられるようにするため）
 function mailFrom(): string {
@@ -61,19 +67,35 @@ function escapeHtml(value: string): string {
  * scripts/sendTestMail.ts からも同じ経路で送るため export している
  * @param message - buildXxx() が組み立てたメール
  * @param failureLabel - 送信失敗時のエラーメッセージに使う名称
+ * @param options - 冪等キーなど、Resend に渡す送信オプション
  */
 export async function sendMailMessage(
   message: MailMessage,
   failureLabel = "メール",
+  options: SendOptions = {},
 ): Promise<void> {
-  if (process.env.NODE_ENV === "test") return;
-
-  const { error } = await getResendClient().emails.send(message);
+  const { error } = await mailTransport.send(message, options);
 
   if (error) {
     throw new Error(`${failureLabel}の送信に失敗しました: ${error.message}`);
   }
 }
+
+/**
+ * 実際の送信口。
+ * ESM の関数 export は外から差し替えられないため、オブジェクトのメソッドにしておき、
+ * テストで vi.spyOn(mailTransport, "send") して「誰に何通送ったか」や送信失敗を再現できるようにする。
+ */
+export const mailTransport = {
+  async send(
+    message: MailMessage,
+    options: SendOptions = {},
+  ): Promise<{ error: { message: string } | null }> {
+    if (process.env.NODE_ENV === "test") return { error: null };
+    const { error } = await getResendClient().emails.send(message, options);
+    return { error };
+  },
+};
 
 // ---------------------------------------------------------------------------
 // パスワード再設定
@@ -131,7 +153,8 @@ export function buildInvitationEmail(
   token: string,
   role: InvitationRole,
 ): MailMessage {
-  const registerUrl = `${frontendUrl()}/register?token=${encodeURIComponent(token)}`;
+  // 新規登録画面は管理画面配下（フロントの adminRoutes.register）にあるため /admin/register を指す
+  const registerUrl = `${frontendUrl()}/admin/register?token=${encodeURIComponent(token)}`;
 
   return {
     from: mailFrom(),
@@ -394,4 +417,53 @@ export async function sendInquiryAutoReplyEmail(
   data: InquiryAutoReplyMailData,
 ): Promise<void> {
   await sendMailMessage(buildInquiryAutoReplyEmail(data), "問い合わせ自動返信メール");
+}
+
+// ---------------------------------------------------------------------------
+// 体験申込者への連絡
+// ---------------------------------------------------------------------------
+
+// 体験申込者への連絡メールに使う入力データ
+export interface TrialNoticeMailData {
+  title: string;
+  body: string;
+}
+
+/**
+ * 体験申込者への連絡メール（保護者宛）を組み立てる
+ *
+ * 宛先は1通につき1人だけにする。申込者同士は互いに無関係の家庭なので、
+ * to / cc に並べるのはもちろん、bcc でも1通にまとめず個別に送る
+ * （1通の失敗が全員に波及せず、誰に届かなかったかも数えられるようにするため）。
+ * @param to - 送信先（申込時のメールアドレス1件）
+ */
+export function buildTrialNoticeEmail(to: string, data: TrialNoticeMailData): MailMessage {
+  return {
+    from: mailFrom(),
+    to,
+    // 件名はヘッダーに入るため改行を潰す（本文と違い HTML エスケープでは防げない）
+    subject: `【西尾ブレイズ】${data.title.replace(/[\r\n]+/g, " ")}`,
+    html: `
+      <p>体験練習にお申し込みいただいた保護者の方へ</p>
+      <p>西尾ブレイズより体験練習に関するご連絡です。</p>
+      <hr />
+      <p>${escapeHtml(data.title)}</p>
+      <p>${escapeHtml(data.body).replace(/\n/g, "<br />")}</p>
+      <hr />
+      <p>※このメールは体験練習にお申し込みいただいた方にお送りしています。</p>
+      <p>※このメールは送信専用です。ご不明な点はホームページのお問い合わせフォームからご連絡ください。</p>
+    `,
+  };
+}
+
+/**
+ * 体験申込者への連絡メールを1人に送信する
+ * テスト環境（NODE_ENV=test）では実送信せずスキップする
+ */
+export async function sendTrialNoticeEmail(
+  to: string,
+  data: TrialNoticeMailData,
+  options: SendOptions = {},
+): Promise<void> {
+  await sendMailMessage(buildTrialNoticeEmail(to, data), "体験申込者への連絡メール", options);
 }

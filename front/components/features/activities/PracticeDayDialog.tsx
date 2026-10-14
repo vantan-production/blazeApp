@@ -7,17 +7,39 @@ import { PillHeading } from "@/components/ui/PillHeading";
 import { routes } from "@/lib/routes";
 import { activityPlace, activitySlots } from "./data";
 import { toDateValue } from "./practiceDates";
+import {
+	isTrialEvent,
+	mapSearchUrl,
+	type ScheduleEvent,
+} from "./scheduleEvents";
 
 const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
 
 type Props = {
 	/** 表示する練習日。null のときは閉じる */
 	date: Date | null;
+	/** カレンダーから取り込んだその日の予定。null（未連携）なら活動日時・活動場所を表示する */
+	events: ScheduleEvent[] | null;
 	onClose: () => void;
 };
 
-/** カレンダーの練習日をタップしたときに開く、練習時間・場所・体験案内のモーダル */
-export function PracticeDayDialog({ date, onClose }: Props) {
+/** 外部リンクの下線付きテキスト（地図を開く） */
+function MapLink({ href, label }: { href: string; label: string }) {
+	return (
+		<a
+			href={href}
+			target="_blank"
+			rel="noopener noreferrer"
+			className="flex items-center gap-1 border-b-[1.5px] border-brand-blue text-[14px] tracking-[1px]"
+		>
+			{label}
+			<Image src="/icons/external-link.svg" alt="" width={16} height={16} />
+		</a>
+	);
+}
+
+/** カレンダーの予定のある日をタップしたときに開く、時間・場所・体験案内のモーダル */
+export function PracticeDayDialog({ date, events, onClose }: Props) {
 	const dialogRef = useRef<HTMLDialogElement>(null);
 
 	useEffect(() => {
@@ -31,6 +53,8 @@ export function PracticeDayDialog({ date, onClose }: Props) {
 		? activitySlots.find((s) => s.days.includes(date.getDay()))
 		: undefined;
 	const mapLink = activityPlace.links[0];
+	// カレンダー連携時は、通常練習・体験会のある日だけ体験の申し込みを案内する
+	const canTrial = events ? events.some(isTrialEvent) : true;
 
 	return (
 		// biome-ignore lint/a11y/useKeyWithClickEvents: 背景クリックで閉じる補助操作。キーボードはEscで閉じられる
@@ -61,54 +85,76 @@ export function PracticeDayDialog({ date, onClose }: Props) {
 						{`${date.getMonth() + 1}月${date.getDate()}日（${weekdays[date.getDay()]}）`}
 					</p>
 
-					<dl className="flex w-full flex-col gap-5">
-						<div className="flex flex-col items-center gap-2">
-							<dt>
-								<PillHeading variant="label" as="h3">
-									練習時間
-								</PillHeading>
-							</dt>
-							<dd className="text-[20px] font-medium tracking-[1px]">
-								{slot?.time ?? "練習はありません"}
-							</dd>
-						</div>
-						<div className="flex flex-col items-center gap-2">
-							<dt>
-								<PillHeading variant="label" as="h3">
-									練習場所
-								</PillHeading>
-							</dt>
-							<dd className="flex flex-col items-center gap-2">
-								<span className="text-[18px] font-medium tracking-[1px]">
-									{activityPlace.name}
-								</span>
-								{mapLink && (
-									<a
-										href={mapLink.href}
-										target="_blank"
-										rel="noopener noreferrer"
-										className="flex items-center gap-1 border-b-[1.5px] border-brand-blue text-[14px] tracking-[1px]"
-									>
-										{mapLink.label}
-										<Image
-											src="/icons/external-link.svg"
-											alt=""
-											width={16}
-											height={16}
-										/>
-									</a>
-								)}
-							</dd>
-						</div>
-					</dl>
+					{events ? (
+						<ul className="flex w-full flex-col">
+							{events.map((event, i) => (
+								<li
+									// 同じ日に同名の予定が並ぶこともあるため位置も含める
+									// biome-ignore lint/suspicious/noArrayIndexKey: 予定は並び替えない
+									key={`${event.title}-${i}`}
+									className={`flex flex-col items-center gap-2 py-4 text-center first:pt-0 last:pb-0 ${
+										i > 0 ? "border-t border-brand-blue/20" : ""
+									}`}
+								>
+									<p className="text-[18px] font-medium tracking-[1px] break-all">
+										{event.title}
+									</p>
+									<p className="text-[16px] tracking-[1px]">
+										{event.time ?? "終日"}
+									</p>
+									{event.location && (
+										<>
+											<p className="text-[14px] tracking-[1px] break-all">
+												{event.location}
+											</p>
+											<MapLink
+												href={mapSearchUrl(event.location)}
+												label="地図を見る"
+											/>
+										</>
+									)}
+								</li>
+							))}
+						</ul>
+					) : (
+						<dl className="flex w-full flex-col gap-5">
+							<div className="flex flex-col items-center gap-2">
+								<dt>
+									<PillHeading variant="label" as="h3">
+										練習時間
+									</PillHeading>
+								</dt>
+								<dd className="text-[20px] font-medium tracking-[1px]">
+									{slot?.time ?? "練習はありません"}
+								</dd>
+							</div>
+							<div className="flex flex-col items-center gap-2">
+								<dt>
+									<PillHeading variant="label" as="h3">
+										練習場所
+									</PillHeading>
+								</dt>
+								<dd className="flex flex-col items-center gap-2">
+									<span className="text-[18px] font-medium tracking-[1px]">
+										{activityPlace.name}
+									</span>
+									{mapLink && (
+										<MapLink href={mapLink.href} label={mapLink.label} />
+									)}
+								</dd>
+							</div>
+						</dl>
+					)}
 
-					{/* タップした練習日を体験希望日として選んだ状態でフォームを開く */}
-					<Link
-						href={`${routes.trial}?date=${toDateValue(date)}`}
-						className="flex h-12 w-full items-center justify-center rounded-[1000px] bg-brand-yellow text-[18px] font-medium tracking-[1px]"
-					>
-						体験を申し込む
-					</Link>
+					{/* タップした練習日を体験希望日として選んだ状態でフォームを開く。大会などの日には出さない */}
+					{canTrial && (
+						<Link
+							href={`${routes.trial}?date=${toDateValue(date)}`}
+							className="flex h-12 w-full items-center justify-center rounded-[1000px] bg-brand-yellow text-[18px] font-medium tracking-[1px]"
+						>
+							体験を申し込む
+						</Link>
+					)}
 				</div>
 			)}
 		</dialog>

@@ -14,6 +14,7 @@ import {
 } from "./paths/phase4.js";
 import { inquiryPaths } from "./paths/inquiry.js";
 import { trialPaths } from "./paths/trial.js";
+import { trialNoticePaths } from "./paths/trialNotice.js";
 import { achievementPaths } from "./paths/achievement.js";
 import { gameImgPaths } from "./paths/gameImg.js";
 import { matchResultPaths } from "./paths/matchResult.js";
@@ -73,6 +74,10 @@ export const buildOpenApiDocument = (serverUrl: string): JsonSchema => ({
     { name: "問い合わせ", description: "問い合わせの受信・対応ステータス・返信" },
     { name: "体験申し込み", description: "体験申し込みの受付と管理" },
     {
+      name: "体験申込者への連絡",
+      description: "保護者向けの連絡事項を、管理者が選んだ体験申込者にだけメールで送る",
+    },
+    {
       name: "試合風景",
       description:
         "試合風景の投稿・掲載同意・モザイク（公開分。関係者向けの原本は「関係者ギャラリー」）",
@@ -99,6 +104,7 @@ export const buildOpenApiDocument = (serverUrl: string): JsonSchema => ({
     ...matchResultPaths,
     ...inquiryPaths,
     ...trialPaths,
+    ...trialNoticePaths,
     ...gameImgPaths,
   },
 });

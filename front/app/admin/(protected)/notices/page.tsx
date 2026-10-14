@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { AdminPageLayout } from "@/components/admin/AdminPageLayout";
 import { NoticeList } from "@/components/admin/notices/NoticeList";
-import { adminNoticeRoutes } from "@/lib/admin/routes";
+import { adminNoticeRoutes, adminRoutes } from "@/lib/admin/routes";
 
 export const metadata = {
 	title: "関係者向けお知らせ | 西尾ブレイズ 管理画面",
@@ -11,7 +11,7 @@ export const metadata = {
 /** 関係者向けお知らせの一覧（ニュース一覧と同じ構成）。右下の＋から新規作成へ */
 export default function AdminNoticesPage() {
 	return (
-		<AdminPageLayout title="関係者向けお知らせ">
+		<AdminPageLayout title="関係者向けお知らせ" backHref={adminRoutes.top}>
 			<NoticeList />
 			{/* 最後の行が右下の＋ボタンに隠れないようにする余白 */}
 			<div aria-hidden className="h-12 shrink-0" />

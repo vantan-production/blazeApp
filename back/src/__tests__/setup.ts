@@ -53,6 +53,8 @@ export async function cleanDb() {
       game,
       inquiry,
       trial_application,
+      trial_notice,
+      trial_notice_recipient,
       users
     RESTART IDENTITY CASCADE
   `);

@@ -1,6 +1,7 @@
 // GET /api/gameImg/:id — 特定の試合風景を取得
 // member 以上: 全画像 + consent_status + 原本を返す
 // 一般: approved のみ・モザイク適用後の画像を表示
+// admin 未満: status='published' 以外は404（news/getById と同じく存在を明かさない）
 
 import { eq } from "../index.js";
 import { getTableColumns } from "drizzle-orm";
@@ -34,6 +35,13 @@ export const getById = async (c: Context) => {
 
   const item = result[0];
   if (!item) return c.json({ success: false, errors: "試合風景が見つかりません。" }, 404);
+
+  // 承認待ち・下書きは admin 以上だけが見られる（news/getById と同じ基準）。
+  // 投稿できるのは admin 以上なので、投稿者本人の判定は isAdmin に含まれる
+  const isAdmin = user?.role === "owner" || user?.role === "admin";
+  if (item.status !== "published" && !isAdmin) {
+    return c.json({ success: false, errors: "試合風景が見つかりません。" }, 404);
+  }
 
   const imageList = await getVisibleGameImages(id, user);
 

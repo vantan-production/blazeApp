@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { AdminPageLayout } from "@/components/admin/AdminPageLayout";
 import { SurveyList } from "@/components/admin/surveys/SurveyList";
-import { adminSurveyRoutes } from "@/lib/admin/routes";
+import { adminRoutes, adminSurveyRoutes } from "@/lib/admin/routes";
 
 export const metadata = {
 	title: "アンケート・出欠確認 | 西尾ブレイズ 管理画面",
@@ -11,7 +11,7 @@ export const metadata = {
 /** アンケート・出欠確認の一覧（ニュース一覧と同じ構成）。右下の＋から新規作成へ */
 export default function AdminSurveysPage() {
 	return (
-		<AdminPageLayout title="アンケート・出欠確認">
+		<AdminPageLayout title="アンケート・出欠確認" backHref={adminRoutes.top}>
 			<SurveyList />
 			{/* 最後の行が右下の＋ボタンに隠れないようにする余白 */}
 			<div aria-hidden className="h-12 shrink-0" />

@@ -84,7 +84,7 @@ export function SiteHeader() {
 						href={routes.trial}
 						inert={!showTrial}
 						aria-hidden={!showTrial}
-						className={`flex h-10 items-center justify-center rounded-[1000px] bg-brand-yellow px-3 text-[14px] font-medium tracking-[1px] whitespace-nowrap text-brand-blue shadow-[0_2px_6px_rgba(0,0,0,0.25)] transition-[opacity,translate] duration-300 ${
+						className={`flex h-10 items-center justify-center rounded-[1000px] bg-brand-yellow px-3 text-[14px] font-medium tracking-[1px] whitespace-nowrap text-brand-blue shadow-[0_4px_12px_rgba(0,0,0,0.45)] transition-[opacity,translate] duration-300 ${
 							showTrial
 								? "translate-y-0 opacity-100"
 								: "pointer-events-none -translate-y-2 opacity-0"

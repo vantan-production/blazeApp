@@ -20,8 +20,16 @@ export type InquiryReply = {
 	admin_name: string;
 	img_url: string | null;
 	file_url: string | null;
+	/** 問い合わせ元へ返信メールが届いた日時。未送信・送信失敗・メールアドレスなしは null */
+	mail_sent_at: string | null;
 	created_at: string;
 };
+
+/**
+ * POST /api/inquiry/:id/reply の mail_status（返信メールの送信結果）。
+ * sent: 送信済み / failed: 送信失敗（詳細から再送できる） / no_address: 問い合わせにメールアドレスが無く送っていない
+ */
+export type ReplyMailStatus = "sent" | "failed" | "no_address";
 
 export type InquiryDetailData = Inquiry & { replies: InquiryReply[] };
 

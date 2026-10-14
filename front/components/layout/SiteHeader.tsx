@@ -22,7 +22,11 @@ function usePastHero(enabled: boolean): boolean {
 		const hero = enabled ? document.getElementById(HERO_SECTION_ID) : null;
 		if (!hero) return;
 		const observer = new IntersectionObserver(
-			([entry]) => setIsPast(!entry.isIntersecting),
+			(entries) => {
+				// まとめて届いたときは古い順に並ぶので、最後のものが今の状態
+				const latest = entries[entries.length - 1];
+				setIsPast(!latest.isIntersecting);
+			},
 			{ rootMargin: `-${HEADER_HEIGHT}px 0px 0px 0px` },
 		);
 		observer.observe(hero);

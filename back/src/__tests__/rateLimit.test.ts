@@ -19,6 +19,7 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { Hono } from "hono";
 import { rateLimiter, RedisStore } from "../index.js";
 import { redisClient } from "../shared/index.js";
+import { createFormRateLimiter, FORM_RATE_LIMIT_MESSAGE } from "../utils/formRateLimit.js";
 
 // 本番各ルートと同一の結線。ここを変えたら本番側も変わっていないか確認すること
 const redisStore = () =>
@@ -149,5 +150,85 @@ describe("カウンタの保存先が Redis であること", () => {
     // 3回目までは通り、どちらのタスクに当たっても4回目は弾かれる
     expect((await post(task2, "192.0.2.7")).status).toBe(429);
     expect((await post(task1, "192.0.2.7")).status).toBe(429);
+  });
+});
+
+describe("公開フォーム（問い合わせ・体験申し込み）のリミッター", () => {
+  /**
+   * 本番の inquiry / trial と同じ createFormRateLimiter で組み立てる。
+   * ハンドラは X-Test-Result ヘッダで結果を切り替える（invalid=400 / throw=500 / それ以外=200）
+   */
+  const buildFormApp = (prefix = "rl:form-test:") => {
+    const app = new Hono();
+    app.post(
+      "/",
+      createFormRateLimiter({
+        prefix,
+        keyGenerator: (c) => c.req.header("x-test-client") ?? "unknown",
+      }),
+      (c) => {
+        const result = c.req.header("x-test-result");
+        if (result === "invalid") return c.json({ success: false, errors: "入力エラー" }, 400);
+        if (result === "throw") throw new Error("想定外のエラー");
+        return c.json({ success: true });
+      },
+    );
+    app.onError((_err, c) => c.json({ success: false, errors: "サーバーエラー" }, 500));
+    return app;
+  };
+
+  const submit = (app: Hono, client: string, result?: "invalid" | "throw") =>
+    app.request("/", {
+      method: "POST",
+      headers: { "X-Test-Client": client, ...(result ? { "X-Test-Result": result } : {}) },
+    });
+
+  it("入力エラー（400）の送信は数えず、直して送り直せば通る", async () => {
+    const app = buildFormApp();
+
+    expect((await submit(app, "198.51.100.1", "invalid")).status).toBe(400);
+    expect((await submit(app, "198.51.100.1", "invalid")).status).toBe(400);
+    // 失敗が何回あっても、最初の成功は通る
+    expect((await submit(app, "198.51.100.1")).status).toBe(200);
+    // 成功した後は従来どおり1分に1回
+    expect((await submit(app, "198.51.100.1")).status).toBe(429);
+  });
+
+  it("サーバーエラー（500）で終わった送信も数えない", async () => {
+    const app = buildFormApp();
+
+    expect((await submit(app, "198.51.100.2", "throw")).status).toBe(500);
+    expect((await submit(app, "198.51.100.2")).status).toBe(200);
+  });
+
+  it("失敗した送信の分は Redis 上のカウンタからも戻される", async () => {
+    const app = buildFormApp("rl:form-count:");
+
+    await submit(app, "198.51.100.3", "invalid");
+    expect(await redisClient.get("rl:form-count:198.51.100.3")).toBe("0");
+
+    await submit(app, "198.51.100.3");
+    expect(await redisClient.get("rl:form-count:198.51.100.3")).toBe("1");
+  });
+
+  it("429 は他のエラーと同じ JSON 形式で案内文を返す", async () => {
+    const app = buildFormApp();
+
+    await submit(app, "198.51.100.4");
+    const blocked = await submit(app, "198.51.100.4");
+    expect(blocked.status).toBe(429);
+    expect(blocked.headers.get("content-type")).toContain("application/json");
+    expect(await blocked.json()).toEqual({ success: false, errors: FORM_RATE_LIMIT_MESSAGE });
+    expect(FORM_RATE_LIMIT_MESSAGE).toBe("1分間に1回しか送信できません。");
+  });
+
+  it("フォームごとにカウンタが分かれる（問い合わせの直後に体験申し込みをしても弾かない）", async () => {
+    const inquiry = buildFormApp("rl:inquiry:");
+    const trial = buildFormApp("rl:trial:");
+
+    expect((await submit(inquiry, "198.51.100.5")).status).toBe(200);
+    expect((await submit(trial, "198.51.100.5")).status).toBe(200);
+    expect((await submit(inquiry, "198.51.100.5")).status).toBe(429);
+    expect((await submit(trial, "198.51.100.5")).status).toBe(429);
   });
 });

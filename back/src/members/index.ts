@@ -7,11 +7,12 @@ import { Hono } from "hono";
 import { authToken } from "../shared/index.js";
 import { requireMember } from "../db/roleGuard.js";
 import { getMemberGallery, downloadOriginal } from "./gallery.js";
+import { requireUuidParams } from "../utils/uuidParam.js";
 
 const app = new Hono();
 
 // :imageId を含む固定パスを先に登録する
-app.get("/api/members/gallery/:imageId/download", authToken, requireMember, (c) =>
+app.get("/api/members/gallery/:imageId/download", authToken, requireMember, requireUuidParams, (c) =>
   downloadOriginal(c),
 );
 app.get("/api/members/gallery", authToken, requireMember, (c) => getMemberGallery(c));

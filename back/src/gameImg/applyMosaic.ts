@@ -29,6 +29,7 @@ import {
   MAX_MOSAIC_REGIONS,
 } from "./mosaicLogic.js";
 import type { Context } from "hono";
+import type { MosaicRegionRecord } from "../db/schema.js";
 
 /**
  * モザイクの入力にするS3キーを決める。
@@ -39,6 +40,31 @@ export const mosaicSourceKey = (image: {
   path: string;
   original_path: string | null;
 }): string => image.original_path ?? image.path;
+
+/**
+ * 画像の1領域をピクセル化した画像（領域と同じ大きさ）を返す。
+ * 縮小 → ニアレストネイバーで拡大して、1マス pixel_size 四方のブロックにする。
+ *
+ * 縮小と拡大は必ず別の sharp インスタンスで行う。1つのパイプラインで resize を2回呼ぶと
+ * 最後の resize しか効かず（sharp の仕様）、元の領域がそのまま返ってモザイクがかからない。
+ */
+export async function pixelateRegion(
+  source: Buffer,
+  region: MosaicRegionRecord,
+): Promise<Buffer> {
+  const { smallW, smallH } = computeMosaicScale(
+    region.width,
+    region.height,
+    region.pixel_size,
+  );
+  const small = await sharp(source)
+    .extract({ left: region.x, top: region.y, width: region.width, height: region.height })
+    .resize(smallW, smallH, { fit: "fill" })
+    .toBuffer();
+  return sharp(small)
+    .resize(region.width, region.height, { fit: "fill", kernel: "nearest" })
+    .toBuffer();
+}
 
 export const applyMosaic = async (c: Context) => {
   const found = await findGameImage(c);
@@ -81,21 +107,13 @@ export const applyMosaic = async (c: Context) => {
       );
     }
 
-    // 各領域をピクセル化（スケールダウン → ニアレストネイバーでスケールアップ）
+    // 各領域をピクセル化して、原本に重ねる画像を作る
     const overlays = await Promise.all(
-      regions.map(async (region) => {
-        const { smallW, smallH } = computeMosaicScale(
-          region.width,
-          region.height,
-          region.pixel_size,
-        );
-        const input = await sharp(originalBuffer)
-          .extract({ left: region.x, top: region.y, width: region.width, height: region.height })
-          .resize(smallW, smallH, { fit: "fill" })
-          .resize(region.width, region.height, { fit: "fill", kernel: "nearest" })
-          .toBuffer();
-        return { input, left: region.x, top: region.y };
-      }),
+      regions.map(async (region) => ({
+        input: await pixelateRegion(originalBuffer, region),
+        left: region.x,
+        top: region.y,
+      })),
     );
 
     // 全モザイク領域を原本に合成して WebP で書き出し

@@ -1,11 +1,11 @@
 import Image from "next/image";
 import { ContentPanel } from "@/components/ui/ContentPanel";
-import type { ActivitySlot } from "./data";
+import type { ActivityPlace, ActivitySlot } from "./data";
 
 type Props = {
 	grade: string;
 	slots: ActivitySlot[];
-	place: { name: string; links: { label: string; href: string }[] };
+	places: ActivityPlace[];
 };
 
 /** 曜日を黄色のピルで示す小ラベル */
@@ -18,7 +18,7 @@ function DayChip({ children }: { children: React.ReactNode }) {
 }
 
 /** 対象学年・活動日時・活動場所を白パネルで並べる活動概要 */
-export function ActivityOverview({ grade, slots, place }: Props) {
+export function ActivityOverview({ grade, slots, places }: Props) {
 	return (
 		<div className="flex w-full flex-col gap-6">
 			<ContentPanel title="対象学年" titleAs="h2" align="center">
@@ -49,29 +49,38 @@ export function ActivityOverview({ grade, slots, place }: Props) {
 				titleAs="h2"
 				align="center"
 			>
-				<div className="flex flex-col items-center gap-4">
-					<p className="text-[20px] font-medium">{place.name}</p>
-					<ul className="flex w-full flex-col gap-2">
-						{place.links.map((link) => (
-							<li key={link.label}>
-								<a
-									href={link.href}
-									target="_blank"
-									rel="noopener noreferrer"
-									className="flex h-11 w-full items-center justify-center gap-2 rounded-[1000px] border-2 border-brand-blue text-[16px] tracking-[1px]"
-								>
-									{link.label}
-									<Image
-										src="/icons/external-link.svg"
-										alt=""
-										width={20}
-										height={20}
-									/>
-								</a>
-							</li>
-						))}
-					</ul>
-				</div>
+				<ul className="flex w-full flex-col">
+					{places.map((place, i) => (
+						<li
+							key={place.name}
+							className={`flex flex-col items-center gap-4 py-4 first:pt-0 last:pb-0 ${
+								i > 0 ? "border-t border-brand-blue/20" : ""
+							}`}
+						>
+							<p className="text-[20px] font-medium">{place.name}</p>
+							<ul className="flex w-full flex-col gap-2">
+								{place.links.map((link) => (
+									<li key={link.label}>
+										<a
+											href={link.href}
+											target="_blank"
+											rel="noopener noreferrer"
+											className="flex h-11 w-full items-center justify-center gap-2 rounded-[1000px] border-2 border-brand-blue text-[16px] tracking-[1px]"
+										>
+											{link.label}
+											<Image
+												src="/icons/external-link.svg"
+												alt=""
+												width={20}
+												height={20}
+											/>
+										</a>
+									</li>
+								))}
+							</ul>
+						</li>
+					))}
+				</ul>
 			</ContentPanel>
 		</div>
 	);

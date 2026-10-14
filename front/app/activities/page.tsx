@@ -3,7 +3,7 @@ import { ActivityOverview } from "@/components/features/activities/ActivityOverv
 import { BelongingsPanel } from "@/components/features/activities/BelongingsPanel";
 import {
 	activityGrade,
-	activityPlace,
+	activityPlaces,
 	activitySlots,
 	belongings,
 } from "@/components/features/activities/data";
@@ -50,7 +50,7 @@ export default async function ActivitiesPage() {
 					<ActivityOverview
 						grade={activityGrade}
 						slots={activitySlots}
-						place={activityPlace}
+						places={activityPlaces}
 					/>
 				</section>
 

@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 
 type Props = {
 	imageSrc: string;
@@ -8,18 +9,26 @@ type Props = {
 	/** 指定するとタイトルの下に登録日を出す（実績一覧ページ用） */
 	date?: string;
 	dateTime?: string;
+	/** 指定するとカード全体を詳細ページへのリンクにする */
+	href?: string;
 };
 
-/** 写真と大会名を並べた白い実績カード。実績スライダーと実績一覧ページで共通 */
+/**
+ * 写真と大会名を並べた白い実績カード。実績スライダーと実績一覧ページで共通。
+ * href を渡すとカード全体が詳細ページ（他の写真も見られる）へのリンクになる
+ */
 export function AchievementCard({
 	imageSrc,
 	title,
 	number,
 	date,
 	dateTime,
+	href,
 }: Props) {
-	return (
-		<div className="flex w-full items-stretch gap-3 rounded-[20px] bg-brand-white p-3 text-brand-blue">
+	const className =
+		"flex w-full items-stretch gap-3 rounded-[20px] bg-brand-white p-3 text-brand-blue";
+	const content = (
+		<>
 			<div className="relative aspect-[3/4] w-[45%] shrink-0 overflow-hidden rounded-[12px] bg-brand-black">
 				<Image
 					src={imageSrc}
@@ -45,6 +54,16 @@ export function AchievementCard({
 					</time>
 				)}
 			</div>
-		</div>
+		</>
+	);
+
+	if (!href) return <div className={className}>{content}</div>;
+	return (
+		<Link
+			href={href}
+			className={`${className} transition-opacity hover:opacity-90`}
+		>
+			{content}
+		</Link>
 	);
 }

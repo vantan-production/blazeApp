@@ -533,6 +533,12 @@ export const components: JsonSchema = {
           type: "string",
           description: "返信した管理者名（アカウント削除済みの場合は「元管理者」）",
         },
+        mail_sent_at: {
+          type: ["string", "null"],
+          format: "date-time",
+          description:
+            "返信メールが問い合わせ元に届いた日時。未送信・送信失敗・メールアドレスなしは null",
+        },
         created_at: dateTimeField("返信日時"),
       },
     },

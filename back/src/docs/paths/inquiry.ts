@@ -117,7 +117,8 @@ export const inquiryPaths: Paths = {
     post: {
       tags: [TAG],
       summary: "問い合わせへの返信（admin 以上）",
-      description: "返信内容は問い合わせ者へメール送信される。画像・ファイルの添付が可能。",
+      description:
+        "返信を保存し、同じ内容を問い合わせ元のメールアドレスへ送信する（元の問い合わせ内容を引用し、添付した画像・ファイルもメールに添付する）。送信に失敗しても返信は保存したまま 200 を返し、mail_status で結果を伝える。失敗した返信は POST /api/inquiry/{id}/reply/{reply_id}/mail で再送できる。",
       parameters: [pathParam("id", "問い合わせID")],
       requestBody: formBody({
         type: "object",
@@ -130,8 +131,43 @@ export const inquiryPaths: Paths = {
         },
       }),
       responses: {
-        "200": mutationResponse("返信成功", "#/components/schemas/Reply"),
+        "200": jsonResponse(
+          "返信成功（メール送信の成否を含む）。message は mail_status に応じた文言",
+          {
+            message: { type: "string" },
+            mail_status: {
+              type: "string",
+              enum: ["sent", "failed", "no_address"],
+              description:
+                "sent: 送信済み / failed: 送信失敗（再送できる） / no_address: 問い合わせにメールアドレスが無く送信していない",
+            },
+            data: { $ref: "#/components/schemas/Reply" },
+          },
+        ),
         ...errors("BadRequest", "Unauthorized", "Forbidden", "NotFound"),
+      },
+    },
+  },
+
+  "/api/inquiry/{id}/reply/{reply_id}/mail": {
+    post: {
+      tags: [TAG],
+      summary: "返信メールの再送（admin 以上）",
+      description:
+        "投稿時にメール送信が失敗した返信（mail_sent_at が null）を、問い合わせ元へもう一度送る。送信済みなら 409、問い合わせにメールアドレスが無ければ 400、送信に失敗したら 502。",
+      parameters: [
+        pathParam("id", "問い合わせID"),
+        pathParam("reply_id", "返信ID"),
+      ],
+      responses: {
+        "200": mutationResponse("送信成功", "#/components/schemas/Reply"),
+        "502": {
+          description: "メールの送信に失敗（mail_sent_at は null のまま）",
+          content: {
+            "application/json": { schema: { $ref: "#/components/schemas/ErrorResponse" } },
+          },
+        },
+        ...errors("BadRequest", "Unauthorized", "Forbidden", "NotFound", "Conflict"),
       },
     },
   },

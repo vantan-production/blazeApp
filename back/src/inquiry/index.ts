@@ -1,4 +1,4 @@
-// 問い合わせAPI（6エンドポイント）
+// 問い合わせAPI（7エンドポイント）
 
 import { randomUUID } from "node:crypto";
 import { Hono } from "../index.js";
@@ -10,6 +10,7 @@ import { create } from "./create.js";
 import { updateStatus } from "./updateStatus.js";
 import { createReply } from "./reply.js";
 import { deleteReply } from "./deleteReply.js";
+import { resendReplyMail } from "./resendReplyMail.js";
 import { clientIp } from "../utils/monitoring.js";
 import { createFormRateLimiter } from "../utils/formRateLimit.js";
 import { requireUuidParams } from "../utils/uuidParam.js";
@@ -46,8 +47,11 @@ app.post("/api/inquiry", inquiryLimiter, (c) => create(c));
 // PATCH /api/inquiry/:id/status — 対応ステータスの更新（admin以上）
 app.patch("/api/inquiry/:id/status", authToken, requireAdmin, requireUuidParams, (c) => updateStatus(c));
 
-// POST /api/inquiry/:id/reply — 問い合わせへの返信（admin以上）
+// POST /api/inquiry/:id/reply — 問い合わせへの返信（admin以上）。問い合わせ元にもメールで送る
 app.post("/api/inquiry/:id/reply", authToken, requireAdmin, requireUuidParams, (c) => createReply(c));
+
+// POST /api/inquiry/:id/reply/:reply_id/mail — 送れなかった返信メールを再送（admin以上）
+app.post("/api/inquiry/:id/reply/:reply_id/mail", authToken, requireAdmin, requireUuidParams, (c) => resendReplyMail(c));
 
 // DELETE /api/inquiry/:id/reply/:reply_id — 返信を削除（admin以上）
 app.delete("/api/inquiry/:id/reply/:reply_id", authToken, requireAdmin, requireUuidParams, (c) => deleteReply(c));

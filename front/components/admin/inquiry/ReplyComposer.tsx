@@ -4,10 +4,17 @@ import Image from "next/image";
 import { useId, useRef, useState } from "react";
 import { z } from "zod";
 import { AdminFieldError } from "@/components/admin/AdminTextField";
-import { sendFormData, toErrorMessage } from "@/lib/admin/api";
+import { type ApiSuccess, sendFormData, toErrorMessage } from "@/lib/admin/api";
 import { validateForm } from "@/lib/admin/form";
+import { useToastStore } from "@/lib/store/useToastStore";
 import { VALIDATION_LIMITS } from "@/lib/validation/limits";
 import { bodySchema, titleSchema } from "@/lib/validation/schemas";
+import type { InquiryReply, ReplyMailStatus } from "./types";
+
+/** POST /api/inquiry/:id/reply のレスポンス（data に加えてメールの送信結果が返る） */
+type ReplyResponse = ApiSuccess<InquiryReply> & {
+	mail_status: ReplyMailStatus;
+};
 
 const replySchema = z.object({
 	title: titleSchema,
@@ -31,7 +38,8 @@ type Props = {
 
 /**
  * 画面下部の返信入力欄（Figma: Frame 212 2421:970 の下部）。
- * 画像添付＋メッセージ入力＋「済」ボタン。POST /api/inquiry/:id/reply に送信する
+ * 画像添付＋メッセージ入力＋「済」ボタン。POST /api/inquiry/:id/reply に送信する。
+ * 返信は問い合わせ元にもメールで届くため、送信結果（back の message）をトーストで知らせる
  */
 export function ReplyComposer({
 	inquiryId,
@@ -40,6 +48,7 @@ export function ReplyComposer({
 	onResolve,
 	resolved,
 }: Props) {
+	const showToast = useToastStore((state) => state.showToast);
 	const imageInputId = useId();
 	const imageInputRef = useRef<HTMLInputElement>(null);
 	const [message, setMessage] = useState("");
@@ -72,10 +81,18 @@ export function ReplyComposer({
 
 		setPending(true);
 		try {
-			await sendFormData(`/api/inquiry/${inquiryId}/reply`, formData);
+			const res = (await sendFormData<InquiryReply>(
+				`/api/inquiry/${inquiryId}/reply`,
+				formData,
+			)) as ReplyResponse;
 			setMessage("");
 			clearImage();
 			onSent();
+			// 返信自体は保存できていても、メールだけ失敗することがある（詳細の吹き出しから再送できる）
+			showToast(
+				res.message ?? "返信を投稿しました。",
+				res.mail_status === "failed" ? "error" : "success",
+			);
 		} catch (err) {
 			setError(toErrorMessage(err, "返信の送信に失敗しました。"));
 		} finally {

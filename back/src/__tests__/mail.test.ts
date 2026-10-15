@@ -9,6 +9,7 @@ import {
   buildTrialApplicationConfirmationEmail,
   buildTrialApplicationAdminNotification,
   buildInquiryAutoReplyEmail,
+  buildInquiryReplyEmail,
   buildNoticeNotificationEmail,
   buildSurveyNotificationEmail,
   buildTrialNoticeEmail,
@@ -254,6 +255,69 @@ describe("buildTrialNoticeEmail", () => {
     expect(mail.html).toContain("&lt;b&gt;件名&lt;/b&gt;");
     expect(mail.html).toContain("1行目<br />&lt;script&gt;");
     expect(mail.html).not.toContain("<script>");
+  });
+});
+
+describe("buildInquiryReplyEmail", () => {
+  const replyData = {
+    name: "佐藤 次郎",
+    inquiryTitle: "入団について",
+    inquiryBody: "練習日を教えてください。",
+    replyTitle: "Re: 入団について",
+    replyBody: "毎週土曜日です。",
+  };
+
+  it("問い合わせ元1人宛に、返信の件名で送る", () => {
+    const mail = buildInquiryReplyEmail("guest@example.com", replyData);
+    expect(mail.to).toBe("guest@example.com");
+    expect(mail.bcc).toBeUndefined();
+    expect(mail.from).toBe("noreply@nishioblaze.test");
+    expect(mail.subject).toBe("【西尾ブレイズ】Re: 入団について");
+  });
+
+  it("宛名・返信本文・元の問い合わせの引用・チーム名を含める", () => {
+    const mail = buildInquiryReplyEmail("guest@example.com", replyData);
+    expect(mail.html).toContain("佐藤 次郎 様");
+    expect(mail.html).toContain("毎週土曜日です。");
+    expect(mail.html).toContain("【お問い合わせ内容】");
+    expect(mail.html).toContain("件名: 入団について");
+    expect(mail.html).toContain("練習日を教えてください。");
+    expect(mail.html).toContain("<p>西尾ブレイズ</p>");
+    expect(mail.html).toContain("このメールは送信専用です");
+  });
+
+  it("件名の改行は潰す（ヘッダインジェクション対策）", () => {
+    const mail = buildInquiryReplyEmail("guest@example.com", {
+      ...replyData,
+      replyTitle: "Re: 質問\r\nBcc: evil@example.com",
+    });
+    expect(mail.subject).toBe("【西尾ブレイズ】Re: 質問 Bcc: evil@example.com");
+  });
+
+  it("名前・返信・引用をエスケープし、改行を <br /> にする", () => {
+    const mail = buildInquiryReplyEmail("guest@example.com", {
+      name: "<b>名前</b>",
+      inquiryTitle: "<i>件名</i>",
+      inquiryBody: "1行目\n<img src=x onerror=alert(1)>",
+      replyTitle: "Re: 件名",
+      replyBody: "返信1行目\n<script>x</script>",
+    });
+    expect(mail.html).toContain("&lt;b&gt;名前&lt;/b&gt; 様");
+    expect(mail.html).toContain("件名: &lt;i&gt;件名&lt;/i&gt;");
+    expect(mail.html).toContain("1行目<br />&lt;img src=x");
+    expect(mail.html).toContain("返信1行目<br />&lt;script&gt;");
+    expect(mail.html).not.toContain("<script>");
+    expect(mail.html).not.toContain("<img src=x");
+  });
+
+  it("添付があるときだけ attachments を付ける", () => {
+    expect(buildInquiryReplyEmail("guest@example.com", replyData).attachments).toBeUndefined();
+
+    const content = Buffer.from("image");
+    const mail = buildInquiryReplyEmail("guest@example.com", replyData, [
+      { filename: "image.webp", content },
+    ]);
+    expect(mail.attachments).toEqual([{ filename: "image.webp", content }]);
   });
 });
 

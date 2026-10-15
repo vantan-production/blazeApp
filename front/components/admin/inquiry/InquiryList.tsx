@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { type ApiSuccess, toErrorMessage } from "@/lib/admin/api";
 import { apiClient } from "@/lib/apiClient";
 import { pageHref } from "@/lib/pagination";
@@ -33,11 +33,18 @@ export function InquiryList({ tab, keyword }: Props) {
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 
+	// 最後に出したリクエストの番号。タブ・検索語を変えたあとに、前の条件の結果
+	// （「もっと見る」で読み込み中だった次のページなど）を一覧に混ぜないために使う
+	const requestIdRef = useRef(0);
+
 	// 表示中の条件で nextPage を取り、1ページ目なら置き換え・2ページ目以降なら後ろに足す。
 	// setState は取得後だけで行う（effect から同期的に呼ばない: react-hooks/set-state-in-effect）
 	const fetchPage = useCallback(
-		(nextPage: number, isCurrent: () => boolean = () => true) =>
-			apiClient<InquiryListResponse>("/api/inquiry", {
+		(nextPage: number) => {
+			requestIdRef.current += 1;
+			const requestId = requestIdRef.current;
+			const isCurrent = () => requestId === requestIdRef.current;
+			return apiClient<InquiryListResponse>("/api/inquiry", {
 				params: {
 					page: nextPage,
 					...(tab !== "all" && { status: tab }),
@@ -61,15 +68,16 @@ export function InquiryList({ tab, keyword }: Props) {
 				})
 				.finally(() => {
 					if (isCurrent()) setLoading(false);
-				}),
+				});
+		},
 		[tab, keyword],
 	);
 
 	useEffect(() => {
-		let current = true;
-		fetchPage(1, () => current);
+		fetchPage(1);
+		// 条件が変わる・画面を離れるときは、取得中の結果を捨てる
 		return () => {
-			current = false;
+			requestIdRef.current += 1;
 		};
 	}, [fetchPage]);
 

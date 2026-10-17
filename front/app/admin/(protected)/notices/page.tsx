@@ -20,7 +20,7 @@ export default function AdminNoticesPage() {
 			<div className="pointer-events-none fixed inset-x-0 bottom-6 mx-auto flex w-full max-w-sp justify-end px-6">
 				<Link
 					href={adminNoticeRoutes.new}
-					aria-label="お知らせを新規作成"
+					aria-label="関係者向けお知らせを新規作成"
 					className="pointer-events-auto flex size-20 items-center justify-center rounded-full bg-white shadow-[0px_6px_10px_rgba(0,0,0,0.35)]"
 				>
 					<Image

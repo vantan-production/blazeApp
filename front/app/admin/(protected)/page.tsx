@@ -49,7 +49,7 @@ const menuSections: MenuSection[] = [
 		title: "ホームページ",
 		items: [
 			{
-				label: "問い合わせ返信",
+				label: "問い合わせ一覧",
 				href: adminRoutes.inquiry,
 				icon: icon("mail"),
 			},
@@ -60,16 +60,16 @@ const menuSections: MenuSection[] = [
 				icon: icon("paper", 16.4, 20.9),
 			},
 			{
-				label: "実績更新",
+				label: "実績投稿",
 				href: adminRoutes.achievements,
 				icon: icon("trophy"),
 			},
 			{
-				label: "試合結果",
+				label: "試合結果投稿",
 				href: adminRoutes.matchResults,
 				icon: icon("scoreboard"),
 			},
-			{ label: "試合風景更新", href: adminRoutes.game, icon: icon("camera") },
+			{ label: "試合風景投稿", href: adminRoutes.game, icon: icon("camera") },
 			{ label: "メディア情報", href: adminRoutes.media, icon: icon("tv") },
 		],
 	},
@@ -91,8 +91,16 @@ const menuSections: MenuSection[] = [
 	{
 		title: "関係者向け",
 		items: [
-			{ label: "お知らせ", href: menuPath.notices, icon: icon("bell") },
-			{ label: "アンケート", href: menuPath.surveys, icon: icon("checklist") },
+			{
+				label: "関係者向けお知らせ",
+				href: menuPath.notices,
+				icon: icon("bell"),
+			},
+			{
+				label: "アンケート・出欠確認",
+				href: menuPath.surveys,
+				icon: icon("checklist"),
+			},
 			{ label: "資料庫", href: menuPath.documents, icon: icon("folder") },
 			{ label: "投稿申請", href: menuPath.submissions, icon: icon("inbox") },
 		],

@@ -5,13 +5,13 @@ import { AdminAchievementList } from "@/components/admin/achievements/AdminAchie
 import { adminRoutes } from "@/lib/admin/routes";
 
 export const metadata = {
-	title: "実績更新 | 西尾ブレイズ 管理画面",
+	title: "実績投稿 | 西尾ブレイズ 管理画面",
 };
 
 /** 投稿済み実績の一覧（ニュース一覧と同じ構成）。右下の＋から新規投稿へ */
 export default function AdminAchievementsPage() {
 	return (
-		<AdminPageLayout title="実績更新" backHref={adminRoutes.top}>
+		<AdminPageLayout title="実績投稿" backHref={adminRoutes.top}>
 			<AdminAchievementList />
 			{/* 最後の行が右下の＋ボタンに隠れないようにする余白 */}
 			<div aria-hidden className="h-12 shrink-0" />
@@ -21,7 +21,7 @@ export default function AdminAchievementsPage() {
 			<div className="pointer-events-none fixed inset-x-0 bottom-6 mx-auto flex w-full max-w-sp justify-end px-6">
 				<Link
 					href={adminRoutes.achievementsNew}
-					aria-label="実績を新規投稿"
+					aria-label="実績を新規作成"
 					className="pointer-events-auto flex size-20 items-center justify-center rounded-full bg-white shadow-[0px_6px_10px_rgba(0,0,0,0.35)]"
 				>
 					<Image

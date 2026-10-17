@@ -8,7 +8,7 @@ import { adminRoutes } from "@/lib/admin/routes";
 import { inquiryStatusSchema } from "@/lib/validation/schemas";
 
 export const metadata = {
-	title: "問い合わせ返信 | 西尾ブレイズ 管理画面",
+	title: "問い合わせ一覧 | 西尾ブレイズ 管理画面",
 };
 
 type Props = {
@@ -31,7 +31,7 @@ export default async function AdminInquiryPage({ searchParams }: Props) {
 		.slice(0, INQUIRY_SEARCH_MAX_LENGTH);
 
 	return (
-		<AdminPageLayout title="問い合わせ返信" backHref={adminRoutes.top}>
+		<AdminPageLayout title="問い合わせ一覧" backHref={adminRoutes.top}>
 			<InquiryList tab={tab} keyword={keyword} />
 		</AdminPageLayout>
 	);

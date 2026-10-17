@@ -4,7 +4,7 @@ import { SurveyEdit } from "@/components/admin/surveys/SurveyEdit";
 import { adminSurveyDetailPath } from "@/lib/admin/routes";
 
 export const metadata = {
-	title: "アンケートを編集 | 西尾ブレイズ 管理画面",
+	title: "アンケート編集 | 西尾ブレイズ 管理画面",
 };
 
 /** アンケートの編集（PATCH /api/surveys/:id。詳細画面の「編集する」から開く） */

@@ -13,7 +13,7 @@ export const HERO_SECTION_ID = "top-hero";
  * 選手写真と体育館写真（Vector 2）を重ね、斜めのキャッチコピーと縦書きの scroll 表示を載せる。
  * 画像群は402px幅より広いため、左右はみ出た分を切り抜く。
  * 寸法はFigmaの402px幅を基準に cqw（このセクション幅に対する%）へ換算し、スマホ幅に比例して伸縮させる。
- * ファーストビューは画面より縦に長いため、体験バナーはキャッチコピーの下に重ね、開いた直後から見えるようにする。
+ * ファーストビューは画面より縦に長いため、体験バナーは開いた直後の画面下端に重ね、最初から見えるようにする。
  */
 export function HeroSection() {
 	return (
@@ -58,8 +58,8 @@ export function HeroSection() {
 				</span>
 			</h1>
 
-			{/* 画面が低い端末でも最初の画面に収まるよう、画面下端（バナー高さ44px＋余白16px）より上に置く */}
-			<div className="absolute inset-x-[10px] top-[min(146cqw,calc(100svh-60px))]">
+			{/* 開いた直後の画面下端（バナー高さ44px＋余白16px）に置く。画面がファーストビューより高いときはファーストビューの下端に合わせる */}
+			<div className="absolute inset-x-[10px] top-[min(calc(100svh_-_60px),calc(100%_-_60px))]">
 				<TrialBanner />
 			</div>
 
@@ -68,12 +68,15 @@ export function HeroSection() {
 	);
 }
 
-/** 左下の縦書き「scroll」＋下向き矢印（Figma: 978:359） */
+/**
+ * 左下の縦書き「scroll」＋下向き矢印（Figma: 978:359）。
+ * 画面下端の体験バナーと重ならないよう、バナー上端（画面下端から60px）より8px上に収める
+ */
 function ScrollIndicator() {
 	return (
 		<div
 			aria-hidden
-			className="absolute bottom-[9.9cqw] left-[4.73cqw] flex w-[22px] flex-col items-center gap-1"
+			className="absolute bottom-[max(9.9cqw,calc(100%_-_100svh_+_68px))] left-[4.73cqw] flex w-[22px] flex-col items-center gap-1"
 		>
 			<span className="text-[22px] leading-[22px] font-medium tracking-[1px] text-brand-red [writing-mode:vertical-rl] text-shadow-[2px_4px_4px_rgba(163,24,27,0.3)]">
 				scroll

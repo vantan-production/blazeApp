@@ -59,38 +59,11 @@ export function HeroSection() {
 			</h1>
 
 			{/* 開いた直後の画面下端（バナー高さ44px＋余白16px）に置く。画面がファーストビューより高いときはファーストビューの下端に合わせる */}
-			<div className="absolute inset-x-[10px] top-[min(calc(100svh_-_60px),calc(100%_-_60px))]">
+			<div className="absolute bottom-0 h-[60px]">
 				<TrialBanner />
 			</div>
 
-			<ScrollIndicator />
+			{/* <ScrollIndicator /> */}
 		</section>
-	);
-}
-
-/**
- * 左下の縦書き「scroll」＋下向き矢印（Figma: 978:359）。
- * 画面下端の体験バナーと重ならないよう、バナー上端（画面下端から60px）より8px上に収める
- */
-function ScrollIndicator() {
-	return (
-		<div
-			aria-hidden
-			className="absolute bottom-[max(9.9cqw,calc(100%_-_100svh_+_68px))] left-[4.73cqw] flex w-[22px] flex-col items-center gap-1"
-		>
-			<span className="text-[22px] leading-[22px] font-medium tracking-[1px] text-brand-red [writing-mode:vertical-rl] text-shadow-[2px_4px_4px_rgba(163,24,27,0.3)]">
-				scroll
-			</span>
-			{/* 矢印SVGは影の分だけ幅があるため、線の位置（x=7.77）を列の中央に合わせる */}
-			<span className="relative h-[35px] w-0">
-				<Image
-					src="/icons/scroll-line.svg"
-					alt=""
-					width={19.547}
-					height={43}
-					className="absolute top-0 -left-[7.77px] max-w-none"
-				/>
-			</span>
-		</div>
 	);
 }

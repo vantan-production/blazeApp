@@ -10,7 +10,7 @@ export const HERO_SECTION_ID = "top-hero";
 
 /**
  * トップページのファーストビュー（Figma: fast-view 978:352）。
- * 選手写真と体育館写真（Vector 2）を重ね、斜めのキャッチコピーと縦書きの scroll 表示を載せる。
+ * 選手写真と体育館写真（Vector 2）を重ね、斜めのキャッチコピーを載せる。
  * 画像群は402px幅より広いため、左右はみ出た分を切り抜く。
  * 寸法はFigmaの402px幅を基準に cqw（このセクション幅に対する%）へ換算し、スマホ幅に比例して伸縮させる。
  * ファーストビューは画面より縦に長いため、体験バナーは開いた直後の画面下端に重ね、最初から見えるようにする。
@@ -59,11 +59,9 @@ export function HeroSection() {
 			</h1>
 
 			{/* 開いた直後の画面下端（バナー高さ44px＋余白16px）に置く。画面がファーストビューより高いときはファーストビューの下端に合わせる */}
-			<div className="absolute bottom-0 h-[60px]">
+			<div className="absolute inset-x-[10px] top-[min(calc(100svh_-_60px),calc(100%_-_60px))]">
 				<TrialBanner />
 			</div>
-
-			{/* <ScrollIndicator /> */}
 		</section>
 	);
 }

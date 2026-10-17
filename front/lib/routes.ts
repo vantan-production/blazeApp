@@ -8,6 +8,7 @@ export const routes = {
 	access: "/activities#access",
 	results: "/results",
 	// 実績・試合結果ページの各「もっと見る」の遷移先（一覧ページ）
+	resultsMatches: "/results/matches",
 	resultsAchievements: "/results/achievements",
 	resultsMatchPhotos: "/results/match-photos",
 	resultsMedia: "/results/media",
@@ -23,6 +24,11 @@ export const routes = {
 /** 実績の詳細ページ（実績スライダー・実績一覧のカードから開く） */
 export function achievementDetailPath(id: string): string {
 	return `${routes.resultsAchievements}/${id}`;
+}
+
+/** メディア情報の詳細ページ（メディア情報セクション・一覧のカードから開く） */
+export function mediaDetailPath(id: string): string {
+	return `${routes.resultsMedia}/${id}`;
 }
 
 export type NavItem = { label: string; href: string };

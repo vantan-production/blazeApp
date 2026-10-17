@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { LinkifiedText } from "@/components/ui/LinkifiedText";
 import type { ApiSuccess } from "@/lib/admin/api";
 import { formatMediaDate, type MediaPostDetail } from "@/lib/admin/media";
 import { ApiError, apiClient } from "@/lib/apiClient";
-import { LinkifiedText } from "../LinkifiedText";
 import { MediaThumbnail } from "./MediaThumbnail";
 
 type Props = {

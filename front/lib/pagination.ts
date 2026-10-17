@@ -9,6 +9,8 @@ export type PageInfo = {
 	page: number;
 	/** 総ページ数。記事0件やback未接続のときは0 */
 	totalPages: number;
+	/** 全ページを合わせた総件数。記事0件やback未接続のときは0 */
+	total: number;
 };
 
 export type Paginated<T> = {
@@ -20,7 +22,7 @@ type ListResponse<T> = {
 	success: boolean;
 	data: T[];
 	// 旧版のbackはページネーション無しで全件を返すため、無い場合も考慮する
-	pagination?: { page: number; totalPages: number };
+	pagination?: { page: number; totalPages: number; total: number };
 };
 
 type SearchParamValue = string | string[] | undefined;
@@ -62,7 +64,7 @@ export async function fetchPaginatedList<T>(
 ): Promise<Paginated<T>> {
 	const empty: Paginated<T> = {
 		items: [],
-		pagination: { page: 1, totalPages: 0 },
+		pagination: { page: 1, totalPages: 0, total: 0 },
 	};
 	const search = new URLSearchParams(
 		Object.entries(query).map(([key, value]) => [key, String(value)]),
@@ -78,8 +80,16 @@ export async function fetchPaginatedList<T>(
 		return {
 			items,
 			pagination: body.pagination
-				? { page: body.pagination.page, totalPages: body.pagination.totalPages }
-				: { page: 1, totalPages: items.length > 0 ? 1 : 0 },
+				? {
+						page: body.pagination.page,
+						totalPages: body.pagination.totalPages,
+						total: body.pagination.total,
+					}
+				: {
+						page: 1,
+						totalPages: items.length > 0 ? 1 : 0,
+						total: items.length,
+					},
 		};
 	} catch (error) {
 		unstable_rethrow(error);

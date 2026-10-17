@@ -55,16 +55,6 @@ export type MatchPost = {
 	photos: Photo[];
 };
 
-/**
- * 選手たちの名場面集（Figma: gallery 1250:344）。
- * TODO: backに「名場面」を区別するデータが無いため、写真が用意できるまでは仮画像
- */
-export const highlightPhotos: Photo[] = [
-	{ id: "highlight-1", src: "/images/photo-placeholder.png", alt: "名場面" },
-	{ id: "highlight-2", src: "/images/photo-placeholder.png", alt: "名場面" },
-	{ id: "highlight-3", src: "/images/photo-placeholder.png", alt: "名場面" },
-];
-
 export type MediaItem = {
 	id: string;
 	/** 表示用の掲載日（例: 2023/5/6） */

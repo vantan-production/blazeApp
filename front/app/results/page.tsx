@@ -7,11 +7,10 @@ import {
 	getMatchPhotos,
 	getMediaItems,
 } from "@/components/results/api";
-import { highlightPhotos, teamGoal } from "@/components/results/data";
+import { teamGoal } from "@/components/results/data";
 import { EmptyNote } from "@/components/results/EmptyNote";
 import { LastResultCard } from "@/components/results/LastResultCard";
 import { MediaList } from "@/components/results/MediaList";
-import { PeekCarousel } from "@/components/results/PeekCarousel";
 import { ResultSection } from "@/components/results/ResultSection";
 import { StaggeredGallery } from "@/components/results/StaggeredGallery";
 import { PageTitle } from "@/components/ui/PageTitle";
@@ -86,10 +85,6 @@ export default async function ResultsPage() {
 						) : (
 							<EmptyNote>試合風景は準備中です</EmptyNote>
 						)}
-					</ResultSection>
-					{/* TODO: 名場面の一覧ページ（とbackのデータ）ができたら「もっと見る」を付ける */}
-					<ResultSection title="選手たちの名場面集">
-						<PeekCarousel photos={highlightPhotos} />
 					</ResultSection>
 					<ResultSection
 						title="メディア情報"

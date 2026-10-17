@@ -5,7 +5,7 @@ import { pageHref } from "@/lib/pagination";
 type Props = {
 	currentPage: number;
 	totalPages: number;
-	/** 一覧ページのパス（例: /news） */
+	/** 一覧ページのパス（例: /notice） */
 	pathname: string;
 	/** ページを移っても引き継ぐクエリ（並び順など）。?page= は自動で付ける */
 	params?: Record<string, string | undefined>;

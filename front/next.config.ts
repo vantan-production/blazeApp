@@ -41,6 +41,13 @@ const nextConfig: NextConfig = {
 		// ローカルホストの画像を最適化するのに必要（Next.js 16から既定で拒否）。本番では許可しない
 		dangerouslyAllowLocalIP: isDev,
 	},
+	// 公開サイトの「ニュース」を「お知らせ」に改名したため、旧URL（ブックマーク・共有済みのリンク）を移す
+	async redirects() {
+		return [
+			{ source: "/news", destination: "/notice", permanent: true },
+			{ source: "/news/:id", destination: "/notice/:id", permanent: true },
+		];
+	},
 	experimental: {
 		// app/unauthorized.tsx（401ページ）を unauthorized() で表示するために必要
 		authInterrupts: true,

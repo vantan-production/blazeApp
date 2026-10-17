@@ -11,7 +11,8 @@ export const routes = {
 	resultsAchievements: "/results/achievements",
 	resultsMatchPhotos: "/results/match-photos",
 	resultsMedia: "/results/media",
-	news: "/news",
+	// トップの「お知らせ」欄から開く一覧・詳細（旧 /news は next.config.ts でリダイレクト）
+	notice: "/notice",
 	contact: "/contact",
 	// Figma注記「体験フォームページが必要」: デザイン未作成のため仮のパス
 	trial: "/trial",
@@ -35,7 +36,7 @@ export const drawerNavColumns: NavItem[][] = [
 		{ label: "ギャラリー", href: routes.gallery },
 	],
 	[
-		{ label: "ニュース", href: routes.news },
+		{ label: "お知らせ", href: routes.notice },
 		{ label: "活動内容", href: routes.activities },
 		{ label: "実績・試合結果", href: routes.results },
 		{ label: "アクセス", href: routes.access },

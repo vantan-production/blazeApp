@@ -24,7 +24,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 /**
  * 実績の詳細。サムネイルと本文の画像をすべて見られるようにする。
- * Figmaに詳細画面のデザインが無いため、ニュース詳細と同じ共通部品で組んでいる
+ * Figmaに詳細画面のデザインが無いため、お知らせ詳細と同じ共通部品で組んでいる
  */
 export default async function AchievementDetailPage({ params }: Props) {
 	const { id } = await params;

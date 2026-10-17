@@ -26,7 +26,7 @@ export function AchievementCarousel({ items }: Props) {
 				<AchievementCard
 					imageSrc={item.imageSrc}
 					title={item.title}
-					number={index + 1}
+					number={item.number}
 					href={achievementDetailPath(item.id)}
 				/>
 			</div>

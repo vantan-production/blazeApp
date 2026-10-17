@@ -24,6 +24,8 @@ export const teamGoal = "勝利を目指して挑戦し続けるチームへ";
 
 export type Achievement = {
 	id: string;
+	/** 番号バッジに出す文字列（例: 01）。一番古い実績が 01 */
+	number: string;
 	imageSrc: string;
 	title: string;
 	/** 表示用の登録日（例: 2023/5/6） */
@@ -33,7 +35,7 @@ export type Achievement = {
 };
 
 /** 実績の詳細ページ用（GET /api/achievement/:id） */
-export type AchievementDetail = Achievement & {
+export type AchievementDetail = Omit<Achievement, "number"> & {
 	body: string;
 	/** サムネイル（あれば先頭）と本文の画像。1枚もなければ代替画像1枚 */
 	images: string[];

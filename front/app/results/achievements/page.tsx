@@ -3,7 +3,6 @@ import { AchievementCard } from "@/components/results/AchievementCard";
 import { getAchievementsPage } from "@/components/results/api";
 import { ResultsListLayout } from "@/components/results/ResultsListLayout";
 import {
-	PAGE_SIZE,
 	pageHref,
 	parsePageParam,
 	redirectIfPageOutOfRange,
@@ -27,9 +26,6 @@ export default async function AchievementsPage({ searchParams }: Props) {
 		pageHref(routes.resultsAchievements, last),
 	);
 
-	// 番号バッジはページをまたいで通し番号にする
-	const offset = (pagination.page - 1) * PAGE_SIZE;
-
 	return (
 		<ResultsListLayout
 			title="実績"
@@ -39,12 +35,12 @@ export default async function AchievementsPage({ searchParams }: Props) {
 			emptyMessage="実績は準備中です"
 		>
 			<ul className="flex w-full flex-col gap-4">
-				{items.map((item, i) => (
+				{items.map((item) => (
 					<li key={item.id}>
 						<AchievementCard
 							imageSrc={item.imageSrc}
 							title={item.title}
-							number={offset + i + 1}
+							number={item.number}
 							date={item.date}
 							dateTime={item.dateTime}
 							href={achievementDetailPath(item.id)}

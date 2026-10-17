@@ -4,8 +4,8 @@ import Link from "next/link";
 type Props = {
 	imageSrc: string;
 	title: string;
-	/** 左上の番号バッジ（01, 02…）に出す通し番号 */
-	number: number;
+	/** 左上の番号バッジに出す通し番号（例: 01。一番古い実績が 01） */
+	number: string;
 	/** 指定するとタイトルの下に登録日を出す（実績一覧ページ用） */
 	date?: string;
 	dateTime?: string;
@@ -40,7 +40,7 @@ export function AchievementCard({
 			</div>
 			<div className="flex min-w-0 flex-1 flex-col justify-center gap-3">
 				<span className="self-start rounded-full bg-brand-red px-3 py-1 font-savate text-[12px] leading-none tracking-[2px] text-brand-white">
-					{String(number).padStart(2, "0")}
+					{number}
 				</span>
 				<p className="text-[clamp(13px,4vw,16px)] leading-[1.5] font-bold whitespace-pre-line">
 					{title}

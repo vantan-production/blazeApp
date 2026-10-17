@@ -4,10 +4,25 @@ import Image from "next/image";
 import { useId, useRef, useState } from "react";
 import { z } from "zod";
 import { AdminFieldError } from "@/components/admin/AdminTextField";
-import { sendFormData, toErrorMessage } from "@/lib/admin/api";
+import { type ApiSuccess, sendFormData, toErrorMessage } from "@/lib/admin/api";
 import { validateForm } from "@/lib/admin/form";
+import { useToastStore } from "@/lib/store/useToastStore";
 import { VALIDATION_LIMITS } from "@/lib/validation/limits";
-import { bodySchema, titleSchema } from "@/lib/validation/schemas";
+import {
+	bodySchema,
+	type InquiryStatus,
+	titleSchema,
+} from "@/lib/validation/schemas";
+import type { InquiryReply, ReplyMailStatus } from "./types";
+
+/**
+ * POST /api/inquiry/:id/reply のレスポンス
+ * （data に加えてメールの送信結果と、返信後の対応ステータスが返る。未対応なら back が対応中にする）
+ */
+type ReplyResponse = ApiSuccess<InquiryReply> & {
+	mail_status: ReplyMailStatus;
+	inquiry_status: InquiryStatus;
+};
 
 const replySchema = z.object({
 	title: titleSchema,
@@ -25,27 +40,40 @@ type Props = {
 	onSent: () => void;
 	/** 「済」ボタン（対応済にする）を押したとき */
 	onResolve: () => void;
+	/** 返信後の「対応済みにする」を押したとき（確認ダイアログを挟まずに対応済みにする） */
+	onResolveNow: () => void;
 	/** すでに対応済なら「済」ボタンを押せなくする */
 	resolved: boolean;
+	/** 対応ステータスの更新中 */
+	resolving: boolean;
 };
 
 /**
  * 画面下部の返信入力欄（Figma: Frame 212 2421:970 の下部）。
- * 画像添付＋メッセージ入力＋「済」ボタン。POST /api/inquiry/:id/reply に送信する
+ * 画像添付＋メッセージ入力＋「済」ボタン。POST /api/inquiry/:id/reply に送信する。
+ * 返信は問い合わせ元にもメールで届くため、送信結果（back の message）をトーストで知らせる。
+ *
+ * 「済」の押し忘れを防ぐため、対応済みでない問い合わせに返信したら、入力欄の上に
+ * 「対応済みにする」を出す（やり取りを続けるなら無視して次のメッセージを打てば消える）
  */
 export function ReplyComposer({
 	inquiryId,
 	inquiryTitle,
 	onSent,
 	onResolve,
+	onResolveNow,
 	resolved,
+	resolving,
 }: Props) {
+	const showToast = useToastStore((state) => state.showToast);
 	const imageInputId = useId();
 	const imageInputRef = useRef<HTMLInputElement>(null);
 	const [message, setMessage] = useState("");
 	const [image, setImage] = useState<File | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const [pending, setPending] = useState(false);
+	// 返信直後に「対応済みにしますか？」を出しているか
+	const [askResolve, setAskResolve] = useState(false);
 
 	const clearImage = () => {
 		setImage(null);
@@ -72,10 +100,19 @@ export function ReplyComposer({
 
 		setPending(true);
 		try {
-			await sendFormData(`/api/inquiry/${inquiryId}/reply`, formData);
+			const res = (await sendFormData<InquiryReply>(
+				`/api/inquiry/${inquiryId}/reply`,
+				formData,
+			)) as ReplyResponse;
 			setMessage("");
 			clearImage();
+			setAskResolve(res.inquiry_status !== "resolved");
 			onSent();
+			// 返信自体は保存できていても、メールだけ失敗することがある（詳細の吹き出しから再送できる）
+			showToast(
+				res.message ?? "返信を投稿しました。",
+				res.mail_status === "failed" ? "error" : "success",
+			);
 		} catch (err) {
 			setError(toErrorMessage(err, "返信の送信に失敗しました。"));
 		} finally {
@@ -90,6 +127,28 @@ export function ReplyComposer({
 			className="fixed inset-x-0 bottom-0 z-20 mx-auto flex w-full max-w-sp flex-col gap-1 bg-brand-blue px-[35px] pt-2 pb-[10px]"
 		>
 			{error && <AdminFieldError message={error} tone="dark" />}
+			{askResolve && !resolved && (
+				<p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] leading-[18px] text-brand-white">
+					<span>やり取りが終わったら対応済みにしましょう。</span>
+					<span className="flex items-center gap-2">
+						<button
+							type="button"
+							onClick={onResolveNow}
+							disabled={resolving}
+							className="rounded-[6px] bg-[#d1f0ae] px-2 text-[12px] leading-[22px] tracking-[1px] text-[#00af00] disabled:opacity-50"
+						>
+							対応済みにする
+						</button>
+						<button
+							type="button"
+							onClick={() => setAskResolve(false)}
+							className="underline"
+						>
+							あとで
+						</button>
+					</span>
+				</p>
+			)}
 			{image && (
 				<p className="flex items-center gap-2 text-[12px] leading-[18px] text-brand-white">
 					<span className="truncate">添付: {image.name}</span>
@@ -120,7 +179,11 @@ export function ReplyComposer({
 					placeholder="メッセージを入力"
 					enterKeyHint="send"
 					value={message}
-					onChange={(event) => setMessage(event.target.value)}
+					onChange={(event) => {
+						setMessage(event.target.value);
+						// 続けて返信を書き始めたら、対応済みの案内は引っ込める
+						setAskResolve(false);
+					}}
 					disabled={pending}
 					className="h-8 min-w-0 flex-1 rounded-[20px] bg-white px-[11px] text-[12px] font-medium text-brand-black outline-none placeholder:text-[rgba(80,80,80,0.4)] focus:ring-1 focus:ring-brand-yellow"
 				/>

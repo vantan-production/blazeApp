@@ -93,6 +93,7 @@ export { createCrudRouter } from "../utils/crudRouter.js";
 // メール送信
 export {
 	sendInquiryAutoReplyEmail,
+	sendInquiryReplyEmail,
 	sendInvitationEmail,
 	sendNoticeNotificationEmail,
 	sendPasswordResetEmail,

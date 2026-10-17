@@ -65,12 +65,21 @@ export type Invitation = {
 	status: InvitationStatus;
 };
 
-/** POST /api/admin/invitations の data（招待リンク・トークンは返らない。招待メールで本人に届く） */
+/**
+ * POST /api/admin/invitations と POST /api/admin/invitations/:id/resend の data
+ * （招待リンク・トークンは返らない。招待メールで本人に届く）
+ */
 export type InvitationCreated = {
 	email: string;
 	role: InvitationRole;
 	expires_at: string;
+	/** 招待メールを送れたか。false でも招待は発行済み（一覧から再送できる） */
+	mail_sent: boolean;
 };
+
+/** 招待は発行できたがメールを送れなかったときの表示 */
+export const invitationMailFailedMessage = (email: string) =>
+	`${email} への招待は発行しましたが、招待メールを送れませんでした。時間をおいて一覧から再送してください。`;
 
 /** GET /api/admin/delete-requests の一件（期限内のもののみ。承認状況は返らない） */
 export type DeleteRequest = {

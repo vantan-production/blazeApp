@@ -26,6 +26,7 @@ import {
   trialNoticeRecipient,
 } from "../shared/index.js";
 import { logAppError } from "../utils/monitoring.js";
+import { withTimeout } from "../utils/timeout.js";
 
 // 1回の送信で選べる上限。時間内に送り切れなかった分は SEND_BUDGET_MS で打ち切って failed で返す
 const MAX_RECIPIENTS = 100;
@@ -58,19 +59,6 @@ const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const shouldWait = () => process.env.NODE_ENV !== "test";
 // テストでは応答のない送信を短い時間で打ち切る（10秒待たないように）
 const sendTimeoutMs = () => (process.env.NODE_ENV === "test" ? 50 : SEND_TIMEOUT_MS);
-
-/** ms 以内に終わらなければ reject する（送信自体は止められないが、待つのはやめる） */
-async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  const timeout = new Promise<never>((_, reject) => {
-    timer = setTimeout(() => reject(new Error(`送信が${ms}ms以内に終わりませんでした`)), ms);
-  });
-  try {
-    return await Promise.race([promise, timeout]);
-  } finally {
-    clearTimeout(timer);
-  }
-}
 
 /** 同じ内容を同じ宛先に送るときに同じになる冪等キー（宛先アドレスはハッシュにして載せない） */
 function idempotencyKeyFor(email: string, data: { title: string; body: string }): string {

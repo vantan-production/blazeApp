@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useState } from "react";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
-import { type ApiSuccess, toErrorMessage } from "@/lib/admin/api";
+import { type ApiSuccess, sendJson, toErrorMessage } from "@/lib/admin/api";
 import { apiClient } from "@/lib/apiClient";
 import { useToastStore } from "@/lib/store/useToastStore";
 import {
@@ -12,7 +12,7 @@ import {
 import { CustomerInfoCard } from "./CustomerInfoCard";
 import { InquiryStatusMenu } from "./InquiryStatusMenu";
 import { ReplyComposer } from "./ReplyComposer";
-import type { InquiryDetailData } from "./types";
+import type { InquiryDetailData, InquiryReply } from "./types";
 
 type Props = {
 	inquiryId: string;
@@ -24,10 +24,12 @@ type BubbleProps = {
 	/** customer: お客様（左・白） / admin: 管理者の返信（右・緑） */
 	from: "customer" | "admin";
 	caption?: string;
+	/** 吹き出しの下に添える補足（返信メールの送信状況など） */
+	footer?: ReactNode;
 };
 
 /** チャット形式の吹き出し（Figma: Frame 211 2421:969 / Frame 212 2421:971） */
-function MessageBubble({ body, imageUrl, from, caption }: BubbleProps) {
+function MessageBubble({ body, imageUrl, from, caption, footer }: BubbleProps) {
 	const isAdmin = from === "admin";
 	return (
 		<li
@@ -51,7 +53,49 @@ function MessageBubble({ body, imageUrl, from, caption }: BubbleProps) {
 					{caption}
 				</span>
 			)}
+			{footer}
 		</li>
+	);
+}
+
+type ReplyMailNoteProps = {
+	reply: InquiryReply;
+	/** 問い合わせにメールアドレスがあるか（email 欄追加前の問い合わせには無い） */
+	hasAddress: boolean;
+	onResend: (reply: InquiryReply) => void;
+	resending: boolean;
+};
+
+/**
+ * 返信メールの送信状況。送れていない返信には「再送」ボタンを出す
+ * （POST /api/inquiry/:id/reply/:reply_id/mail）
+ */
+function ReplyMailNote({
+	reply,
+	hasAddress,
+	onResend,
+	resending,
+}: ReplyMailNoteProps) {
+	if (!hasAddress) return null;
+	if (reply.mail_sent_at) {
+		return (
+			<span className="text-[10px] leading-[14px] text-brand-white">
+				メール送信済み
+			</span>
+		);
+	}
+	return (
+		<span className="flex items-center gap-2 text-[10px] leading-[14px] text-brand-yellow">
+			メール未送信
+			<button
+				type="button"
+				onClick={() => onResend(reply)}
+				disabled={resending}
+				className="underline disabled:opacity-50"
+			>
+				{resending ? "送信中…" : "再送する"}
+			</button>
+		</span>
 	);
 }
 
@@ -62,6 +106,7 @@ export function InquiryDetail({ inquiryId }: Props) {
 	const [error, setError] = useState<string | null>(null);
 	const [confirmOpen, setConfirmOpen] = useState(false);
 	const [updating, setUpdating] = useState(false);
+	const [resendingId, setResendingId] = useState<string | null>(null);
 
 	// setState は取得後だけで行う（effect から同期的に呼ばない: react-hooks/set-state-in-effect）
 	const load = useCallback(
@@ -101,6 +146,25 @@ export function InquiryDetail({ inquiryId }: Props) {
 	};
 
 	const closeConfirm = useCallback(() => setConfirmOpen(false), []);
+
+	const resendMail = async (reply: InquiryReply) => {
+		setResendingId(reply.id);
+		try {
+			const res = await sendJson<InquiryReply>(
+				`/api/inquiry/${inquiryId}/reply/${reply.id}/mail`,
+				{},
+			);
+			showToast(res.message ?? "返信メールを送信しました。");
+			await load();
+		} catch (err) {
+			showToast(
+				toErrorMessage(err, "返信メールの送信に失敗しました。"),
+				"error",
+			);
+		} finally {
+			setResendingId(null);
+		}
+	};
 
 	if (error) {
 		return (
@@ -147,6 +211,14 @@ export function InquiryDetail({ inquiryId }: Props) {
 							body={reply.body}
 							imageUrl={reply.img_url}
 							caption={reply.admin_name}
+							footer={
+								<ReplyMailNote
+									reply={reply}
+									hasAddress={Boolean(inquiry.email)}
+									onResend={resendMail}
+									resending={resendingId === reply.id}
+								/>
+							}
 						/>
 					))}
 				</ul>
@@ -156,7 +228,9 @@ export function InquiryDetail({ inquiryId }: Props) {
 				inquiryTitle={inquiry.title}
 				onSent={load}
 				onResolve={() => setConfirmOpen(true)}
+				onResolveNow={() => updateStatus("resolved")}
 				resolved={inquiry.status === "resolved"}
+				resolving={updating}
 			/>
 			<ConfirmDialog
 				open={confirmOpen}

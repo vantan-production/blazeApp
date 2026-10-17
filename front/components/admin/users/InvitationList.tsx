@@ -9,6 +9,8 @@ import {
 	formatDateTime,
 	INVITATION_STATUS_LABELS,
 	type Invitation,
+	type InvitationCreated,
+	invitationMailFailedMessage,
 	requestAdminJson,
 	toUserNameMap,
 } from "@/lib/admin/users";
@@ -16,9 +18,13 @@ import { useToastStore } from "@/lib/store/useToastStore";
 import { InvitationForm } from "./InvitationForm";
 import { UsersPillButton, UsersTag } from "./UsersPageLayout";
 
+/** 一覧から行う操作（再送 or 取り消し・一覧から消す） */
+type InvitationAction = "resend" | "revoke";
+
 /**
- * 招待の発行・一覧・取り消し（owner 専用）。
- * GET/POST /api/admin/invitations, DELETE /api/admin/invitations/:id。
+ * 招待の発行・一覧・再送・取り消し（owner 専用）。
+ * GET/POST /api/admin/invitations, POST /api/admin/invitations/:id/resend,
+ * DELETE /api/admin/invitations/:id。
  * 発行者の名前は GET /api/admin/users から引く（取れなくても一覧は出す）
  */
 export function InvitationList() {
@@ -27,8 +33,11 @@ export function InvitationList() {
 	const [userNames, setUserNames] = useState<Map<string, string>>(new Map());
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
-	const [target, setTarget] = useState<Invitation | null>(null);
-	const [revoking, setRevoking] = useState(false);
+	const [target, setTarget] = useState<{
+		invitation: Invitation;
+		action: InvitationAction;
+	} | null>(null);
+	const [submitting, setSubmitting] = useState(false);
 
 	// setState は取得後のコールバックの中だけで行う（effect から同期的に呼ばない）
 	const fetchInvitations = useCallback(
@@ -63,19 +72,51 @@ export function InvitationList() {
 		};
 	}, [fetchInvitations]);
 
-	const revoke = async () => {
-		if (!target) return;
-		setRevoking(true);
+	const revoke = async (invitation: Invitation) => {
 		try {
-			await requestAdminJson(`/api/admin/invitations/${target.id}`, "DELETE");
+			await requestAdminJson(
+				`/api/admin/invitations/${invitation.id}`,
+				"DELETE",
+			);
 			showToast("招待を取り消しました。");
-			setInvitations((prev) => prev.filter((i) => i.id !== target.id));
+			setInvitations((prev) => prev.filter((i) => i.id !== invitation.id));
 		} catch (err) {
 			showToast(toErrorMessage(err, "招待を取り消せませんでした。"), "error");
-		} finally {
-			setRevoking(false);
-			setTarget(null);
 		}
+	};
+
+	// 再送すると back で新しい招待に置き換わる（id・有効期限が変わる）ので一覧を読み直す。
+	// メールだけ送れなかったときも、古いリンクは失効済みなので読み直す
+	const resend = async (invitation: Invitation) => {
+		try {
+			const res = await requestAdminJson<InvitationCreated>(
+				`/api/admin/invitations/${invitation.id}/resend`,
+				"POST",
+			);
+			if (res.data.mail_sent) {
+				showToast(`${invitation.email} に招待メールを再送しました。`);
+			} else {
+				showToast(invitationMailFailedMessage(invitation.email), "error");
+			}
+			fetchInvitations();
+		} catch (err) {
+			showToast(
+				toErrorMessage(err, "招待メールを再送できませんでした。"),
+				"error",
+			);
+		}
+	};
+
+	const confirm = async () => {
+		if (!target) return;
+		setSubmitting(true);
+		if (target.action === "resend") {
+			await resend(target.invitation);
+		} else {
+			await revoke(target.invitation);
+		}
+		setSubmitting(false);
+		setTarget(null);
 	};
 
 	const closeDialog = useCallback(() => setTarget(null), []);
@@ -119,17 +160,24 @@ export function InvitationList() {
 									? `登録: ${formatDateTime(invitation.used_at)}`
 									: `有効期限: ${formatDateTime(invitation.expires_at)}`}
 							</p>
-							{/* 使用済みは登録の履歴として残すため取り消せない（back が 400 を返す） */}
+							{/* 使用済みは登録の履歴として残すため、再送も取り消しもできない（back が 400 を返す） */}
 							{invitation.status !== "used" && (
-								<UsersPillButton
-									tone="dark"
-									className="mt-2 self-start"
-									onClick={() => setTarget(invitation)}
-								>
-									{invitation.status === "pending"
-										? "取り消す"
-										: "一覧から消す"}
-								</UsersPillButton>
+								<div className="mt-2 flex flex-wrap gap-2">
+									<UsersPillButton
+										tone="dark"
+										onClick={() => setTarget({ invitation, action: "resend" })}
+									>
+										招待メールを再送する
+									</UsersPillButton>
+									<UsersPillButton
+										tone="dark"
+										onClick={() => setTarget({ invitation, action: "revoke" })}
+									>
+										{invitation.status === "pending"
+											? "取り消す"
+											: "一覧から消す"}
+									</UsersPillButton>
+								</div>
 							)}
 						</li>
 					);
@@ -137,23 +185,41 @@ export function InvitationList() {
 			</ul>
 			<AdminActionDialog
 				open={target !== null}
-				{...(target?.status === "pending"
-					? {
-							title: "この招待を取り消しますか？",
-							description: `${target.email} に送った招待メールのリンクが使えなくなります。もう一度招待するときは、新しく招待メールを送ってください。`,
-							confirmLabel: "取り消す",
-						}
-					: {
-							title: "この招待を一覧から消しますか？",
-							description:
-								"有効期限が切れた招待です。消しても、もう一度招待メールを送ることはできます。",
-							confirmLabel: "消す",
-						})}
-				tone="danger"
-				onConfirm={revoke}
+				{...dialogProps(target?.invitation, target?.action)}
+				onConfirm={confirm}
 				onCancel={closeDialog}
-				pending={revoking}
+				pending={submitting}
 			/>
 		</div>
 	);
+}
+
+/** 確認ダイアログの見出し・補足・ボタン（操作と招待の状態で出し分ける） */
+function dialogProps(
+	invitation: Invitation | undefined,
+	action: InvitationAction | undefined,
+) {
+	if (action === "resend") {
+		return {
+			title: "招待メールを再送しますか？",
+			description: `${invitation?.email ?? ""} に新しいリンクの招待メールを送ります。前に送ったリンクは使えなくなり、有効期限は今から7日になります。`,
+			confirmLabel: "再送する",
+			tone: "default" as const,
+		};
+	}
+	if (invitation?.status === "pending") {
+		return {
+			title: "この招待を取り消しますか？",
+			description: `${invitation.email} に送った招待メールのリンクが使えなくなります。もう一度招待するときは、新しく招待メールを送ってください。`,
+			confirmLabel: "取り消す",
+			tone: "danger" as const,
+		};
+	}
+	return {
+		title: "この招待を一覧から消しますか？",
+		description:
+			"有効期限が切れた招待です。消しても、もう一度招待メールを送ることはできます。",
+		confirmLabel: "消す",
+		tone: "danger" as const,
+	};
 }

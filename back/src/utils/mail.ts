@@ -22,6 +22,14 @@ export interface MailMessage {
   bcc?: string[];
   subject: string;
   html: string;
+  // 添付ファイル（問い合わせへの返信で、管理者が添付した画像・ファイルを届けるのに使う）
+  attachments?: MailAttachment[];
+}
+
+// 添付ファイル1件（Resend の attachments の形）
+export interface MailAttachment {
+  filename: string;
+  content: Buffer;
 }
 
 // 送信時のオプション
@@ -466,4 +474,69 @@ export async function sendTrialNoticeEmail(
   options: SendOptions = {},
 ): Promise<void> {
   await sendMailMessage(buildTrialNoticeEmail(to, data), "体験申込者への連絡メール", options);
+}
+
+// ---------------------------------------------------------------------------
+// 問い合わせへの返信
+// ---------------------------------------------------------------------------
+
+// 問い合わせへの返信メールに使う入力データ
+export interface InquiryReplyMailData {
+  // 問い合わせ元の名前（ニックネーム可）
+  name: string;
+  // 元の問い合わせ（引用として本文の下に載せる）
+  inquiryTitle: string;
+  inquiryBody: string;
+  // 管理者の返信（タイトルは管理画面が「Re: 問い合わせ件名」を付けて送ってくる）
+  replyTitle: string;
+  replyBody: string;
+}
+
+/**
+ * 問い合わせへの返信メール（問い合わせ元宛）を組み立てる
+ * @param to - 送信先（問い合わせ時に入力されたメールアドレス）
+ * @param attachments - 返信に添付された画像・ファイル（S3 から取り出したもの）
+ */
+export function buildInquiryReplyEmail(
+  to: string,
+  data: InquiryReplyMailData,
+  attachments: MailAttachment[] = [],
+): MailMessage {
+  return {
+    from: mailFrom(),
+    to,
+    // 件名はヘッダーに入るため改行を潰す（本文と違い HTML エスケープでは防げない）
+    subject: `【西尾ブレイズ】${data.replyTitle.replace(/[\r\n]+/g, " ")}`,
+    html: `
+      <p>${escapeHtml(data.name)} 様</p>
+      <p>西尾ブレイズへお問い合わせいただきありがとうございます。いただいたお問い合わせについて、以下のとおりご返信いたします。</p>
+      <hr />
+      <p>${escapeHtml(data.replyBody).replace(/\n/g, "<br />")}</p>
+      <hr />
+      <p>【お問い合わせ内容】</p>
+      <p>件名: ${escapeHtml(data.inquiryTitle)}</p>
+      <p>${escapeHtml(data.inquiryBody).replace(/\n/g, "<br />")}</p>
+      <hr />
+      <p>西尾ブレイズ</p>
+      <p>※このメールは送信専用です。このメールへの返信ではお問い合わせを受け付けられません。さらにご不明な点はホームページのお問い合わせフォームからご連絡ください。</p>
+    `,
+    ...(attachments.length > 0 ? { attachments } : {}),
+  };
+}
+
+/**
+ * 問い合わせへの返信メールを問い合わせ元に送信する
+ * テスト環境（NODE_ENV=test）では実送信せずスキップする
+ */
+export async function sendInquiryReplyEmail(
+  to: string,
+  data: InquiryReplyMailData,
+  attachments: MailAttachment[] = [],
+  options: SendOptions = {},
+): Promise<void> {
+  await sendMailMessage(
+    buildInquiryReplyEmail(to, data, attachments),
+    "問い合わせへの返信メール",
+    options,
+  );
 }

@@ -216,6 +216,68 @@ describe("POST /api/inquiry/:id/reply — 返信メール", () => {
   });
 });
 
+describe("POST /api/inquiry/:id/reply — 対応ステータスの自動更新", () => {
+  async function patchStatus(cookie: string, id: string, status: string) {
+    return app.request(`/api/inquiry/${id}/status`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Cookie: cookie, Origin: ORIGIN },
+      body: JSON.stringify({ status }),
+    });
+  }
+
+  const statusOf = async (id: string) =>
+    (await testDb.select().from(inquiry).where(eq(inquiry.id, id)))[0]?.status;
+
+  it("未対応の問い合わせに返信すると対応中になり、inquiry_status で返す", async () => {
+    const cookie = await setupOwner();
+    const id = await createInquiry();
+
+    const res = await postReply(cookie, id);
+    const body = (await res.json()) as ReplyResponse & { inquiry_status: string };
+    expect(body.inquiry_status).toBe("in_progress");
+    expect(await statusOf(id)).toBe("in_progress");
+  });
+
+  it("対応済みの問い合わせに返信しても対応済みのまま", async () => {
+    const cookie = await setupOwner();
+    const id = await createInquiry();
+    await patchStatus(cookie, id, "resolved");
+
+    const res = await postReply(cookie, id);
+    const body = (await res.json()) as ReplyResponse & { inquiry_status: string };
+    expect(body.inquiry_status).toBe("resolved");
+    expect(await statusOf(id)).toBe("resolved");
+  });
+
+  it("対応中の問い合わせに返信しても対応中のまま", async () => {
+    const cookie = await setupOwner();
+    const id = await createInquiry();
+    await patchStatus(cookie, id, "in_progress");
+
+    await postReply(cookie, id);
+    expect(await statusOf(id)).toBe("in_progress");
+  });
+
+  it("メールの送信に失敗しても、返信を保存したので対応中になる", async () => {
+    const cookie = await setupOwner();
+    const id = await createInquiry();
+    failReplyMail();
+
+    const body = (await (await postReply(cookie, id)).json()) as ReplyResponse;
+    expect(body.mail_status).toBe("failed");
+    expect(await statusOf(id)).toBe("in_progress");
+  });
+
+  it("入力エラーで返信を保存しなかったときは未対応のまま", async () => {
+    const cookie = await setupOwner();
+    const id = await createInquiry();
+
+    const res = await postReply(cookie, id, { body: "" });
+    expect(res.status).toBe(400);
+    expect(await statusOf(id)).toBe("pending");
+  });
+});
+
 describe("POST /api/inquiry/:id/reply/:reply_id/mail — 返信メールの再送", () => {
   /** 送信に失敗した返信を1件用意し、問い合わせIDと返信IDを返す */
   async function seedFailedReply(cookie: string) {

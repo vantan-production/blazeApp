@@ -33,6 +33,15 @@ export type ReplyMailStatus = "sent" | "failed" | "no_address";
 
 export type InquiryDetailData = Inquiry & { replies: InquiryReply[] };
 
+/** 一覧のタブ。all は絞り込みなし */
+export type InquiryTab = InquiryStatus | "all";
+
+/** GET /api/inquiry の counts（検索語だけで数えたステータスごとの件数。タブに出す） */
+export type InquiryCounts = Record<InquiryTab, number>;
+
+/** 一覧の検索語の上限（back の inquiry/getAll.ts の SEARCH_MAX_LENGTH） */
+export const INQUIRY_SEARCH_MAX_LENGTH = 100;
+
 /** ISO日時を YYYY/MM/DD にする */
 export const formatDate = (iso: string) => {
 	const date = new Date(iso);

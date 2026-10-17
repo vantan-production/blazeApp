@@ -228,7 +228,9 @@ export function InquiryDetail({ inquiryId }: Props) {
 				inquiryTitle={inquiry.title}
 				onSent={load}
 				onResolve={() => setConfirmOpen(true)}
+				onResolveNow={() => updateStatus("resolved")}
 				resolved={inquiry.status === "resolved"}
+				resolving={updating}
 			/>
 			<ConfirmDialog
 				open={confirmOpen}

@@ -12,6 +12,7 @@ import {
 	INVITATION_ROLES,
 	type InvitationCreated,
 	type InvitationRole,
+	invitationMailFailedMessage,
 	requestAdminJson,
 } from "@/lib/admin/users";
 import { useToastStore } from "@/lib/store/useToastStore";
@@ -31,7 +32,8 @@ type Props = {
 
 /**
  * 招待の新規発行フォーム（POST /api/admin/invitations）。
- * 招待リンクは API から返らず、招待先に招待メールで届く（有効期限は7日）
+ * 招待リンクは API から返らず、招待先に招待メールで届く（有効期限は7日）。
+ * メールを送れなかったとき（data.mail_sent が false）も招待は発行済みなので、エラーのトーストで伝える
  */
 export function InvitationForm({ onCreated }: Props) {
 	const showToast = useToastStore((state) => state.showToast);
@@ -54,12 +56,17 @@ export function InvitationForm({ onCreated }: Props) {
 		setErrors({});
 		setPending(true);
 		try {
-			await requestAdminJson<InvitationCreated>(
+			const res = await requestAdminJson<InvitationCreated>(
 				"/api/admin/invitations",
 				"POST",
 				result.data,
 			);
-			showToast(`${result.data.email} に招待メールを送りました。`);
+			// メールだけ送れなかったときも招待は発行済みなので、入力は空にして一覧を読み直す
+			if (res.data.mail_sent) {
+				showToast(`${result.data.email} に招待メールを送りました。`);
+			} else {
+				showToast(invitationMailFailedMessage(result.data.email), "error");
+			}
 			setValues({ email: "", role: values.role });
 			onCreated();
 		} catch (err) {

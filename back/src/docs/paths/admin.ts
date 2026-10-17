@@ -280,6 +280,23 @@ export const adminPaths: Paths = {
   },
 };
 
+// 招待の発行・再送のレスポンス
+const invitationIssuedBody = {
+  message: { type: "string" },
+  data: {
+    type: "object",
+    properties: {
+      email: { type: "string", format: "email" },
+      role: fields.invitationRole,
+      expires_at: { type: "string", format: "date-time" },
+      mail_sent: {
+        type: "boolean",
+        description: "招待メールを送れたか。false でも招待は発行済み（再送できる）",
+      },
+    },
+  },
+};
+
 // 招待（owner専用。verify のみ認証不要）
 export const invitationPaths: Paths = {
   "/api/admin/invitations": {
@@ -287,24 +304,14 @@ export const invitationPaths: Paths = {
       tags: [TAG],
       summary: "招待の発行（owner のみ）",
       description:
-        "指定したメールアドレス宛に招待リンクを送信する。同じアドレス宛の未使用の招待は、この発行時に失効する。有効期限は7日。",
+        "指定したメールアドレス宛に招待リンクを送信する。同じアドレス宛の未使用の招待は、この発行時に失効する。有効期限は7日。招待メールの送信に失敗しても招待は発行済みのまま 200 を返し、data.mail_sent を false にする（message も送信失敗の文言になる）。",
       requestBody: jsonBody({
         type: "object",
         required: ["email", "role"],
         properties: { email: fields.email, role: fields.invitationRole },
       }),
       responses: {
-        "200": jsonResponse("発行成功（招待メールを送信）", {
-          message: { type: "string" },
-          data: {
-            type: "object",
-            properties: {
-              email: { type: "string", format: "email" },
-              role: fields.invitationRole,
-              expires_at: { type: "string", format: "date-time" },
-            },
-          },
-        }),
+        "200": jsonResponse("発行成功（招待メールを送信）", invitationIssuedBody),
         ...errors("BadRequest", "Unauthorized", "Forbidden", "Conflict"),
       },
     },
@@ -369,6 +376,20 @@ export const invitationPaths: Paths = {
           },
         }),
         ...errors("BadRequest"),
+      },
+    },
+  },
+
+  "/api/admin/invitations/{id}/resend": {
+    post: {
+      tags: [TAG],
+      summary: "招待メールの再送（owner のみ）",
+      description:
+        "未使用（期限切れを含む）の招待を、同じ宛先・ロールで発行し直して招待メールを送る。古いリンクは使えなくなり、有効期限は再送時点から7日になる。招待IDは新しくなる。使用済みの招待は 400、宛先が既に登録済みなら 409。送信失敗時の扱いは新規発行と同じ（data.mail_sent=false）。",
+      parameters: [pathParam("id", "招待ID")],
+      responses: {
+        "200": jsonResponse("再送成功", invitationIssuedBody),
+        ...errors("BadRequest", "Unauthorized", "Forbidden", "NotFound", "Conflict"),
       },
     },
   },

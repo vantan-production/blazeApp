@@ -19,7 +19,7 @@ export function NewsPostForm() {
 				placeholder: "サムネイル画像を選択",
 				accept: "image/*",
 			}}
-			successMessage="ニュースを投稿しました。"
+			successMessage="お知らせを投稿しました。"
 			extraFields={<CategorySelector value={category} onChange={setCategory} />}
 			extraValues={{ category }}
 			bodyImages={{ name: "images", accept: "image/*" }}

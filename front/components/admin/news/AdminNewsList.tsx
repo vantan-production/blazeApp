@@ -6,7 +6,7 @@ import { formatNewsDate, type NewsPost } from "@/lib/admin/news";
 import { apiClient } from "@/lib/apiClient";
 import { AdminNewsListItem } from "./AdminNewsListItem";
 
-/** 投稿済みニュースの一覧（GET /api/news-post。10件ずつ追加読み込み） */
+/** 投稿済みお知らせの一覧（GET /api/news-post。10件ずつ追加読み込み） */
 export function AdminNewsList() {
 	const [posts, setPosts] = useState<NewsPost[]>([]);
 	const [page, setPage] = useState(1);
@@ -29,7 +29,7 @@ export function AdminNewsList() {
 					setError(null);
 				})
 				.catch((error) => {
-					setError(toErrorMessage(error, "ニュースの取得に失敗しました。"));
+					setError(toErrorMessage(error, "お知らせの取得に失敗しました。"));
 				})
 				.finally(() => setLoading(false)),
 		[],
@@ -51,7 +51,7 @@ export function AdminNewsList() {
 	if (!loading && posts.length === 0) {
 		return (
 			<p className="text-[14px] text-brand-white">
-				まだ投稿されたニュースはありません。
+				まだ投稿されたお知らせはありません。
 			</p>
 		);
 	}
@@ -65,6 +65,7 @@ export function AdminNewsList() {
 						id={post.id}
 						thumbnailUrl={post.img_url}
 						category={post.category}
+						status={post.status}
 						date={formatNewsDate(post.created_at)}
 						title={post.title}
 					/>

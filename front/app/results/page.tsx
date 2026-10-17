@@ -35,7 +35,10 @@ export default async function ResultsPage() {
 			<main className="flex w-full flex-col items-center">
 				<PageTitle>実績・試合結果</PageTitle>
 				<div className="flex w-full flex-col px-[clamp(16px,5.97vw,24px)]">
-					<ResultSection title="前回の試合結果">
+					<ResultSection
+						title="前回の試合結果"
+						moreHref={lastMatch ? routes.resultsMatches : undefined}
+					>
 						{lastMatch ? (
 							<LastResultCard {...lastMatch} />
 						) : (

@@ -19,6 +19,9 @@ export type LastMatch = {
 	sets: MatchSet[];
 };
 
+/** 試合結果の一覧ページ用。前回の試合結果と同じ内容に id を付けたもの */
+export type MatchResult = LastMatch & { id: string };
+
 /** チーム目標。backに対応するデータが無いため固定文言 */
 export const teamGoal = "勝利を目指して挑戦し続けるチームへ";
 
@@ -67,4 +70,12 @@ export type MediaItem = {
 	 * TODO: 紹介動画のURLが決まったら埋め込みにする（メディアAPIは画像のみで動画URLを持たない）
 	 */
 	imageSrc?: string;
+};
+
+/** メディア情報の詳細ページ用（GET /api/media/:id） */
+export type MediaDetail = Omit<MediaItem, "imageSrc"> & {
+	/** 本文。掲載先のURLが書かれていることが多いので、表示時にリンクにする */
+	body: string;
+	/** 掲載画像と本文に添付された画像。無ければ空 */
+	images: string[];
 };

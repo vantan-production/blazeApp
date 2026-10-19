@@ -13,13 +13,26 @@ import type { Readable } from "node:stream";
 // 署名付きURL生成
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
+/**
+ * アクセスキーが環境変数で渡されたときだけ明示指定する。
+ * 本番（ECS）ではキーを渡さず、SDK の既定の認証情報チェーン（＝ECS タスクロール）に任せる。
+ * キーは漏れると失効させるまで使われ続けるが、タスクロールの一時認証情報は数時間で切れるため
+ * （infra/lib/backend-stack.ts の storageBucket 参照）。ローカル開発・テストは従来どおりキーで動く
+ */
+export function buildS3Credentials(
+  env: NodeJS.ProcessEnv = process.env,
+): { accessKeyId: string; secretAccessKey: string } | undefined {
+  const accessKeyId = env.AWS_ACCESS_KEY_ID;
+  const secretAccessKey = env.AWS_SECRET_ACCESS_KEY;
+  if (!accessKeyId || !secretAccessKey) return undefined;
+  return { accessKeyId, secretAccessKey };
+}
+
 // S3クライアントにリクエストを送るための準備
+const credentials = buildS3Credentials();
 const s3Client = new S3Client({
   region: process.env.AWS_REGION || "ap-northeast-1",
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
-  },
+  ...(credentials ? { credentials } : {}),
 });
 
 const BUCKET = process.env.AWS_S3_BUCKET!;

@@ -11,6 +11,13 @@ import * as cloudwatch from "aws-cdk-lib/aws-cloudwatch";
 import * as cwActions from "aws-cdk-lib/aws-cloudwatch-actions";
 import * as sns from "aws-cdk-lib/aws-sns";
 import * as snsSubscriptions from "aws-cdk-lib/aws-sns-subscriptions";
+import * as acm from "aws-cdk-lib/aws-certificatemanager";
+import * as route53 from "aws-cdk-lib/aws-route53";
+import * as iam from "aws-cdk-lib/aws-iam";
+import * as kms from "aws-cdk-lib/aws-kms";
+import * as rds from "aws-cdk-lib/aws-rds";
+import * as events from "aws-cdk-lib/aws-events";
+import * as eventsTargets from "aws-cdk-lib/aws-events-targets";
 
 export interface BackendStackProps extends cdk.StackProps {
   // "prod" | "dev" など。スタック名・シークレット名の分離に使う（infra/bin/infra.ts参照）
@@ -32,6 +39,13 @@ export interface BackendStackProps extends cdk.StackProps {
  *   デプロイ前に stageごとの `blazeapp/backend-{stage}`（例: blazeapp/backend-prod,
  *   blazeapp/backend-dev）という名前のシークレットを手動作成し、下記 SECRET_ENV_KEYS の
  *   キーを持つJSONを値として登録しておくこと。
+ *
+ * 段階的に有効にする設定（-c で渡したときだけ効く。未指定なら従来どおりの構成のまま）:
+ * - certificateArn / apiDomainName: ALB を HTTPS にし、80番は443へリダイレクトする
+ * - storageBucket: S3 をアクセスキーではなく ECS タスクロールで使う
+ * - backupBucket: pg_dump の毎時バックアップ（復元検証つき）を動かす
+ * - manageDatabase: この VPC 内に非公開の RDS を stage ごとに作る（prod/dev の分離）
+ * 詳しい切り替え手順は docs/infra-hardening.md を参照。
  */
 export class BackendStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: BackendStackProps) {
@@ -40,14 +54,53 @@ export class BackendStack extends cdk.Stack {
 
     // back/src が process.env から読む値のうち、機微情報として扱うキー
     // （Secrets Manager 側にこの名前のキーを用意しておく）
+    // storageBucket を指定したら S3 はタスクロールで使うため、アクセスキーとバケット名はシークレットから読まない
+    // （キーが入ったままでも読まなければ使われない。切り替えが済んだらシークレットからも消し、IAM のキーを無効化する）
+    const storageBucketName = this.node.tryGetContext("storageBucket") as
+      | string
+      | undefined;
     const SECRET_ENV_KEYS = [
       "DATABASE_URL",
       "REDIS_URL",
-      "AWS_ACCESS_KEY_ID",
-      "AWS_SECRET_ACCESS_KEY",
-      "AWS_S3_BUCKET",
+      ...(storageBucketName
+        ? []
+        : (["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_S3_BUCKET"] as const)),
       "RESEND_API_KEY",
-    ] as const;
+    ];
+    if (!storageBucketName) {
+      cdk.Annotations.of(this).addWarningV2(
+        "blazeapp:storageBucket",
+        "-c storageBucket=... が未指定です。S3 はシークレットのアクセスキーで使われます（タスクロールへの移行が未了）。",
+      );
+    }
+
+    // HTTPS（ALB に ACM 証明書を付ける）。証明書は ALB と同じリージョン（ap-northeast-1）で発行しておくこと。
+    // 本番はログインの Cookie（Secure 属性）が HTTPS でしか送られないため、未設定だとログインできない
+    const certificateArn = this.node.tryGetContext("certificateArn") as
+      | string
+      | undefined;
+    const apiDomainName = this.node.tryGetContext("apiDomainName") as
+      | string
+      | undefined;
+    // Route 53 で管理しているドメインなら、API のレコード（ALB へのエイリアス）も作る。
+    // 他社の DNS を使う場合は省略し、出力の LoadBalancerDNS へ CNAME を手で向ける
+    const hostedZoneId = this.node.tryGetContext("hostedZoneId") as
+      | string
+      | undefined;
+    const hostedZoneName = this.node.tryGetContext("hostedZoneName") as
+      | string
+      | undefined;
+    if (certificateArn && !apiDomainName) {
+      throw new Error(
+        "-c certificateArn を指定するときは -c apiDomainName=api.example.com も指定してください（証明書のドメインと合わせる）",
+      );
+    }
+    if (!certificateArn) {
+      cdk.Annotations.of(this).addWarningV2(
+        "blazeapp:certificateArn",
+        "-c certificateArn=... が未指定です。ALB は HTTP（80番）のみで、本番ではログイン Cookie が送られません。",
+      );
+    }
 
     // 非機微な設定値。CDKデプロイ時に -c corsOrigin=... 等で必ず指定する。
     // 指定し忘れてダミードメインのままデプロイされる（CORSエラーやメール内リンク破損に繋がる）のを防ぐため、
@@ -102,11 +155,26 @@ export class BackendStack extends cdk.Stack {
       );
     }
 
+    // この VPC 内に RDS を作るか（docs/backup-design.md 9-1・9-2）。
+    // 作ると DB はインターネットから到達できず、ECS タスクと pg_dump タスクの SG からだけ繋がる
+    const manageDatabase = this.node.tryGetContext("manageDatabase") === "true";
+
     const vpc = new ec2.Vpc(this, "Vpc", {
       maxAzs: 2,
       natGateways: 0,
       subnetConfiguration: [
         { name: "public", subnetType: ec2.SubnetType.PUBLIC, cidrMask: 24 },
+        // DB 用。インターネットへの経路を持たないサブネット（NAT 不要）。
+        // 後ろに足すだけなので、既存の public サブネットの CIDR は変わらない
+        ...(manageDatabase
+          ? [
+              {
+                name: "database",
+                subnetType: ec2.SubnetType.PRIVATE_ISOLATED,
+                cidrMask: 24,
+              },
+            ]
+          : []),
       ],
     });
 
@@ -143,7 +211,31 @@ export class BackendStack extends cdk.Stack {
         publicLoadBalancer: true,
         assignPublicIp: true,
         taskSubnets: { subnetType: ec2.SubnetType.PUBLIC },
-        listenerPort: 80,
+        ...(certificateArn
+          ? {
+              protocol: elbv2.ApplicationProtocol.HTTPS,
+              listenerPort: 443,
+              certificate: acm.Certificate.fromCertificateArn(
+                this,
+                "ApiCertificate",
+                certificateArn,
+              ),
+              sslPolicy: elbv2.SslPolicy.RECOMMENDED_TLS,
+              // 80番に来たものは443へ恒久リダイレクトする
+              redirectHTTP: true,
+              // domainName は Route 53 のゾーンとセットでしか渡せない（パターンがレコードを作るため）
+              ...(apiDomainName && hostedZoneId && hostedZoneName
+                ? {
+                    domainName: apiDomainName,
+                    domainZone: route53.HostedZone.fromHostedZoneAttributes(
+                      this,
+                      "HostedZone",
+                      { hostedZoneId, zoneName: hostedZoneName },
+                    ),
+                  }
+                : {}),
+            }
+          : { listenerPort: 80 }),
         taskImageOptions: {
           // back/Dockerfile からビルド（`cdk deploy` 実行時にDockerビルド＋ECRアセット登録まで行う）
           image: ecs.ContainerImage.fromAsset(path.join(__dirname, "../../back")),
@@ -156,6 +248,7 @@ export class BackendStack extends cdk.Stack {
             FRONTEND_URL: frontendUrl,
             MAIL_FROM: mailFrom,
             TRIAL_NOTIFICATION_EMAIL: trialNotificationEmail,
+            ...(storageBucketName ? { AWS_S3_BUCKET: storageBucketName } : {}),
           },
           secrets: Object.fromEntries(
             SECRET_ENV_KEYS.map((key) => [
@@ -463,11 +556,80 @@ export class BackendStack extends cdk.Stack {
       ],
     });
 
-    // S3クライアントを task role のIAM権限で動かす場合の受け皿（推奨の移行先）。
-    // 現状の back/src/db/s3.ts は AWS_ACCESS_KEY_ID/SECRET を明示指定しているため、
-    // 移行するまではこの権限は使われないが、切り替え時に困らないよう先に付与しておく。
-    // 実際のバケット名が確定したら bucketArn を差し替えること。
-    // service.taskDefinition.taskRole.addToPrincipalPolicy(...)
+    // --- S3（画像・動画・ファイル）をタスクロールで使う ---
+    // back/src/db/s3.ts はアクセスキーの環境変数が無ければ既定の認証情報チェーン（＝このロール）を使う。
+    // 一時認証情報は自動で更新されるため、漏れても長くは使えない
+    if (storageBucketName) {
+      // アップロード・取得（署名付きURL）・削除だけ。バケット設定の変更や一覧、
+      // バージョン指定の削除（＝バージョニングによる救済を消す操作）は許さない
+      service.taskDefinition.taskRole.addToPrincipalPolicy(
+        new iam.PolicyStatement({
+          actions: ["s3:PutObject", "s3:GetObject", "s3:DeleteObject"],
+          resources: [`arn:aws:s3:::${storageBucketName}/*`],
+        }),
+      );
+    }
+
+    // --- DB（この VPC 内の非公開 RDS） ---
+    // 暗号化キー（CMK）は DB より先に用意できるよう別のフラグでも作れるようにする。
+    // 既存 DB を移すときは「キーだけ作る → スナップショットをこのキーでコピー → そのコピーから DB を作る」の順になるため
+    // （スナップショットから作る DB の暗号化キーはスナップショットのものを引き継ぎ、後から変えられない）
+    const databaseKey =
+      manageDatabase || this.node.tryGetContext("databaseKey") === "true"
+        ? this.createDatabaseKey(stage)
+        : undefined;
+    let database: rds.DatabaseInstance | rds.DatabaseInstanceFromSnapshot | undefined;
+    if (manageDatabase && databaseKey) {
+      database = this.createDatabase(
+        stage,
+        vpc,
+        databaseKey,
+        service.service.connections,
+      );
+    }
+
+    // --- DB の論理バックアップ（pg_dump を毎時。docs/backup-design.md 5-2・T4） ---
+    const backupBucketName = this.node.tryGetContext("backupBucket") as
+      | string
+      | undefined;
+    if (backupBucketName) {
+      this.createDbBackup({
+        stage,
+        cluster,
+        appSecret,
+        backupBucketName,
+        alertTopic,
+        database,
+        metricNamespace: METRIC_NAMESPACE,
+      });
+    } else if (stage === "prod") {
+      cdk.Annotations.of(this).addWarningV2(
+        "blazeapp:backupBucket",
+        "-c backupBucket=... が未指定です。DB の定期バックアップ（pg_dump）は動きません。",
+      );
+    }
+
+    if (databaseKey) {
+      new cdk.CfnOutput(this, "DatabaseKeyArn", {
+        value: databaseKey.keyArn,
+        description:
+          "RDS の暗号化キー。既存 DB のスナップショットを aws rds copy-db-snapshot --kms-key-id <この値> で再暗号化してから dbSnapshotId に渡す",
+      });
+    }
+
+    if (database) {
+      new cdk.CfnOutput(this, "DatabaseEndpoint", {
+        value: database.dbInstanceEndpointAddress,
+        description:
+          "CDK が管理する RDS のエンドポイント。データを移したら blazeapp/backend-{stage} の DATABASE_URL をこのホストに書き換える",
+      });
+      if (database.secret) {
+        new cdk.CfnOutput(this, "DatabaseSecretName", {
+          value: database.secret.secretName,
+          description: "RDS のマスターユーザーの認証情報（自動生成）",
+        });
+      }
+    }
 
     new cdk.CfnOutput(this, "AlertTopicArn", {
       value: alertTopic.topicArn,
@@ -484,5 +646,238 @@ export class BackendStack extends cdk.Stack {
       value: service.loadBalancer.loadBalancerDnsName,
       description: "この値を front の NEXT_PUBLIC_API_URL / CORS_ORIGIN の設定に使う",
     });
+
+    if (apiDomainName && certificateArn) {
+      new cdk.CfnOutput(this, "ApiUrl", {
+        value: `https://${apiDomainName}`,
+        description:
+          "front の NEXT_PUBLIC_API_BASE_URL に設定する値。Route 53 以外の DNS なら、このホスト名を LoadBalancerDNS へ CNAME で向けること",
+      });
+    }
+  }
+
+  /**
+   * stage 専用の RDS PostgreSQL を作る（docs/backup-design.md 9-1・9-2）。
+   * - VPC の isolated サブネットに置き、パブリックアクセスは不可
+   * - ECS サービスからだけ 5432 を許可する（pg_dump タスクは createDbBackup で許可を足す）
+   * - カスタマー管理キー（CMK）で暗号化する。スナップショットを別アカウント・別リージョンへ
+   *   持ち出せるようにするため（AWS マネージドキーでは共有できない。設計書 4-3）
+   * - -c dbSnapshotId=... を渡すと、そのスナップショット（既存 DB を DatabaseKey で再暗号化したコピー）から作る
+   */
+  private createDatabaseKey(stage: string): kms.Key {
+    return new kms.Key(this, "DatabaseKey", {
+      alias: `alias/blazeapp-db-${stage}`,
+      description: `blazeapp ${stage} の RDS 暗号化キー`,
+      enableKeyRotation: true,
+      // キーを消すとスナップショットも読めなくなるため、スタックを消しても残す
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
+    });
+  }
+
+  private createDatabase(
+    stage: string,
+    vpc: ec2.IVpc,
+    key: kms.IKey,
+    appConnections: ec2.Connections,
+  ): rds.DatabaseInstance | rds.DatabaseInstanceFromSnapshot {
+    const isProd = stage === "prod";
+
+    const securityGroup = new ec2.SecurityGroup(this, "DatabaseSecurityGroup", {
+      vpc,
+      description: `blazeapp ${stage} RDS（ECS タスクからのみ接続可）`,
+      allowAllOutbound: false,
+    });
+
+    const common = {
+      engine: rds.DatabaseInstanceEngine.postgres({
+        version: rds.PostgresEngineVersion.VER_18,
+      }),
+      instanceType: ec2.InstanceType.of(
+        ec2.InstanceClass.T4G,
+        ec2.InstanceSize.MICRO,
+      ),
+      vpc,
+      vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
+      securityGroups: [securityGroup],
+      publiclyAccessible: false,
+      multiAz: false,
+      allocatedStorage: 20,
+      maxAllocatedStorage: 100,
+      // 設計書 5-1: prod は7日（PITR）、dev は最低限の1日
+      backupRetention: cdk.Duration.days(isProd ? 7 : 1),
+      preferredBackupWindow: "19:00-19:30", // JST 04:00-04:30
+      preferredMaintenanceWindow: "thu:20:00-thu:20:30", // JST 木 05:00-05:30
+      copyTagsToSnapshot: true,
+      deletionProtection: isProd,
+      // スタックから外れたり置き換わったりしても、最後のスナップショットは残す
+      removalPolicy: cdk.RemovalPolicy.SNAPSHOT,
+      autoMinorVersionUpgrade: true,
+      // RDS 側でも TLS 以外の接続を拒否する（アプリは証明書検証つきで接続する。back/src/db/ssl.ts）
+      parameterGroup: new rds.ParameterGroup(this, "DatabaseParameters", {
+        engine: rds.DatabaseInstanceEngine.postgres({
+          version: rds.PostgresEngineVersion.VER_18,
+        }),
+        parameters: { "rds.force_ssl": "1" },
+      }),
+    };
+
+    const snapshotId = this.node.tryGetContext("dbSnapshotId") as
+      | string
+      | undefined;
+    const database = snapshotId
+      ? new rds.DatabaseInstanceFromSnapshot(this, "Database", {
+          ...common,
+          // 暗号化はスナップショットのキーを引き継ぐ。必ず DatabaseKey で再暗号化したコピーを渡すこと
+          snapshotIdentifier: snapshotId,
+          // スナップショットのマスターパスワードは引き継がず、新しく生成して Secrets Manager に置く
+          credentials: rds.SnapshotCredentials.fromGeneratedSecret("postgres"),
+        })
+      : new rds.DatabaseInstance(this, "Database", {
+          ...common,
+          databaseName: "blazeapp",
+          storageEncrypted: true,
+          storageEncryptionKey: key,
+          credentials: rds.Credentials.fromGeneratedSecret("postgres", {
+            secretName: `blazeapp/db-${stage}`,
+          }),
+        });
+
+    database.connections.allowDefaultPortFrom(
+      appConnections,
+      "ECS のバックエンドから",
+    );
+    return database;
+  }
+
+  /**
+   * pg_dump を毎時動かす ECS スケジュールタスクと、その監視を作る。
+   * 中身は infra/backup/backup.sh。ダンプ → サイズと形式の検証 →（日次）実際に復元して検証 →
+   * Object Lock（Governance）付きで東京のバケットへ置く。大阪へは S3 レプリケーションで複製される（T5 で設定済み）
+   */
+  private createDbBackup(props: {
+    stage: string;
+    cluster: ecs.ICluster;
+    appSecret: secretsmanager.ISecret;
+    backupBucketName: string;
+    alertTopic: sns.ITopic;
+    database?: rds.DatabaseInstance | rds.DatabaseInstanceFromSnapshot;
+    metricNamespace: string;
+  }): void {
+    const { stage, cluster, appSecret, backupBucketName, alertTopic } = props;
+
+    const logGroup = new logs.LogGroup(this, "DbBackupLogGroup", {
+      logGroupName: `/blazeapp/db-backup-${stage}`,
+      retention: logs.RetentionDays.THREE_MONTHS,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
+    });
+
+    const taskDefinition = new ecs.FargateTaskDefinition(this, "DbBackupTask", {
+      cpu: 256,
+      memoryLimitMiB: 1024,
+      // 復元検証で一時的にダンプと検証用DBの両方を置くため、既定（20GiB）より少し多めにする
+      ephemeralStorageGiB: 30,
+      runtimePlatform: {
+        cpuArchitecture: ecs.CpuArchitecture.X86_64,
+        operatingSystemFamily: ecs.OperatingSystemFamily.LINUX,
+      },
+    });
+    taskDefinition.addContainer("backup", {
+      image: ecs.ContainerImage.fromAsset(path.join(__dirname, "../backup")),
+      environment: {
+        BACKUP_BUCKET: backupBucketName,
+        AWS_REGION: this.region,
+        MIN_DUMP_BYTES: "10000",
+      },
+      secrets: {
+        DATABASE_URL: ecs.Secret.fromSecretsManager(appSecret, "DATABASE_URL"),
+      },
+      logging: ecs.LogDrivers.awsLogs({ streamPrefix: "db-backup", logGroup }),
+    });
+
+    // 書き込みと保持期間の指定だけ。削除・保持期間の短縮（Governance の解除）は許さない
+    taskDefinition.taskRole.addToPrincipalPolicy(
+      new iam.PolicyStatement({
+        actions: ["s3:PutObject", "s3:PutObjectRetention"],
+        resources: [`arn:aws:s3:::${backupBucketName}/*`],
+      }),
+    );
+
+    const securityGroup = new ec2.SecurityGroup(this, "DbBackupSecurityGroup", {
+      vpc: cluster.vpc,
+      description: `blazeapp ${stage} pg_dump タスク`,
+    });
+    props.database?.connections.allowDefaultPortFrom(
+      securityGroup,
+      "pg_dump タスクから",
+    );
+
+    // 毎時00分（UTC）。backup.sh は UTC 19時（JST 04:00）の回に日次・週次も残し、復元検証もする
+    new events.Rule(this, "DbBackupSchedule", {
+      ruleName: `blazeapp-${stage}-db-backup`,
+      schedule: events.Schedule.cron({ minute: "0" }),
+      targets: [
+        new eventsTargets.EcsTask({
+          cluster,
+          taskDefinition,
+          // NAT が無いため、バックエンドと同じくパブリックサブネットにパブリックIPつきで置き、
+          // ECR・Secrets Manager・S3 へ出られるようにする（インバウンドは SG で全て閉じている）
+          subnetSelection: { subnetType: ec2.SubnetType.PUBLIC },
+          assignPublicIp: true,
+          securityGroups: [securityGroup],
+          platformVersion: ecs.FargatePlatformVersion.LATEST,
+        }),
+      ],
+    });
+
+    // --- 監視 ---
+    // backup.sh が出す1行 JSON（type=BACKUP_SUCCEEDED / BACKUP_FAILED）を数える。
+    // 名前を変えるときは backup.sh も合わせること
+    const backupMetric = (id: string, type: string, metricName: string) => {
+      new logs.MetricFilter(this, id, {
+        logGroup,
+        filterPattern: logs.FilterPattern.stringValue("$.type", "=", type),
+        metricNamespace: props.metricNamespace,
+        metricName,
+        metricValue: "1",
+        defaultValue: 0,
+      });
+      return new cloudwatch.Metric({
+        namespace: props.metricNamespace,
+        metricName,
+        statistic: "Sum",
+        period: cdk.Duration.hours(1),
+      });
+    };
+
+    const failed = new cloudwatch.Alarm(this, "DbBackupFailedAlarm", {
+      alarmName: `blazeapp-${stage}-DbBackupFailedAlarm`,
+      alarmDescription: `DB のバックアップ（pg_dump）が失敗した。ロググループ /blazeapp/db-backup-${stage} の reason を確認すること`,
+      metric: backupMetric("DbBackupFailedFilter", "BACKUP_FAILED", "DbBackupFailed"),
+      threshold: 1,
+      evaluationPeriods: 1,
+      comparisonOperator:
+        cloudwatch.ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
+      treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
+    });
+    failed.addAlarmAction(new cwActions.SnsAction(alertTopic));
+
+    // 成功が3時間続けて0件 = タスクが起動していない（イメージ取得失敗・スケジュール停止など）。
+    // 失敗ログすら出ない止まり方はこちらで拾う。データが無いことも「止まっている」とみなす
+    const missing = new cloudwatch.Alarm(this, "DbBackupMissingAlarm", {
+      alarmName: `blazeapp-${stage}-DbBackupMissingAlarm`,
+      alarmDescription:
+        "DB のバックアップが3時間成功していない。スケジュール（EventBridge）とタスクの停止理由を確認すること",
+      metric: backupMetric(
+        "DbBackupSucceededFilter",
+        "BACKUP_SUCCEEDED",
+        "DbBackupSucceeded",
+      ),
+      threshold: 1,
+      evaluationPeriods: 3,
+      comparisonOperator: cloudwatch.ComparisonOperator.LESS_THAN_THRESHOLD,
+      treatMissingData: cloudwatch.TreatMissingData.BREACHING,
+    });
+    missing.addAlarmAction(new cwActions.SnsAction(alertTopic));
+    missing.addOkAction(new cwActions.SnsAction(alertTopic));
   }
 }

@@ -442,7 +442,11 @@ aws s3api put-bucket-lifecycle-configuration --bucket <bucket> --lifecycle-confi
 
 **要注意**: 既定の Object Lock 保持は2日で、これは `hourly` に合わせた最短値。`daily` / `weekly` のダンプはアップロード時に個別に長い保持期間を指定する必要がある（T4 で実装する）。指定しないと weekly のダンプも2日しかロックされない。
 
-### T4. `pg_dump` スケジュールタスク
+### T4. `pg_dump` スケジュールタスク（コード実装済み・未デプロイ）
+
+`infra/backup/` と `infra/lib/backend-stack.ts` の `createDbBackup` に実装した。`BACKUP_BUCKET` を設定してデプロイすると有効になる（手順は `docs/infra-hardening.md` 3）。
+日次の回は一時的な Postgres に実際に復元して検証する（8章「0エラー」の自動化）。通知先は専用トピックではなく既存の `blazeapp-alerts-{stage}` を使う。
+9-1・9-2（RDS の分離・非公開化）も `docs/infra-hardening.md` 4 の手順でコードから行えるようにした。
 
 - [ ] `infra/` に dump 用のタスク定義（`postgres:18-alpine` ベース）と EventBridge Scheduler を追加
 - [ ] アップロード時に `--object-lock-retain-until-date` でプレフィックスに応じた保持期間を指定する（T3 の注意点を参照）

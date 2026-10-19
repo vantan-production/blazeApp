@@ -55,7 +55,7 @@ const menuSections: MenuSection[] = [
 			},
 			// quill:paper はアイコン枠24pxの中に 16.4x20.9 の図形が入る
 			{
-				label: "ニュース投稿",
+				label: "お知らせ投稿",
 				href: adminRoutes.news,
 				icon: icon("paper", 16.4, 20.9),
 			},

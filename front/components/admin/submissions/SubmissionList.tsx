@@ -91,7 +91,7 @@ export function SubmissionList() {
 			});
 			showToast(
 				decision === "approve"
-					? "承認しました。ニュースとして公開されました。"
+					? "承認しました。お知らせとして公開されました。"
 					: "差し戻しました。この投稿は公開されません。",
 			);
 			removeFromList(submission.id);
@@ -127,7 +127,7 @@ export function SubmissionList() {
 	return (
 		<div className="flex w-full flex-col items-center gap-[30px] text-brand-white">
 			<p className="-mt-6 w-full text-[13px] leading-[20px] tracking-[1px] opacity-80">
-				関係者から届いたニュース記事の申請です。承認するまで公開サイトには表示されません。
+				関係者から届いたお知らせ記事の申請です。承認するまで公開サイトには表示されません。
 			</p>
 			{!error && !loading && total > 0 && (
 				<p className="-mt-4 self-start text-[14px] leading-[22px] tracking-[1px]">
@@ -163,7 +163,7 @@ export function SubmissionList() {
 				{...(action?.decision === "approve"
 					? {
 							title: "承認して公開しますか？",
-							description: `公開サイトの「ニュース」に、このタイトル・本文${hasImage ? "・画像" : ""}がそのまま掲載され、誰でも見られるようになります。承認後はこの画面から取り消せません。`,
+							description: `公開サイトの「お知らせ」に、このタイトル・本文${hasImage ? "・画像" : ""}がそのまま掲載され、誰でも見られるようになります。承認後はこの画面から取り消せません。`,
 							confirmLabel: "承認して公開",
 						}
 					: {

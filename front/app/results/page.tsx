@@ -7,11 +7,10 @@ import {
 	getMatchPhotos,
 	getMediaItems,
 } from "@/components/results/api";
-import { highlightPhotos, teamGoal } from "@/components/results/data";
+import { teamGoal } from "@/components/results/data";
 import { EmptyNote } from "@/components/results/EmptyNote";
 import { LastResultCard } from "@/components/results/LastResultCard";
 import { MediaList } from "@/components/results/MediaList";
-import { PeekCarousel } from "@/components/results/PeekCarousel";
 import { ResultSection } from "@/components/results/ResultSection";
 import { StaggeredGallery } from "@/components/results/StaggeredGallery";
 import { PageTitle } from "@/components/ui/PageTitle";
@@ -36,7 +35,10 @@ export default async function ResultsPage() {
 			<main className="flex w-full flex-col items-center">
 				<PageTitle>実績・試合結果</PageTitle>
 				<div className="flex w-full flex-col px-[clamp(16px,5.97vw,24px)]">
-					<ResultSection title="前回の試合結果">
+					<ResultSection
+						title="前回の試合結果"
+						moreHref={lastMatch ? routes.resultsMatches : undefined}
+					>
 						{lastMatch ? (
 							<LastResultCard {...lastMatch} />
 						) : (
@@ -86,10 +88,6 @@ export default async function ResultsPage() {
 						) : (
 							<EmptyNote>試合風景は準備中です</EmptyNote>
 						)}
-					</ResultSection>
-					{/* TODO: 名場面の一覧ページ（とbackのデータ）ができたら「もっと見る」を付ける */}
-					<ResultSection title="選手たちの名場面集">
-						<PeekCarousel photos={highlightPhotos} />
 					</ResultSection>
 					<ResultSection
 						title="メディア情報"

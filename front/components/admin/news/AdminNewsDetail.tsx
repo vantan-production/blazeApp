@@ -26,8 +26,8 @@ export function AdminNewsDetail({ id }: Props) {
 				if (ignore) return;
 				setError(
 					err instanceof ApiError && err.status === 404
-						? "ニュースが見つかりません。"
-						: "ニュースの取得に失敗しました。",
+						? "お知らせが見つかりません。"
+						: "お知らせの取得に失敗しました。",
 				);
 			});
 		return () => {

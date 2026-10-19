@@ -151,7 +151,7 @@ CMK への移行は 9-1 の prod / dev 分離（＝インスタンス再作成�
 | 自動バックアップ保持期間 | **7日**（現状1日から変更） |
 | PITR | 有効（保持期間内の任意の時刻、粒度およそ5分） |
 | バックアップウィンドウ | **19:00-19:30 UTC（＝ JST 04:00-04:30）**（現状 14:16-14:46 UTC ＝ JST 23:16 は利用時間帯にあたるため変更） |
-| メンテナンスウィンドウ | **thu 20:00-20:30 UTC（＝ JST 木 05:00-05:30）** |
+| メンテナンスウィンドウ | **wed 20:00-20:30 UTC（＝ JST 木 05:00-05:30）** |
 | スナップショットへのタグ伝播 | 有効（現状のまま） |
 | 削除保護 | **有効化**（現状無効） |
 | Multi-AZ | **無効のまま**。RTO 4時間は単一 AZ の復元で満たせるため、月額倍増に見合わないと判断する |
@@ -397,7 +397,7 @@ aws rds modify-db-instance \
   --db-instance-identifier blaze-app-db \
   --backup-retention-period 7 \
   --preferred-backup-window 19:00-19:30 \
-  --preferred-maintenance-window thu:20:00-thu:20:30 \
+  --preferred-maintenance-window wed:20:00-wed:20:30 \
   --deletion-protection \
   --apply-immediately \
   --region ap-northeast-1

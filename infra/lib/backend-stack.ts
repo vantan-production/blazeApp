@@ -706,7 +706,8 @@ export class BackendStack extends cdk.Stack {
       // 設計書 5-1: prod は7日（PITR）、dev は最低限の1日
       backupRetention: cdk.Duration.days(isProd ? 7 : 1),
       preferredBackupWindow: "19:00-19:30", // JST 04:00-04:30
-      preferredMaintenanceWindow: "thu:20:00-thu:20:30", // JST 木 05:00-05:30
+      // RDS の時刻は UTC。水曜 20:00 UTC ＝ JST 木曜 05:00
+      preferredMaintenanceWindow: "wed:20:00-wed:20:30", // JST 木 05:00-05:30
       copyTagsToSnapshot: true,
       deletionProtection: isProd,
       // スタックから外れたり置き換わったりしても、最後のスナップショットは残す

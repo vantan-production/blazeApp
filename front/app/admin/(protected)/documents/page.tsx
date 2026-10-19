@@ -12,7 +12,7 @@ export const metadata = {
 export default function AdminDocumentsPage() {
 	return (
 		<AdminPageLayout title="資料庫" backHref={adminRoutes.top}>
-			<p className="-mt-12 w-full text-[13px] leading-[20px] tracking-[1px] text-brand-white/80">
+			<p className="-mt-6 w-full text-[13px] leading-[20px] tracking-[1px] text-brand-white/80">
 				ここに登録した資料は、関係者ページからダウンロードできます（一般公開はされません）。
 			</p>
 			<AdminDocumentList />

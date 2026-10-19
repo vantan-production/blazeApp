@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { AdminPostActions } from "@/components/admin/AdminPostActions";
 import type { ApiSuccess } from "@/lib/admin/api";
 import { formatNewsDate, type NewsPostDetail } from "@/lib/admin/news";
+import { adminNewsEditPath, adminRoutes } from "@/lib/admin/routes";
 import { ApiError, apiClient } from "@/lib/apiClient";
 import { NewsCategoryTag } from "./NewsCategoryTag";
 import { NewsThumbnail } from "./NewsThumbnail";
@@ -87,6 +89,13 @@ export function AdminNewsDetail({ id }: Props) {
 					))}
 				</ul>
 			)}
+			<AdminPostActions
+				editHref={adminNewsEditPath(post.id)}
+				deleteEndpoint={`/api/news-post/${post.id}`}
+				listHref={adminRoutes.news}
+				label="お知らせ"
+				imageUrl={post.img_url}
+			/>
 		</article>
 	);
 }

@@ -60,13 +60,25 @@ export const homePathForRole = (role: string) =>
 /** ニュース詳細のパス */
 export const adminNewsDetailPath = (id: string) => `${adminRoutes.news}/${id}`;
 
+/** ニュースの編集のパス（詳細画面の「編集する」から開く） */
+export const adminNewsEditPath = (id: string) =>
+	`${adminNewsDetailPath(id)}/edit`;
+
 /** 実績詳細のパス */
 export const adminAchievementDetailPath = (id: string) =>
 	`${adminRoutes.achievements}/${id}`;
 
+/** 実績の編集のパス */
+export const adminAchievementEditPath = (id: string) =>
+	`${adminAchievementDetailPath(id)}/edit`;
+
 /** メディア情報詳細のパス */
 export const adminMediaDetailPath = (id: string) =>
 	`${adminRoutes.media}/${id}`;
+
+/** メディア情報の編集のパス */
+export const adminMediaEditPath = (id: string) =>
+	`${adminMediaDetailPath(id)}/edit`;
 
 /** 試合結果の編集（削除もここから）のパス */
 export const adminMatchResultEditPath = (id: string) =>

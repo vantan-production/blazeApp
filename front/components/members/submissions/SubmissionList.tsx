@@ -19,7 +19,7 @@ type Props = {
 /** 状態ごとの補足（何を待っているのか・どうなったのか） */
 const statusNote: Record<Submission["status"], string> = {
 	pending: "管理者の確認を待っています。",
-	published: "ホームページのニュースに掲載されています。",
+	published: "ホームページのお知らせに掲載されています。",
 	draft: "今回は掲載が見送られました。",
 };
 

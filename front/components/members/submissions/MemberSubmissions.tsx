@@ -33,7 +33,7 @@ export function MemberSubmissions() {
 						新しく申請する
 					</h2>
 					<p className="text-[13px] leading-[21px] tracking-[0.5px] opacity-90">
-						試合や練習の様子を記事にして送れます。管理者が確認してから、ホームページのニュースに掲載されます。
+						試合や練習の様子を記事にして送れます。管理者が確認してから、ホームページのお知らせに掲載されます。
 					</p>
 				</div>
 				<AdminPostForm

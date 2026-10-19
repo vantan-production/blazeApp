@@ -5,13 +5,13 @@ import { AdminNewsList } from "@/components/admin/news/AdminNewsList";
 import { adminRoutes } from "@/lib/admin/routes";
 
 export const metadata = {
-	title: "ニュース投稿 | 西尾ブレイズ 管理画面",
+	title: "お知らせ投稿 | 西尾ブレイズ 管理画面",
 };
 
 /** 投稿済みニュースの一覧（Figma: news 2030:1369）。右下の＋から新規投稿へ */
 export default function AdminNewsPage() {
 	return (
-		<AdminPageLayout title="ニュース投稿" backHref={adminRoutes.top}>
+		<AdminPageLayout title="お知らせ投稿" backHref={adminRoutes.top}>
 			<AdminNewsList />
 			{/* 最後の行が右下の＋ボタンに隠れないようにする余白 */}
 			<div aria-hidden className="h-12 shrink-0" />
@@ -21,7 +21,7 @@ export default function AdminNewsPage() {
 			<div className="pointer-events-none fixed inset-x-0 bottom-6 mx-auto flex w-full max-w-sp justify-end px-6">
 				<Link
 					href={adminRoutes.newsNew}
-					aria-label="ニュースを新規作成"
+					aria-label="お知らせを新規作成"
 					className="pointer-events-auto flex size-20 items-center justify-center rounded-full bg-white shadow-[0px_6px_10px_rgba(0,0,0,0.35)]"
 				>
 					<Image

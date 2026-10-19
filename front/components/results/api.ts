@@ -10,8 +10,9 @@ import {
 import type {
 	Achievement,
 	AchievementDetail,
-	LastMatch,
 	MatchPost,
+	MatchResult,
+	MediaDetail,
 	MediaItem,
 	Photo,
 } from "./data";
@@ -65,8 +66,11 @@ type MatchResultResponse = {
 type MediaResponse = {
 	id: string;
 	title: string;
+	body: string;
 	created_at: string;
 	img_url: string | null;
+	/** 詳細APIだけが返す、本文に添付された画像（署名付きURL） */
+	images?: { id: string; url: string }[];
 };
 
 // 日付はサーバーのタイムゾーンに依らず日本時間で表示する（例: 2023/5/6）
@@ -209,35 +213,75 @@ export async function getMediaPage(
 	}));
 }
 
+/**
+ * IDを指定してメディア情報を1件取得する（詳細ページ用）。見つからなければ undefined。
+ * 画像は署名付きURL（1時間で失効）なのでキャッシュせず毎回取得し、
+ * generateMetadata とページ本体からの呼び出しは cache で1回にまとめる
+ */
+export const getMediaById = cache(
+	async (id: string): Promise<MediaDetail | undefined> => {
+		if (!UUID_PATTERN.test(id)) return undefined;
+		try {
+			const res = await fetch(
+				`${API_BASE_URL}/api/media/${encodeURIComponent(id)}`,
+				{ cache: "no-store" },
+			);
+			if (!res.ok) return undefined;
+			const { data } = (await res.json()) as { data: MediaResponse };
+			const bodyImages = (data.images ?? []).map((image) => image.url);
+			return {
+				id: data.id,
+				title: data.title,
+				date: formatDate(data.created_at),
+				dateTime: data.created_at,
+				body: data.body,
+				images: data.img_url ? [data.img_url, ...bodyImages] : bodyImages,
+			};
+		} catch (error) {
+			// notFound や動的レンダリングの判定など、Next.js内部の例外は握りつぶさない
+			unstable_rethrow(error);
+			console.error(error);
+			return undefined;
+		}
+	},
+);
+
 /** 実績・試合結果ページのメディア情報セクション用（先頭ページ） */
 export async function getMediaItems(): Promise<MediaItem[]> {
 	return (await getMediaPage(1)).items;
 }
 
 /**
- * 前回の試合結果（GET /api/match-results の先頭1件。試合日の新しい順に並んでいる）。
- * まだ1件も無ければ null
+ * 試合結果の1ページ分（GET /api/match-results。試合日の新しい順・10件ずつ）
  */
-export async function getLastMatch(): Promise<LastMatch | null> {
-	const { items } = await fetchPaginatedList<MatchResultResponse>(
+export async function getMatchResultsPage(
+	page: number,
+): Promise<Paginated<MatchResult>> {
+	const result = await fetchPaginatedList<MatchResultResponse>(
 		"/api/match-results",
-		{ page: 1 },
+		{ page },
 		MATCH_RESULTS_FETCH_INIT,
 	);
-	const latest = items[0];
-	if (!latest) return null;
+	return mapItems(result, (item) => {
+		// 試合日は日付だけなので、タイムゾーンの変換をせずにそのまま表示する
+		const [y, m, d] = item.played_on.split("-").map(Number);
+		return {
+			id: item.id,
+			tournamentName: item.tournament_name,
+			tournamentResult: item.tournament_result ?? undefined,
+			date: `${y}/${m}/${d}`,
+			dateTime: item.played_on,
+			opponentTeam: item.opponent_name ?? undefined,
+			sets: item.sets.map((set) => ({
+				ourScore: set.our_score,
+				opponentScore: set.opponent_score,
+			})),
+		};
+	});
+}
 
-	// 試合日は日付だけなので、タイムゾーンの変換をせずにそのまま表示する
-	const [y, m, d] = latest.played_on.split("-").map(Number);
-	return {
-		tournamentName: latest.tournament_name,
-		tournamentResult: latest.tournament_result ?? undefined,
-		date: `${y}/${m}/${d}`,
-		dateTime: latest.played_on,
-		opponentTeam: latest.opponent_name ?? undefined,
-		sets: latest.sets.map((set) => ({
-			ourScore: set.our_score,
-			opponentScore: set.opponent_score,
-		})),
-	};
+/** 前回の試合結果（試合結果の先頭1件）。まだ1件も無ければ null */
+export async function getLastMatch(): Promise<MatchResult | null> {
+	const { items } = await getMatchResultsPage(1);
+	return items[0] ?? null;
 }

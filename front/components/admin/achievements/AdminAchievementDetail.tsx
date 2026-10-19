@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { LinkifiedText } from "@/components/ui/LinkifiedText";
 import {
 	type AchievementPostDetail,
 	formatAchievementDate,
 } from "@/lib/admin/achievements";
 import type { ApiSuccess } from "@/lib/admin/api";
 import { ApiError, apiClient } from "@/lib/apiClient";
-import { LinkifiedText } from "../LinkifiedText";
 import { AchievementThumbnail } from "./AchievementThumbnail";
 
 type Props = {

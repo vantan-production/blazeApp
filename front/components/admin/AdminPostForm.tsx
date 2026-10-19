@@ -22,8 +22,15 @@ type PostValues = z.input<typeof postSchema>;
 const BODY_IMAGES_MAX = 10;
 
 type Props = {
-	/** 送信先のAPI（multipart/form-data で POST する） */
+	/** 送信先のAPI（multipart/form-data で送る） */
 	endpoint: string;
+	/**
+	 * 編集時に PATCH を指定する（既定は新規投稿の POST）。
+	 * 編集ではタイトル・本文を initialValues で埋め、添付は選んだときだけ差し替える
+	 */
+	method?: "POST" | "PATCH";
+	/** タイトル・本文の初期値（編集時に今の内容を入れる） */
+	initialValues?: PostValues;
 	/**
 	 * 添付欄の設定。name は back が受け取るフィールド名（image / file など）。
 	 * 選んだファイルの種類で送り先を変えたい場合（実績の画像/動画/ファイル）は関数を渡す
@@ -61,6 +68,8 @@ type Props = {
  */
 export function AdminPostForm({
 	endpoint,
+	method = "POST",
+	initialValues,
 	attachment,
 	successMessage,
 	extraFields,
@@ -72,7 +81,10 @@ export function AdminPostForm({
 }: Props) {
 	const bodyImagesId = useId();
 	const showToast = useToastStore((state) => state.showToast);
-	const [values, setValues] = useState<PostValues>({ title: "", body: "" });
+	const isEdit = method === "PATCH";
+	const [values, setValues] = useState<PostValues>(
+		initialValues ?? { title: "", body: "" },
+	);
 	const [files, setFiles] = useState<File[]>([]);
 	const [bodyImageFiles, setBodyImageFiles] = useState<File[]>([]);
 	const [bodyImagesError, setBodyImagesError] = useState<string | null>(null);
@@ -116,15 +128,23 @@ export function AdminPostForm({
 
 		setPending(true);
 		try {
-			await sendFormData(endpoint, formData);
+			await sendFormData(endpoint, formData, method);
 			showToast(successMessage);
-			setValues({ title: "", body: "" });
-			setFiles([]);
-			setBodyImageFiles([]);
-			setBodyImagesError(null);
+			// 編集は保存後に画面を移るので、入力した内容をそのまま残す
+			if (!isEdit) {
+				setValues({ title: "", body: "" });
+				setFiles([]);
+				setBodyImageFiles([]);
+				setBodyImagesError(null);
+			}
 			onSuccess?.();
 		} catch (error) {
-			setSubmitError(toErrorMessage(error, "投稿に失敗しました。"));
+			setSubmitError(
+				toErrorMessage(
+					error,
+					isEdit ? "更新に失敗しました。" : "投稿に失敗しました。",
+				),
+			);
 		} finally {
 			setPending(false);
 		}
@@ -229,7 +249,13 @@ export function AdminPostForm({
 					variant="light"
 					disabled={pending || !canSubmit}
 				>
-					{pending ? "投稿中…" : "投稿"}
+					{pending
+						? isEdit
+							? "更新中…"
+							: "投稿中…"
+						: isEdit
+							? "更新"
+							: "投稿"}
 				</AdminButton>
 			</div>
 		</form>

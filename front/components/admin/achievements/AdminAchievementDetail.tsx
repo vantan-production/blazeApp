@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { AdminPostActions } from "@/components/admin/AdminPostActions";
 import { LinkifiedText } from "@/components/ui/LinkifiedText";
 import {
 	type AchievementPostDetail,
 	formatAchievementDate,
 } from "@/lib/admin/achievements";
 import type { ApiSuccess } from "@/lib/admin/api";
+import { adminAchievementEditPath, adminRoutes } from "@/lib/admin/routes";
 import { ApiError, apiClient } from "@/lib/apiClient";
 import { AchievementThumbnail } from "./AchievementThumbnail";
 
@@ -123,6 +125,13 @@ export function AdminAchievementDetail({ id }: Props) {
 					添付ファイルを開く
 				</a>
 			)}
+			<AdminPostActions
+				editHref={adminAchievementEditPath(post.id)}
+				deleteEndpoint={`/api/achievement/${post.id}`}
+				listHref={adminRoutes.achievements}
+				label="実績"
+				imageUrl={post.img_url}
+			/>
 		</article>
 	);
 }

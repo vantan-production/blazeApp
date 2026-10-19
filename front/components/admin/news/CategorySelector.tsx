@@ -58,13 +58,17 @@ export function CategorySelector({ value, onChange }: Props) {
 		setAdding(false);
 	};
 
+	// 編集時、今のカテゴリーが候補（よく使われるもの）に無くても選択中として見せる
+	const shownOptions =
+		value && !options.includes(value) ? [...options, value] : options;
+
 	return (
 		<fieldset className="flex w-full flex-col gap-[2px]">
 			<legend className="mb-[2px] text-[12px] leading-[22px] font-medium text-brand-white">
 				カテゴリー
 			</legend>
 			<div className="flex flex-wrap items-start gap-2">
-				{options.map((option) => {
+				{shownOptions.map((option) => {
 					const selected = option === value;
 					return (
 						<button

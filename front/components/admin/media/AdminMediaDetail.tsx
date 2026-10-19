@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { AdminPostActions } from "@/components/admin/AdminPostActions";
 import { LinkifiedText } from "@/components/ui/LinkifiedText";
 import type { ApiSuccess } from "@/lib/admin/api";
 import { formatMediaDate, type MediaPostDetail } from "@/lib/admin/media";
+import { adminMediaEditPath, adminRoutes } from "@/lib/admin/routes";
 import { ApiError, apiClient } from "@/lib/apiClient";
 import { MediaThumbnail } from "./MediaThumbnail";
 
@@ -84,6 +86,13 @@ export function AdminMediaDetail({ id }: Props) {
 					))}
 				</ul>
 			)}
+			<AdminPostActions
+				editHref={adminMediaEditPath(post.id)}
+				deleteEndpoint={`/api/media/${post.id}`}
+				listHref={adminRoutes.media}
+				label="メディア情報"
+				imageUrl={post.img_url}
+			/>
 		</article>
 	);
 }

@@ -19,7 +19,7 @@ export default async function AdminAccountPage() {
 
 	return (
 		<AdminPageLayout title="アカウント" backHref={adminRoutes.top}>
-			<div className="-mt-12 flex w-full flex-col gap-10">
+			<div className="-mt-6 flex w-full flex-col gap-10">
 				<section
 					aria-label="ログイン中のアカウント"
 					className="flex flex-col gap-3"

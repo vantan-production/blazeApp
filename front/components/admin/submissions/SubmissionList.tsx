@@ -126,7 +126,7 @@ export function SubmissionList() {
 
 	return (
 		<div className="flex w-full flex-col items-center gap-[30px] text-brand-white">
-			<p className="-mt-12 w-full text-[13px] leading-[20px] tracking-[1px] opacity-80">
+			<p className="-mt-6 w-full text-[13px] leading-[20px] tracking-[1px] opacity-80">
 				関係者から届いたお知らせ記事の申請です。承認するまで公開サイトには表示されません。
 			</p>
 			{!error && !loading && total > 0 && (

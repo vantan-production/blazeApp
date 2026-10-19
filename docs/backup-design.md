@@ -151,7 +151,7 @@ CMK への移行は 9-1 の prod / dev 分離（＝インスタンス再作成�
 | 自動バックアップ保持期間 | **7日**（現状1日から変更） |
 | PITR | 有効（保持期間内の任意の時刻、粒度およそ5分） |
 | バックアップウィンドウ | **19:00-19:30 UTC（＝ JST 04:00-04:30）**（現状 14:16-14:46 UTC ＝ JST 23:16 は利用時間帯にあたるため変更） |
-| メンテナンスウィンドウ | **thu 20:00-20:30 UTC（＝ JST 木 05:00-05:30）** |
+| メンテナンスウィンドウ | **wed 20:00-20:30 UTC（＝ JST 木 05:00-05:30）** |
 | スナップショットへのタグ伝播 | 有効（現状のまま） |
 | 削除保護 | **有効化**（現状無効） |
 | Multi-AZ | **無効のまま**。RTO 4時間は単一 AZ の復元で満たせるため、月額倍増に見合わないと判断する |
@@ -397,7 +397,7 @@ aws rds modify-db-instance \
   --db-instance-identifier blaze-app-db \
   --backup-retention-period 7 \
   --preferred-backup-window 19:00-19:30 \
-  --preferred-maintenance-window thu:20:00-thu:20:30 \
+  --preferred-maintenance-window wed:20:00-wed:20:30 \
   --deletion-protection \
   --apply-immediately \
   --region ap-northeast-1
@@ -442,7 +442,11 @@ aws s3api put-bucket-lifecycle-configuration --bucket <bucket> --lifecycle-confi
 
 **要注意**: 既定の Object Lock 保持は2日で、これは `hourly` に合わせた最短値。`daily` / `weekly` のダンプはアップロード時に個別に長い保持期間を指定する必要がある（T4 で実装する）。指定しないと weekly のダンプも2日しかロックされない。
 
-### T4. `pg_dump` スケジュールタスク
+### T4. `pg_dump` スケジュールタスク（コード実装済み・未デプロイ）
+
+`infra/backup/` と `infra/lib/backend-stack.ts` の `createDbBackup` に実装した。`BACKUP_BUCKET` を設定してデプロイすると有効になる（手順は `docs/infra-hardening.md` 3）。
+日次の回は一時的な Postgres に実際に復元して検証する（8章「0エラー」の自動化）。通知先は専用トピックではなく既存の `blazeapp-alerts-{stage}` を使う。
+9-1・9-2（RDS の分離・非公開化）も `docs/infra-hardening.md` 4 の手順でコードから行えるようにした。
 
 - [ ] `infra/` に dump 用のタスク定義（`postgres:18-alpine` ベース）と EventBridge Scheduler を追加
 - [ ] アップロード時に `--object-lock-retain-until-date` でプレフィックスに応じた保持期間を指定する（T3 の注意点を参照）

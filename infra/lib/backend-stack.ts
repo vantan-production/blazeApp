@@ -208,6 +208,10 @@ export class BackendStack extends cdk.Stack {
         cpu: 512,
         memoryLimitMiB: 1024,
         desiredCount: 1,
+        // 新しいタスクが起動に失敗し続けたら、ECS が数回の失敗でデプロイを失敗扱いにして
+        // 直前のタスク定義へ戻す。無効だと CloudFormation が最大3時間待ち続け、その間に
+        // GitHub Actions の一時クレデンシャル（1時間）が切れて ExpiredToken で落ちる
+        circuitBreaker: { enable: true, rollback: true },
         publicLoadBalancer: true,
         assignPublicIp: true,
         taskSubnets: { subnetType: ec2.SubnetType.PUBLIC },

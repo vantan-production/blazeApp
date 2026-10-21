@@ -15,4 +15,11 @@ export const VALIDATION_LIMITS = limits as {
 	body: { min: number; max: number };
 	category: { min: number; max: number };
 	inquiryName: { min: number; max: number };
+	trialName: { min: number; max: number };
+	furigana: { min: number; max: number };
+	schoolName: { min: number; max: number };
+	cramSchool: { max: number };
+	phoneNumber: { min: number; max: number };
+	motivationOther: { min: number; max: number };
+	referrerName: { max: number };
 };

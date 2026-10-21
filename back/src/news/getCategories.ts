@@ -5,10 +5,11 @@ import { eq, and, desc } from "../index.js";
 import { count, isNotNull } from "drizzle-orm";
 import { db, news } from "../shared/index.js";
 import type { Context } from "hono";
+import type { NewsType } from "./handlers.js";
 
 const TOP_CATEGORY_LIMIT = 5;
 
-export function createGetCategories(type: "news" | "media") {
+export function createGetCategories(type: NewsType) {
   return async (c: Context) => {
     const rows = await db
       .select({ category: news.category, count: count() })

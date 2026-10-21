@@ -1,19 +1,19 @@
-// 問い合わせAPI（5エンドポイント）
+// 問い合わせAPI（7エンドポイント）
 
 import { randomUUID } from "node:crypto";
-import {
-  Hono,
-  getConnInfo,
-  rateLimiter,
-  RedisStore,
-} from "../index.js";
-import { admin, authToken, redisClient } from "../shared/index.js";
+import { Hono } from "../index.js";
+import { admin, authToken } from "../shared/index.js";
 import { requireAdmin } from "../db/roleGuard.js";
 import { getAll } from "./getAll.js";
 import { getById } from "./getById.js";
 import { create } from "./create.js";
+import { updateStatus } from "./updateStatus.js";
 import { createReply } from "./reply.js";
 import { deleteReply } from "./deleteReply.js";
+import { resendReplyMail } from "./resendReplyMail.js";
+import { clientIp } from "../utils/monitoring.js";
+import { createFormRateLimiter } from "../utils/formRateLimit.js";
+import { requireUuidParams } from "../utils/uuidParam.js";
 
 type Variables = {
   user: typeof admin.$inferSelect;
@@ -21,35 +21,39 @@ type Variables = {
 
 const app = new Hono<{ Variables: Variables }>();
 
-// 問い合わせ送信のレートリミット（1分に1回まで・テスト環境ではスキップ）
+// 問い合わせ送信のレートリミット（1分に1回まで・失敗した送信は数えない・テスト環境ではスキップ）
 const inquiryLimiter =
   process.env.NODE_ENV === "test"
     ? (_c: unknown, next: () => Promise<void>) => next()
-    : rateLimiter({
-        windowMs: 60 * 1000,
-        limit: 1,
-        message: "1分間に1回しか送信できません。",
+    : createFormRateLimiter({
+        prefix: "rl:inquiry:",
+        // ALB配下では接続元IPが常にALBになるため、X-Forwarded-For から実IPを取る（monitoring.ts参照）。
+        // IPが判別できない場合は毎回別キーにして、無関係な送信者を巻き込まないようにする
         keyGenerator: (c) => {
-          try { return getConnInfo(c).remote.address ?? randomUUID(); } catch { return randomUUID(); }
+          const ip = clientIp(c);
+          return ip === "unknown" ? randomUUID() : ip;
         },
-        store: new RedisStore({
-          sendCommand: (...args: string[]) => redisClient.sendCommand(args),
-        }) as any,
       });
 
 // GET /api/inquiry — 全ての問い合わせを取得（admin以上）
 app.get("/api/inquiry", authToken, requireAdmin, (c) => getAll(c));
 
 // GET /api/inquiry/:id — 特定の問い合わせ内容を取得（admin以上）
-app.get("/api/inquiry/:id", authToken, requireAdmin, (c) => getById(c));
+app.get("/api/inquiry/:id", authToken, requireAdmin, requireUuidParams, (c) => getById(c));
 
 // POST /api/inquiry — お客様からの問い合わせ（認証不要）
 app.post("/api/inquiry", inquiryLimiter, (c) => create(c));
 
-// POST /api/inquiry/:id/reply — 問い合わせへの返信（admin以上）
-app.post("/api/inquiry/:id/reply", authToken, requireAdmin, (c) => createReply(c));
+// PATCH /api/inquiry/:id/status — 対応ステータスの更新（admin以上）
+app.patch("/api/inquiry/:id/status", authToken, requireAdmin, requireUuidParams, (c) => updateStatus(c));
+
+// POST /api/inquiry/:id/reply — 問い合わせへの返信（admin以上）。問い合わせ元にもメールで送る
+app.post("/api/inquiry/:id/reply", authToken, requireAdmin, requireUuidParams, (c) => createReply(c));
+
+// POST /api/inquiry/:id/reply/:reply_id/mail — 送れなかった返信メールを再送（admin以上）
+app.post("/api/inquiry/:id/reply/:reply_id/mail", authToken, requireAdmin, requireUuidParams, (c) => resendReplyMail(c));
 
 // DELETE /api/inquiry/:id/reply/:reply_id — 返信を削除（admin以上）
-app.delete("/api/inquiry/:id/reply/:reply_id", authToken, requireAdmin, (c) => deleteReply(c));
+app.delete("/api/inquiry/:id/reply/:reply_id", authToken, requireAdmin, requireUuidParams, (c) => deleteReply(c));
 
 export default app;

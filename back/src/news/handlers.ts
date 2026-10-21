@@ -8,7 +8,9 @@ import { createUpdate } from "./update.js";
 import { createRemove } from "./delete.js";
 import { createGetCategories } from "./getCategories.js";
 
-type NewsType = "news" | "media";
+// news テーブルは type で3種類を分けて使う
+// news: 公開ニュース / media: メディア情報 / notice: 関係者限定の事務連絡
+export type NewsType = "news" | "media" | "notice";
 
 export function createNewsTypeHandlers(
   type: NewsType,

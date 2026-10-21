@@ -1,4 +1,8 @@
 // メール送信ユーティリティ（Resend）
+//
+// 各メールは「本文の組み立て（buildXxx）」と「送信（sendXxx）」に分けている。
+// 組み立て部分は副作用が無いので単体テストで宛先・件名・エスケープを検証でき、
+// 送信部分は scripts/sendTestMail.ts から実際のResend宛に流して疎通確認できる。
 
 import { Resend } from "resend";
 
@@ -9,28 +13,112 @@ function getResendClient(): Resend {
   return resend;
 }
 
+// 組み立て済みのメール1通。Resend の emails.send() にそのまま渡せる形にしておく。
+export interface MailMessage {
+  from: string;
+  to: string | string[];
+  // 宛先を互いに見せたくない一斉送信で使う。to には差出人だけを入れ、
+  // 実際の受信者は全員こちらに入れる（Resend は bcc をそのまま受け付ける）
+  bcc?: string[];
+  subject: string;
+  html: string;
+  // 添付ファイル（問い合わせへの返信で、管理者が添付した画像・ファイルを届けるのに使う）
+  attachments?: MailAttachment[];
+}
+
+// 添付ファイル1件（Resend の attachments の形）
+export interface MailAttachment {
+  filename: string;
+  content: Buffer;
+}
+
+// 送信時のオプション
+export interface SendOptions {
+  // 同じキーの送信は Resend が24時間は1回しか配信しない（タイムアウト後のやり直しで二重に届かないように）
+  idempotencyKey?: string;
+}
+
 // 送信元アドレス（Resend側でドメイン検証済みのものを設定する）
-const MAIL_FROM = process.env.MAIL_FROM ?? "onboarding@resend.dev";
+// 環境変数はモジュールロード時ではなく参照時に読む（テストやスクリプトから差し替えられるようにするため）
+function mailFrom(): string {
+  return process.env.MAIL_FROM ?? "onboarding@resend.dev";
+}
 
 // リセットリンクの生成に使うフロントエンドのオリジン
-const FRONTEND_URL = process.env.FRONTEND_URL ?? "http://localhost:3000";
+function frontendUrl(): string {
+  return process.env.FRONTEND_URL ?? "http://localhost:3000";
+}
+
+// 体験申し込みの通知先（カンマ区切りで複数指定可）
+export function trialNotificationEmails(): string[] {
+  const raw = process.env.TRIAL_NOTIFICATION_EMAIL;
+  if (!raw) return [];
+  return raw
+    .split(",")
+    .map((e) => e.trim())
+    .filter(Boolean);
+}
+
+// メールHTMLに埋め込む前にユーザー入力をエスケープする（HTML/メールインジェクション対策）
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
 
 /**
- * パスワード再設定メールを送信する
+ * 組み立て済みのメールをResendへ送信する
  * テスト環境（NODE_ENV=test）では実送信せずスキップする
+ * scripts/sendTestMail.ts からも同じ経路で送るため export している
+ * @param message - buildXxx() が組み立てたメール
+ * @param failureLabel - 送信失敗時のエラーメッセージに使う名称
+ * @param options - 冪等キーなど、Resend に渡す送信オプション
+ */
+export async function sendMailMessage(
+  message: MailMessage,
+  failureLabel = "メール",
+  options: SendOptions = {},
+): Promise<void> {
+  const { error } = await mailTransport.send(message, options);
+
+  if (error) {
+    throw new Error(`${failureLabel}の送信に失敗しました: ${error.message}`);
+  }
+}
+
+/**
+ * 実際の送信口。
+ * ESM の関数 export は外から差し替えられないため、オブジェクトのメソッドにしておき、
+ * テストで vi.spyOn(mailTransport, "send") して「誰に何通送ったか」や送信失敗を再現できるようにする。
+ */
+export const mailTransport = {
+  async send(
+    message: MailMessage,
+    options: SendOptions = {},
+  ): Promise<{ error: { message: string } | null }> {
+    if (process.env.NODE_ENV === "test") return { error: null };
+    const { error } = await getResendClient().emails.send(message, options);
+    return { error };
+  },
+};
+
+// ---------------------------------------------------------------------------
+// パスワード再設定
+// ---------------------------------------------------------------------------
+
+/**
+ * パスワード再設定メールを組み立てる
  * @param to - 送信先メールアドレス
  * @param token - リセットトークン（生値。DBにはハッシュのみ保存される）
  */
-export async function sendPasswordResetEmail(
-  to: string,
-  token: string,
-): Promise<void> {
-  if (process.env.NODE_ENV === "test") return;
+export function buildPasswordResetEmail(to: string, token: string): MailMessage {
+  const resetUrl = `${frontendUrl()}/admin/reset-password?token=${encodeURIComponent(token)}`;
 
-  const resetUrl = `${FRONTEND_URL}/admin/reset-password?token=${encodeURIComponent(token)}`;
-
-  const { error } = await getResendClient().emails.send({
-    from: MAIL_FROM,
+  return {
+    from: mailFrom(),
     to,
     subject: "【西尾ブレイズ管理画面】パスワード再設定のご案内",
     html: `
@@ -39,12 +127,149 @@ export async function sendPasswordResetEmail(
       <p><a href="${resetUrl}">${resetUrl}</a></p>
       <p>このリクエストに心当たりがない場合は、本メールを無視してください。</p>
     `,
-  });
-
-  if (error) {
-    throw new Error(`パスワード再設定メールの送信に失敗しました: ${error.message}`);
-  }
+  };
 }
+
+/**
+ * パスワード再設定メールを送信する
+ * テスト環境（NODE_ENV=test）では実送信せずスキップする
+ */
+export async function sendPasswordResetEmail(to: string, token: string): Promise<void> {
+  await sendMailMessage(buildPasswordResetEmail(to, token), "パスワード再設定メール");
+}
+
+// ---------------------------------------------------------------------------
+// 招待
+// ---------------------------------------------------------------------------
+
+// 招待で付与できるロールの表示名（メール本文で「どの権限で招待されたか」を伝える）
+const INVITATION_ROLE_LABELS = {
+  admin: "投稿担当（admin）",
+  member: "関係者（member）",
+} as const;
+
+export type InvitationRole = keyof typeof INVITATION_ROLE_LABELS;
+
+/**
+ * 招待メールを組み立てる
+ * @param to - 招待先メールアドレス
+ * @param token - 招待トークン（生値。DBにはハッシュのみ保存される）
+ * @param role - 招待時に付与するロール
+ */
+export function buildInvitationEmail(
+  to: string,
+  token: string,
+  role: InvitationRole,
+): MailMessage {
+  // 新規登録画面は管理画面配下（フロントの adminRoutes.register）にあるため /admin/register を指す
+  const registerUrl = `${frontendUrl()}/admin/register?token=${encodeURIComponent(token)}`;
+
+  return {
+    from: mailFrom(),
+    to,
+    subject: "【西尾ブレイズ】アカウント作成のご案内",
+    html: `
+      <p>西尾ブレイズのアカウント作成に招待されました。</p>
+      <p>権限: ${escapeHtml(INVITATION_ROLE_LABELS[role])}</p>
+      <p>以下のリンクからアカウントを作成してください（有効期限は7日間です）。</p>
+      <p><a href="${registerUrl}">${registerUrl}</a></p>
+      <p>登録にはこのメールが届いたアドレス（${escapeHtml(to)}）が必要です。</p>
+      <p>このご案内に心当たりがない場合は、本メールを破棄してください。</p>
+    `,
+  };
+}
+
+/**
+ * 招待メールを送信する
+ * テスト環境（NODE_ENV=test）では実送信せずスキップする
+ */
+export async function sendInvitationEmail(
+  to: string,
+  token: string,
+  role: InvitationRole,
+): Promise<void> {
+  await sendMailMessage(buildInvitationEmail(to, token, role), "招待メール");
+}
+
+// ---------------------------------------------------------------------------
+// 関係者への通知（新しいお知らせ・アンケート）
+// ---------------------------------------------------------------------------
+
+/**
+ * 新しい関係者限定お知らせの通知メールを組み立てる
+ *
+ * 宛先は必ず bcc に入れる。to に関係者全員を並べると1通のヘッダーに全アドレスが載り、
+ * 受け取った関係者が他の関係者のメールアドレスを全員分見られてしまう。
+ * @param to - 通知先（複数可。bcc に入るので互いには見えない）
+ * @param title - お知らせのタイトル
+ */
+export function buildNoticeNotificationEmail(
+  to: string[],
+  title: string,
+): MailMessage {
+  const noticesUrl = `${frontendUrl()}/members/notices`;
+
+  return {
+    from: mailFrom(),
+    to: mailFrom(),
+    bcc: to,
+    subject: "【西尾ブレイズ】新しいお知らせがあります",
+    html: `
+      <p>関係者向けの新しいお知らせが投稿されました。</p>
+      <p>${escapeHtml(title)}</p>
+      <p><a href="${noticesUrl}">${noticesUrl}</a></p>
+      <p>通知が不要な場合は、ログイン後の通知設定から停止できます。</p>
+    `,
+  };
+}
+
+/** 新しい関係者限定お知らせを通知する */
+export async function sendNoticeNotificationEmail(
+  to: string[],
+  title: string,
+): Promise<void> {
+  await sendMailMessage(buildNoticeNotificationEmail(to, title), "お知らせ通知メール");
+}
+
+/**
+ * 新しいアンケートの通知メールを組み立てる
+ *
+ * お知らせ通知と同じ理由で、宛先は to ではなく bcc に入れる
+ * （buildNoticeNotificationEmail のコメント参照）。
+ * @param to - 通知先（複数可。bcc に入るので互いには見えない）
+ * @param title - アンケートのタイトル
+ */
+export function buildSurveyNotificationEmail(
+  to: string[],
+  title: string,
+): MailMessage {
+  const surveysUrl = `${frontendUrl()}/members/surveys`;
+
+  return {
+    from: mailFrom(),
+    to: mailFrom(),
+    bcc: to,
+    subject: "【西尾ブレイズ】アンケートへの回答をお願いします",
+    html: `
+      <p>新しいアンケート（出欠確認）が公開されました。</p>
+      <p>${escapeHtml(title)}</p>
+      <p><a href="${surveysUrl}">${surveysUrl}</a></p>
+      <p>通知が不要な場合は、ログイン後の通知設定から停止できます。</p>
+    `,
+  };
+}
+
+/** 新しいアンケートを通知する */
+export async function sendSurveyNotificationEmail(
+  to: string[],
+  title: string,
+): Promise<void> {
+  await sendMailMessage(buildSurveyNotificationEmail(to, title), "アンケート通知メール");
+}
+
+// ---------------------------------------------------------------------------
+// 体験申し込み
+// ---------------------------------------------------------------------------
 
 // 体験申し込みの通知に使う入力データ
 export interface TrialApplicationMailData {
@@ -60,16 +285,6 @@ export interface TrialApplicationMailData {
   motivation: "flyer" | "instagram" | "referral" | "other";
   motivationOther?: string | undefined;
   referrerName?: string | undefined;
-}
-
-// メールHTMLに埋め込む前にユーザー入力をエスケープする（HTML/メールインジェクション対策）
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
 }
 
 const GENDER_LABELS: Record<TrialApplicationMailData["gender"], string> = {
@@ -95,17 +310,12 @@ function formatMotivation(data: TrialApplicationMailData): string {
   return MOTIVATION_LABELS[data.motivation];
 }
 
-/**
- * 体験申し込みの受付確認メールを申込者に送信する
- * テスト環境（NODE_ENV=test）では実送信せずスキップする
- */
-export async function sendTrialApplicationConfirmationEmail(
+/** 体験申し込みの受付確認メール（申込者宛）を組み立てる */
+export function buildTrialApplicationConfirmationEmail(
   data: TrialApplicationMailData,
-): Promise<void> {
-  if (process.env.NODE_ENV === "test") return;
-
-  const { error } = await getResendClient().emails.send({
-    from: MAIL_FROM,
+): MailMessage {
+  return {
+    from: mailFrom(),
     to: data.email,
     subject: "【西尾ブレイズ】体験申し込みを受け付けました",
     html: `
@@ -114,34 +324,32 @@ export async function sendTrialApplicationConfirmationEmail(
       <p>体験日: ${escapeHtml(data.trialDate)}</p>
       <p>このメールに心当たりがない場合は、本メールを無視してください。</p>
     `,
-  });
-
-  if (error) {
-    throw new Error(`体験申し込み確認メールの送信に失敗しました: ${error.message}`);
-  }
+  };
 }
 
-// 体験申し込みの通知先（カンマ区切りで複数指定可）
-const TRIAL_NOTIFICATION_EMAILS = process.env.TRIAL_NOTIFICATION_EMAIL
-  ? process.env.TRIAL_NOTIFICATION_EMAIL.split(",").map((e) => e.trim()).filter(Boolean)
-  : [];
-
 /**
- * 体験申し込みがあったことを管理者宛に通知する
- * TRIAL_NOTIFICATION_EMAIL未設定時・テスト環境では実送信せずスキップする
+ * 体験申し込みの受付確認メールを申込者に送信する
+ * テスト環境（NODE_ENV=test）では実送信せずスキップする
  */
-export async function sendTrialApplicationAdminNotification(
+export async function sendTrialApplicationConfirmationEmail(
   data: TrialApplicationMailData,
 ): Promise<void> {
-  if (process.env.NODE_ENV === "test") return;
-  if (TRIAL_NOTIFICATION_EMAILS.length === 0) {
-    console.warn("[trial-application] TRIAL_NOTIFICATION_EMAIL未設定のため通知メールをスキップしました");
-    return;
-  }
+  await sendMailMessage(buildTrialApplicationConfirmationEmail(data), "体験申し込み確認メール");
+}
 
-  const { error } = await getResendClient().emails.send({
-    from: MAIL_FROM,
-    to: TRIAL_NOTIFICATION_EMAILS,
+/**
+ * 体験申し込みの管理者通知メールを組み立てる
+ * TRIAL_NOTIFICATION_EMAIL が未設定なら宛先が無いので null を返す
+ */
+export function buildTrialApplicationAdminNotification(
+  data: TrialApplicationMailData,
+): MailMessage | null {
+  const to = trialNotificationEmails();
+  if (to.length === 0) return null;
+
+  return {
+    from: mailFrom(),
+    to,
     subject: "【西尾ブレイズ】新しい体験申し込みがありました",
     html: `
       <p>新しい体験申し込みがありました。</p>
@@ -157,9 +365,178 @@ export async function sendTrialApplicationAdminNotification(
         <li>きっかけ: ${formatMotivation(data)}</li>
       </ul>
     `,
-  });
+  };
+}
 
-  if (error) {
-    throw new Error(`体験申し込み通知メールの送信に失敗しました: ${error.message}`);
+/**
+ * 体験申し込みがあったことを管理者宛に通知する
+ * TRIAL_NOTIFICATION_EMAIL未設定時・テスト環境では実送信せずスキップする
+ */
+export async function sendTrialApplicationAdminNotification(
+  data: TrialApplicationMailData,
+): Promise<void> {
+  const message = buildTrialApplicationAdminNotification(data);
+  if (!message) {
+    console.warn(
+      "[trial-application] TRIAL_NOTIFICATION_EMAIL未設定のため通知メールをスキップしました",
+    );
+    return;
   }
+
+  await sendMailMessage(message, "体験申し込み通知メール");
+}
+
+// ---------------------------------------------------------------------------
+// 問い合わせ
+// ---------------------------------------------------------------------------
+
+// 問い合わせの自動返信に使う入力データ
+export interface InquiryAutoReplyMailData {
+  email: string;
+  name: string;
+  title: string;
+  body: string;
+}
+
+/** 問い合わせ受付の自動返信メール（お客様宛）を組み立てる */
+export function buildInquiryAutoReplyEmail(data: InquiryAutoReplyMailData): MailMessage {
+  return {
+    from: mailFrom(),
+    to: data.email,
+    subject: "【西尾ブレイズ】お問い合わせを受け付けました",
+    html: `
+      <p>${escapeHtml(data.name)} 様</p>
+      <p>問い合わせありがとうございます。スタッフが順に対応していきます。今しばらくお待ちください。</p>
+      <hr />
+      <p>【お問い合わせ内容】</p>
+      <p>件名: ${escapeHtml(data.title)}</p>
+      <p>${escapeHtml(data.body).replace(/\n/g, "<br />")}</p>
+      <hr />
+      <p>※このメールは自動送信です。このメールへの返信ではお問い合わせを受け付けられません。</p>
+    `,
+  };
+}
+
+/**
+ * 問い合わせ受付の自動返信メールをお客様に送信する
+ * テスト環境（NODE_ENV=test）では実送信せずスキップする
+ */
+export async function sendInquiryAutoReplyEmail(
+  data: InquiryAutoReplyMailData,
+): Promise<void> {
+  await sendMailMessage(buildInquiryAutoReplyEmail(data), "問い合わせ自動返信メール");
+}
+
+// ---------------------------------------------------------------------------
+// 体験申込者への連絡
+// ---------------------------------------------------------------------------
+
+// 体験申込者への連絡メールに使う入力データ
+export interface TrialNoticeMailData {
+  title: string;
+  body: string;
+}
+
+/**
+ * 体験申込者への連絡メール（保護者宛）を組み立てる
+ *
+ * 宛先は1通につき1人だけにする。申込者同士は互いに無関係の家庭なので、
+ * to / cc に並べるのはもちろん、bcc でも1通にまとめず個別に送る
+ * （1通の失敗が全員に波及せず、誰に届かなかったかも数えられるようにするため）。
+ * @param to - 送信先（申込時のメールアドレス1件）
+ */
+export function buildTrialNoticeEmail(to: string, data: TrialNoticeMailData): MailMessage {
+  return {
+    from: mailFrom(),
+    to,
+    // 件名はヘッダーに入るため改行を潰す（本文と違い HTML エスケープでは防げない）
+    subject: `【西尾ブレイズ】${data.title.replace(/[\r\n]+/g, " ")}`,
+    html: `
+      <p>体験練習にお申し込みいただいた保護者の方へ</p>
+      <p>西尾ブレイズより体験練習に関するご連絡です。</p>
+      <hr />
+      <p>${escapeHtml(data.title)}</p>
+      <p>${escapeHtml(data.body).replace(/\n/g, "<br />")}</p>
+      <hr />
+      <p>※このメールは体験練習にお申し込みいただいた方にお送りしています。</p>
+      <p>※このメールは送信専用です。ご不明な点はホームページのお問い合わせフォームからご連絡ください。</p>
+    `,
+  };
+}
+
+/**
+ * 体験申込者への連絡メールを1人に送信する
+ * テスト環境（NODE_ENV=test）では実送信せずスキップする
+ */
+export async function sendTrialNoticeEmail(
+  to: string,
+  data: TrialNoticeMailData,
+  options: SendOptions = {},
+): Promise<void> {
+  await sendMailMessage(buildTrialNoticeEmail(to, data), "体験申込者への連絡メール", options);
+}
+
+// ---------------------------------------------------------------------------
+// 問い合わせへの返信
+// ---------------------------------------------------------------------------
+
+// 問い合わせへの返信メールに使う入力データ
+export interface InquiryReplyMailData {
+  // 問い合わせ元の名前（ニックネーム可）
+  name: string;
+  // 元の問い合わせ（引用として本文の下に載せる）
+  inquiryTitle: string;
+  inquiryBody: string;
+  // 管理者の返信（タイトルは管理画面が「Re: 問い合わせ件名」を付けて送ってくる）
+  replyTitle: string;
+  replyBody: string;
+}
+
+/**
+ * 問い合わせへの返信メール（問い合わせ元宛）を組み立てる
+ * @param to - 送信先（問い合わせ時に入力されたメールアドレス）
+ * @param attachments - 返信に添付された画像・ファイル（S3 から取り出したもの）
+ */
+export function buildInquiryReplyEmail(
+  to: string,
+  data: InquiryReplyMailData,
+  attachments: MailAttachment[] = [],
+): MailMessage {
+  return {
+    from: mailFrom(),
+    to,
+    // 件名はヘッダーに入るため改行を潰す（本文と違い HTML エスケープでは防げない）
+    subject: `【西尾ブレイズ】${data.replyTitle.replace(/[\r\n]+/g, " ")}`,
+    html: `
+      <p>${escapeHtml(data.name)} 様</p>
+      <p>西尾ブレイズへお問い合わせいただきありがとうございます。いただいたお問い合わせについて、以下のとおりご返信いたします。</p>
+      <hr />
+      <p>${escapeHtml(data.replyBody).replace(/\n/g, "<br />")}</p>
+      <hr />
+      <p>【お問い合わせ内容】</p>
+      <p>件名: ${escapeHtml(data.inquiryTitle)}</p>
+      <p>${escapeHtml(data.inquiryBody).replace(/\n/g, "<br />")}</p>
+      <hr />
+      <p>西尾ブレイズ</p>
+      <p>※このメールは送信専用です。このメールへの返信ではお問い合わせを受け付けられません。さらにご不明な点はホームページのお問い合わせフォームからご連絡ください。</p>
+    `,
+    ...(attachments.length > 0 ? { attachments } : {}),
+  };
+}
+
+/**
+ * 問い合わせへの返信メールを問い合わせ元に送信する
+ * テスト環境（NODE_ENV=test）では実送信せずスキップする
+ */
+export async function sendInquiryReplyEmail(
+  to: string,
+  data: InquiryReplyMailData,
+  attachments: MailAttachment[] = [],
+  options: SendOptions = {},
+): Promise<void> {
+  await sendMailMessage(
+    buildInquiryReplyEmail(to, data, attachments),
+    "問い合わせへの返信メール",
+    options,
+  );
 }

@@ -1,0 +1,21 @@
+{
+  "name": "e2e",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "実ブラウザ（Chromium）を使った Cookie 往復の E2E テスト",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "report": "playwright show-report",
+    "db:up": "docker compose -f ../back/docker-compose.test.yml up -d",
+    "db:down": "docker compose -f ../back/docker-compose.test.yml down"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56.0",
+    "@types/node": "^25.6.0",
+    "pg": "^8.20.0",
+    "@types/pg": "^8.20.0",
+    "typescript": "^6.0.3"
+  }
+}

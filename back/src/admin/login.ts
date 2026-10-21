@@ -3,7 +3,6 @@ import { hashToken } from "../db/token.js";
 import {
   Hono,
   z,
-  getConnInfo,
   rateLimiter,
   RedisStore,
   bcrypt,
@@ -16,6 +15,7 @@ import {
   passwordBaseSchema,
   redisClient,
 } from "../shared/index.js";
+import { clientIp, setSecurityActor } from "../utils/monitoring.js";
 
 // タイミング攻撃対策用のダミーハッシュ（ユーザーが存在しない場合に使用）
 // bcrypt.compareが必ず失敗する正規の60文字ハッシュ。形式が不正だとエラーになるため実在するハッシュを使用
@@ -32,9 +32,9 @@ const loginLimiter =
         windowMs: 60 * 1000,
         limit: 5,
         message: "ログイン試行回数の上限に達しました、1分後に再試行してください。",
-        keyGenerator: (c) => {
-          try { return getConnInfo(c).remote.address ?? "unknown"; } catch { return "unknown"; }
-        },
+        // ALB配下では接続元IPが常にALBになるため、X-Forwarded-For から実IPを取る。
+        // 素の接続元IPで数えると、全利用者が1つのバケットを共有してしまう（monitoring.ts参照）
+        keyGenerator: (c) => clientIp(c),
         store: new RedisStore({
           sendCommand: (...args: string[]) => redisClient.sendCommand(args),
         }) as any,
@@ -73,6 +73,10 @@ app.post("/api/admin/login", loginLimiter, async (c) => {
     );
   }
   const { email, password } = result.data;
+
+  // 「同じアカウントに対する総当たり」と「多数のアカウントを浅く試す攻撃」を
+  // 監視ログ上で区別できるようにする。生のメールアドレスは載せずハッシュだけを記録する
+  setSecurityActor(c, email);
 
   // メールアドレスでユーザーを検索
   const existingUsers = await db

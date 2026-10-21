@@ -1,6 +1,19 @@
 // スキーマ設計
 
-import { pgTable, uuid, varchar, timestamp, text, date, unique } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  uuid,
+  varchar,
+  timestamp,
+  text,
+  date,
+  unique,
+  foreignKey,
+  boolean,
+  integer,
+  jsonb,
+  index,
+} from "drizzle-orm/pg-core";
 import { z } from "zod";
 
 // ヘルパー
@@ -35,7 +48,8 @@ export const admin = pgTable("users", {
   token_issued_at: timestamp("token_issued_at").defaultNow().notNull(),
   // 削除日時（nullなら有効、セットされていれば削除済み・30日以内なら復活可能）
   deleted_at: timestamp("deleted_at"),
-  // 権限ロール: 'owner' | 'admin' | 'member'（初回登録者が owner、以降は member）
+  // 権限ロール: 'owner' | 'admin' | 'member'
+  // 登録時のロールは invitations.role から決まる（最初の owner のみ scripts/createOwner.ts で作成）
   role: varchar("role", { length: 10 }).notNull().default("member"),
 });
 
@@ -46,8 +60,13 @@ export const news = pgTable("news", {
   body: text("body").notNull(),
   // メイン画像のS3パス（任意）
   img: s3Path("img"),
-  // 'news' または 'media' でニュースとメディア情報を分ける
+  // 'news' | 'media' | 'notice' で公開ニュース・メディア情報・関係者向け事務連絡を分ける
   type: varchar("type", { length: 10 }).notNull(),
+  // 公開範囲: 'public' = 誰でも / 'member' = 関係者限定（type='notice' は常に 'member'）
+  visibility: varchar("visibility", { length: 10 }).notNull().default("public"),
+  // 公開状態: 'draft'（下書き）| 'pending'（承認待ち）| 'published'（公開中・既定）
+  // member が投稿申請すると 'pending' になり、admin が承認して 'published' になる
+  status: varchar("status", { length: 10 }).notNull().default("published"),
   // カテゴリー（自由入力・任意。固定の選択肢は持たず、投稿時に都度テキストで追加できる）
   category: varchar("category", { length: 30 }),
   // 投稿した管理者のID（アカウント削除時はNULLになる）
@@ -56,15 +75,35 @@ export const news = pgTable("news", {
   }),
 });
 
+// 関係者限定お知らせの既読管理（誰がどのお知らせを読んだか）
+export const newsReads = pgTable("news_reads", {
+  ...baseFields,
+  news_id: uuid("news_id")
+    .references(() => news.id, { onDelete: "cascade" })
+    .notNull(),
+  user_id: uuid("user_id")
+    .references(() => admin.id, { onDelete: "cascade" })
+    .notNull(),
+  read_at: timestamp("read_at").defaultNow().notNull(),
+}, (t) => ({
+  uniqueRead: unique("news_reads_news_user_uniq").on(t.news_id, t.user_id),
+}));
+
 // 問い合わせテーブル
 export const inquiry = pgTable("inquiry", {
   ...baseFields,
   // お客様の名前（ニックネーム可）
   name: varchar("name", { length: 100 }).notNull(),
+  // お客様のメールアドレス（自動返信メールの宛先）
+  // email欄を追加する前に投稿された既存データがあるためDB上はnullable。
+  // APIでは必須項目としてバリデーションする（inquiry/create.ts）
+  email: varchar("email", { length: 255 }),
   title: varchar("title", { length: 100 }).notNull(),
   body: text("body").notNull(),
   // 画像のS3パス（任意）
   img: s3Path("img"),
+  // 対応ステータス: 'pending'（未対応・初期値）| 'in_progress'（対応中）| 'resolved'（対応済み）
+  status: varchar("status", { length: 20 }).notNull().default("pending"),
 });
 
 // 問い合わせ返信テーブル
@@ -84,6 +123,8 @@ export const reply = pgTable("reply", {
   img: s3Path("img"),
   // ファイルのS3パス（任意）
   file: s3Path("file"),
+  // 返信メールが問い合わせ元に届いた時刻。未送信・送信失敗・宛先なしは NULL（inquiry/replyMail.ts）
+  mail_sent_at: timestamp("mail_sent_at"),
 });
 
 // 体験申し込みテーブル
@@ -112,6 +153,50 @@ export const trialApplication = pgTable("trial_application", {
   referrer_name: varchar("referrer_name", { length: 100 }),
 });
 
+// 体験申込者への連絡（メール送信の履歴）
+// 保護者向けの連絡事項を公開ページに載せず、管理者が選んだ体験申込者にだけメールで届けるためのもの。
+// 送信に成功した宛先があったときだけ保存する（誰にも届いていない連絡を「送信済み」と誤解させないため）。
+export const trialNotice = pgTable("trial_notice", {
+  ...withUpdatedAt,
+  title: varchar("title", { length: 100 }).notNull(),
+  body: text("body").notNull(),
+  // 送信に成功した宛先の数（重複アドレスを除いた数）
+  recipient_count: integer("recipient_count").notNull(),
+  // 送信した管理者のID（アカウント削除時はNULLになる）
+  admin_id: uuid("admin_id").references(() => admin.id, {
+    onDelete: "set null",
+  }),
+});
+
+// 体験申込者への連絡の宛先（送信に成功した分だけ）
+// 名前・アドレス・体験日は送信時点の写しを持つ。申込データが削除・修正されても
+// 「いつ誰に何を送ったか」を後から確認できるようにするため。
+export const trialNoticeRecipient = pgTable(
+  "trial_notice_recipient",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    notice_id: uuid("notice_id")
+      .references(() => trialNotice.id, { onDelete: "cascade" })
+      .notNull(),
+    // 元の申込（削除されたら NULL。写しの name / email で履歴は残る）
+    trial_application_id: uuid("trial_application_id"),
+    name: varchar("name", { length: 100 }).notNull(),
+    email: varchar("email", { length: 255 }).notNull(),
+    trial_date: date("trial_date").notNull(),
+    sent_at: timestamp("sent_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    // 履歴詳細で連絡ごとの宛先を引くため
+    noticeIdx: index("trial_notice_recipient_notice_id_idx").on(t.notice_id),
+    // 既定の制約名は Postgres の識別子上限（63文字）を超えて切り詰められるため、短い名前を付ける
+    application: foreignKey({
+      name: "trial_notice_recipient_application_id_fk",
+      columns: [t.trial_application_id],
+      foreignColumns: [trialApplication.id],
+    }).onDelete("set null"),
+  }),
+);
+
 // 実績テーブル
 export const achievement = pgTable("achievement", {
   ...withUpdatedAt,
@@ -129,22 +214,64 @@ export const achievement = pgTable("achievement", {
   }),
 });
 
+// 試合結果テーブル
+// 公開サイトの実績・試合結果ページ「前回の試合結果」に、試合日が最も新しい1件を出す。
+// 大会の中の1試合を1行とし、大会での最終成績（ベスト8・優勝など）は任意で添える
+// 試合結果の1セット分の得点（match_results.sets に jsonb 配列として保存）
+export type MatchSetRecord = {
+  our_score: number;
+  opponent_score: number;
+};
+
+export const matchResults = pgTable("match_results", {
+  ...withUpdatedAt,
+  // 大会名（例: 〇〇市長杯ドッジボール大会）
+  tournament_name: varchar("tournament_name", { length: 100 }).notNull(),
+  // 大会での成績（例: ベスト8・準優勝）。未定・不要なら NULL
+  tournament_result: varchar("tournament_result", { length: 30 }),
+  // 試合日（日付のみ。表示順はこの日付の新しい順）
+  played_on: date("played_on").notNull(),
+  // 対戦相手（任意。決勝・3位決定戦など載せたい試合があるときだけ入れる）。無ければ NULL
+  opponent_name: varchar("opponent_name", { length: 50 }),
+  // セットごとの得点（対戦相手があるときは1〜3セット、無いときは空配列）
+  sets: jsonb("sets").$type<MatchSetRecord[]>().notNull().default([]),
+  // 登録した管理者（アカウント削除時はNULLになる）
+  admin_id: uuid("admin_id").references(() => admin.id, { onDelete: "set null" }),
+});
+
 // 試合風景テーブル
 export const game = pgTable("game", {
   ...baseFields,
   // 画像のS3パス
   img: s3Path("img"),
+  // 公開状態: 'draft' | 'pending' | 'published'（既定）。news と同じ扱い
+  status: varchar("status", { length: 10 }).notNull().default("published"),
   // 投稿した管理者のID（アカウント削除時はNULLになる）
   admin_id: uuid("admin_id").references(() => admin.id, {
     onDelete: "set null",
   }),
 });
 
+// 画像に適用したモザイク領域（images.mosaic_regions にjsonb配列として保存）
+export type MosaicRegionRecord = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  // モザイクの粗さ（1マスあたりのピクセル数）
+  pixel_size: number;
+};
+
 // 画像ストレージテーブル（複数画像対応）
 export const images = pgTable("images", {
   ...baseFields,
-  // S3上のパス
+  // 公開用のS3パス（モザイク適用後）。既存カラムの役割は変えない
   path: varchar("path", { length: 500 }).notNull(),
+  // 原本のS3パス。モザイク適用時に初回のみ退避先をセットする。
+  // モザイク前は null（path がそのまま原本）。
+  original_path: varchar("original_path", { length: 500 }),
+  // 適用中のモザイク領域一覧（未適用なら null）。再編集時は原本にこの一覧をかけ直す
+  mosaic_regions: jsonb("mosaic_regions").$type<MosaicRegionRecord[]>(),
   // 掲載同意ステータス（試合風景画像のみ使用）
   // 'pending': 未確認（デフォルト）, 'approved': 同意済み, 'rejected': 拒否
   consent_status: varchar("consent_status", { length: 10 }).notNull().default("pending"),
@@ -171,6 +298,28 @@ export const movies = pgTable("movies", {
   }),
 });
 
+// 関係者限定 資料庫（規約・年間スケジュール・練習メニュー等のPDF配布）
+// 実体は files テーブル（document_id で紐づく）に置く
+export const documents = pgTable("documents", {
+  ...withUpdatedAt,
+  title: varchar("title", { length: 100 }).notNull(),
+  description: text("description"),
+  // 分類（自由入力・任意）
+  category: varchar("category", { length: 30 }),
+  admin_id: uuid("admin_id").references(() => admin.id, { onDelete: "set null" }),
+});
+
+// 通知設定（ユーザーごとのオプトアウト用。行が無ければ既定＝どちらも有効）
+export const notificationSettings = pgTable("notification_settings", {
+  ...baseFields,
+  user_id: uuid("user_id")
+    .references(() => admin.id, { onDelete: "cascade" })
+    .notNull()
+    .unique(),
+  notice_email: boolean("notice_email").notNull().default(true),
+  survey_email: boolean("survey_email").notNull().default(true),
+});
+
 // ファイルストレージテーブル
 export const files = pgTable("files", {
   ...baseFields,
@@ -182,6 +331,9 @@ export const files = pgTable("files", {
     onDelete: "cascade",
   }),
   achievement_id: uuid("achievement_id").references(() => achievement.id, {
+    onDelete: "cascade",
+  }),
+  document_id: uuid("document_id").references(() => documents.id, {
     onDelete: "cascade",
   }),
 });
@@ -214,6 +366,79 @@ export const deletionApprovals = pgTable("deletion_approvals", {
   uniqueApproval: unique("deletion_approvals_request_approved_uniq").on(t.request_id, t.approved_by),
 }));
 
+// 掲載取り下げ依頼（member が写真の取り下げを申し出る）
+// 「どの写真に誰が写っているか」の紐付けは持たず、任意の画像に対する依頼として扱う
+export const consentRequests = pgTable("consent_requests", {
+  ...baseFields,
+  image_id: uuid("image_id")
+    .references(() => images.id, { onDelete: "cascade" })
+    .notNull(),
+  requested_by: uuid("requested_by")
+    .references(() => admin.id, { onDelete: "cascade" })
+    .notNull(),
+  // 依頼理由（任意）
+  reason: text("reason"),
+  // 'pending'（未対応・初期値）| 'accepted'（取り下げた）| 'rejected'（取り下げない）
+  status: varchar("status", { length: 10 }).notNull().default("pending"),
+  // 対応した管理者と対応日時
+  handled_by: uuid("handled_by").references(() => admin.id, { onDelete: "set null" }),
+  handled_at: timestamp("handled_at"),
+});
+
+// アンケート／出欠確認テーブル
+// 出欠確認は survey_options に「出席 / 欠席 / 未定」を入れるだけで実現できる
+export const surveys = pgTable("surveys", {
+  ...withUpdatedAt,
+  title: varchar("title", { length: 100 }).notNull(),
+  body: text("body"),
+  // 回答締切（任意。過ぎると回答を受け付けない）
+  closes_at: timestamp("closes_at"),
+  // 複数選択を許可するか
+  allow_multiple: boolean("allow_multiple").notNull().default(false),
+  // 作成した管理者（アカウント削除時はNULLになる）
+  admin_id: uuid("admin_id").references(() => admin.id, { onDelete: "set null" }),
+});
+
+// アンケートの選択肢
+export const surveyOptions = pgTable("survey_options", {
+  ...baseFields,
+  survey_id: uuid("survey_id")
+    .references(() => surveys.id, { onDelete: "cascade" })
+    .notNull(),
+  label: varchar("label", { length: 100 }).notNull(),
+  // 表示順
+  sort_order: integer("sort_order").notNull().default(0),
+}, (t) => ({
+  // surveyResponses から複合外部キーで参照するための一意制約（id は元々一意）
+  idWithSurvey: unique("survey_options_id_survey_id_uniq").on(t.id, t.survey_id),
+}));
+
+// アンケートへの回答（1行 = 1人が選んだ1つの選択肢）
+export const surveyResponses = pgTable("survey_responses", {
+  ...baseFields,
+  survey_id: uuid("survey_id")
+    .references(() => surveys.id, { onDelete: "cascade" })
+    .notNull(),
+  option_id: uuid("option_id").notNull(),
+  user_id: uuid("user_id")
+    .references(() => admin.id, { onDelete: "cascade" })
+    .notNull(),
+  // 自由記述（任意）
+  comment: text("comment"),
+}, (t) => ({
+  // 同じ選択肢を二重に選べないようにする。単一選択の検証はアプリ側で行う
+  uniqueResponse: unique("survey_responses_survey_option_user_uniq")
+    .on(t.survey_id, t.option_id, t.user_id),
+  // survey_id と option_id を別々のFKにすると「アンケートAに、アンケートBの選択肢を選んだ」
+  // 行が全ての制約を満たして入ってしまい、集計だけが静かに狂う。
+  // 複合FKにして、選択肢が同じアンケートのものであることをDBに保証させる。
+  optionBelongsToSurvey: foreignKey({
+    name: "survey_responses_option_survey_fk",
+    columns: [t.option_id, t.survey_id],
+    foreignColumns: [surveyOptions.id, surveyOptions.survey_id],
+  }).onDelete("cascade"),
+}));
+
 // パスワード再設定トークン（メールで送るのはtokenの生値、DBにはハッシュのみ保存）
 export const passwordResetTokens = pgTable("password_reset_tokens", {
   ...baseFields,
@@ -223,6 +448,26 @@ export const passwordResetTokens = pgTable("password_reset_tokens", {
   // sha256ハッシュ（hex64文字）。生トークンはDBに保存しない
   token_hash: varchar("token_hash", { length: 64 }).notNull().unique(),
   // 発行から1時間で失効
+  expires_at: timestamp("expires_at").notNull(),
+  // 使用済みなら日時が入る（再利用防止）
+  used_at: timestamp("used_at"),
+});
+
+// 招待（メールで送るのはtokenの生値、DBにはハッシュのみ保存）
+// 自己登録は廃止し、owner が発行したこの招待経由でのみアカウントを作成できる
+export const invitations = pgTable("invitations", {
+  ...baseFields,
+  // 招待先のメールアドレス。登録時にこのアドレスと一致することを検証する
+  email: varchar("email", { length: 255 }).notNull(),
+  // sha256ハッシュ（hex64文字）。生トークンはDBに保存しない
+  token_hash: varchar("token_hash", { length: 64 }).notNull().unique(),
+  // 招待時に付与するロール: 'admin' | 'member'（owner は招待では発行しない）
+  role: varchar("role", { length: 10 }).notNull(),
+  // 発行した owner
+  invited_by: uuid("invited_by")
+    .references(() => admin.id, { onDelete: "cascade" })
+    .notNull(),
+  // 発行から7日で失効
   expires_at: timestamp("expires_at").notNull(),
   // 使用済みなら日時が入る（再利用防止）
   used_at: timestamp("used_at"),
@@ -250,6 +495,19 @@ export const VALIDATION_LIMITS = {
   phoneNumber: { min: 1, max: 20 },
   motivationOther: { min: 1, max: 200 },
   referrerName: { max: 100 },
+  surveyTitle: { min: 1, max: 100 },
+  surveyOptionLabel: { min: 1, max: 100 },
+  surveyComment: { max: 500 },
+  consentReason: { max: 500 },
+  documentTitle: { min: 1, max: 100 },
+  documentDescription: { max: 2000 },
+  tournamentName: { min: 1, max: 100 },
+  tournamentResult: { max: 30 },
+  opponentName: { max: 50 },
+  // 1試合のセット数（決勝の3セットマッチまで）
+  matchSets: { max: 3 },
+  // 得点（ドッジボールで3桁を超えることはないため、入力ミスを弾く上限）
+  score: { min: 0, max: 999 },
 } as const;
 
 export const emailSchema = z
@@ -293,7 +551,61 @@ export const inquiryNameSchema = stringField(
   "名前",
 );
 
+// 投稿の公開範囲
+export const visibilitySchema = z.enum(["public", "member"]);
+
+// 取り下げ依頼の対応ステータス
+export const consentRequestStatusSchema = z.enum(["pending", "accepted", "rejected"]);
+
+// 取り下げ依頼の理由（任意）
+export const consentReasonSchema = z
+  .string()
+  .trim()
+  .max(
+    VALIDATION_LIMITS.consentReason.max,
+    `理由は${VALIDATION_LIMITS.consentReason.max}文字以内で入力してください。`,
+  )
+  .optional()
+  .transform((v) => (v === "" ? undefined : v));
+
 export const consentStatusSchema = z.enum(["pending", "approved", "rejected"]);
+
+// 招待で付与できるロール。owner は招待では発行せず、seed（scripts/createOwner.ts）か
+// 既存 owner によるロール変更でのみ与えられる
+export const invitationRoleSchema = z.enum(["admin", "member"]);
+
+// 招待トークン（生値）の形式。randomBytes(32).toString("hex") と同じ64桁のhex
+export const invitationTokenSchema = z
+  .string()
+  .trim()
+  .regex(/^[0-9a-f]{64}$/, "招待トークンの形式が正しくありません。");
+
+// 問い合わせの対応ステータス
+export const inquiryStatusSchema = z.enum(["pending", "in_progress", "resolved"]);
+
+export type InquiryStatus = z.infer<typeof inquiryStatusSchema>;
+
+// 画面表示用のラベル（DBには英語キーを保存し、表示だけ日本語にする）
+export const INQUIRY_STATUS_LABELS: Record<InquiryStatus, string> = {
+  pending: "未対応",
+  in_progress: "対応中",
+  resolved: "対応済み",
+};
+
+// 投稿の公開状態
+export const postStatusSchema = z.enum(["draft", "pending", "published"]);
+
+// アンケート用バリデーション
+export const surveyTitleSchema = stringField(
+  VALIDATION_LIMITS.surveyTitle.min,
+  VALIDATION_LIMITS.surveyTitle.max,
+  "アンケートのタイトル",
+);
+export const surveyOptionLabelSchema = stringField(
+  VALIDATION_LIMITS.surveyOptionLabel.min,
+  VALIDATION_LIMITS.surveyOptionLabel.max,
+  "選択肢",
+);
 
 // 体験申し込み用バリデーション
 
@@ -311,6 +623,18 @@ const dateOnlySchema = (label: string) =>
     .trim()
     .regex(/^\d{4}-\d{2}-\d{2}$/, `${label}はYYYY-MM-DD形式で入力してください。`)
     .refine((v) => !Number.isNaN(Date.parse(v)), `${label}の日付が正しくありません。`);
+
+// 資料庫用バリデーション
+export const documentTitleSchema = stringField(
+  VALIDATION_LIMITS.documentTitle.min,
+  VALIDATION_LIMITS.documentTitle.max,
+  "資料のタイトル",
+);
+export const documentDescriptionSchema = optionalStringField(
+  VALIDATION_LIMITS.documentDescription.max,
+  "資料の説明",
+);
+
 
 export const trialNameSchema = stringField(
   VALIDATION_LIMITS.trialName.min,
@@ -344,3 +668,25 @@ export const motivationSchema = z.enum(["flyer", "instagram", "referral", "other
 
 export const trialDateSchema = dateOnlySchema("体験日");
 export const birthDateSchema = dateOnlySchema("生年月日");
+
+// 試合結果用バリデーション
+export const tournamentNameSchema = stringField(
+  VALIDATION_LIMITS.tournamentName.min,
+  VALIDATION_LIMITS.tournamentName.max,
+  "大会名",
+);
+export const tournamentResultSchema = optionalStringField(
+  VALIDATION_LIMITS.tournamentResult.max,
+  "大会成績",
+);
+export const opponentNameSchema = optionalStringField(
+  VALIDATION_LIMITS.opponentName.max,
+  "対戦相手",
+);
+export const scoreSchema = (label: string) =>
+  z
+    .number({ message: `${label}を数字で入力してください。` })
+    .int(`${label}は整数で入力してください。`)
+    .min(VALIDATION_LIMITS.score.min, `${label}は${VALIDATION_LIMITS.score.min}以上で入力してください。`)
+    .max(VALIDATION_LIMITS.score.max, `${label}は${VALIDATION_LIMITS.score.max}以下で入力してください。`);
+export const playedOnSchema = dateOnlySchema("試合日");

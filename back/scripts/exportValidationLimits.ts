@@ -13,6 +13,8 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const outPath = path.resolve(__dirname, "../../front/lib/validation/limits.generated.json");
 
 // JSONにコメントは書けないため、自動生成である旨はfront/lib/validation/limits.tsの側に明記する。
-writeFileSync(outPath, JSON.stringify(VALIDATION_LIMITS, null, 2) + "\n");
+// インデントはタブ。書き出し先は front 配下であり、front/biome.json が indentStyle: "tab" を
+// 要求するため、スペースで書き出すと再生成のたびに front の `biome ci` が落ちる。
+writeFileSync(outPath, `${JSON.stringify(VALIDATION_LIMITS, null, "\t")}\n`);
 
 console.log(`✔ VALIDATION_LIMITS を書き出しました: ${outPath}`);

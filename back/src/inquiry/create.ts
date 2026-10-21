@@ -5,9 +5,11 @@ import {
   db,
   inquiry,
   inquiryNameSchema,
+  emailSchema,
   titleSchema,
   bodySchema,
   processImageUpload,
+  sendInquiryAutoReplyEmail,
 } from "../shared/index.js";
 import type { Context } from "hono";
 
@@ -16,12 +18,14 @@ export const create = async (c: Context) => {
 
   const schema = z.object({
     name: inquiryNameSchema,
+    email: emailSchema,
     title: titleSchema,
     body: bodySchema,
   });
 
   const result = schema.safeParse({
     name: body["name"],
+    email: body["email"],
     title: body["title"],
     body: body["body"],
   });
@@ -40,6 +44,7 @@ export const create = async (c: Context) => {
   }
 
   const name = result.data.name;
+  const email = result.data.email;
   const title = result.data.title;
   const bodyText = result.data.body;
 
@@ -56,10 +61,18 @@ export const create = async (c: Context) => {
     imgPath = imageResult.path;
   }
 
+  // status はDB側のデフォルト（'pending' = 未対応）が入る
   const inserted = await db
     .insert(inquiry)
-    .values({ name, title, body: bodyText, img: imgPath })
+    .values({ name, email, title, body: bodyText, img: imgPath })
     .returning();
+
+  // 自動返信メール（送信に失敗しても問い合わせ自体は成功扱いにする）
+  try {
+    await sendInquiryAutoReplyEmail({ email, name, title, body: bodyText });
+  } catch (e) {
+    console.error("[inquiry] 自動返信メール送信失敗:", e);
+  }
 
   return c.json({ success: true, message: "問い合わせを送信しました。", data: inserted[0] }, 200);
 };

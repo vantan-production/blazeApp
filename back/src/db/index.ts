@@ -2,6 +2,7 @@
 
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
+import { buildSslConfig } from "./ssl.js";
 
 if (!process.env.DATABASE_URL) {
   throw new Error("接続に失敗しました。");
@@ -9,12 +10,9 @@ if (!process.env.DATABASE_URL) {
 
 export const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  // テスト環境（ローカルDocker）はSSL非対応のため無効化
-  // 本番環境では証明書を厳格に検証、開発環境では暗号化のみ
-  ssl:
-    process.env.NODE_ENV === "test"
-      ? false
-      : { rejectUnauthorized: process.env.NODE_ENV === "production" },
+  // テスト環境はSSL無効、本番環境はRDSのCAバンドルで証明書を厳格に検証、開発環境は暗号化のみ
+  // （詳細は ssl.ts。runMigrations もこの pool を使う）
+  ssl: buildSslConfig(),
 });
 
 export const db = drizzle(pool);

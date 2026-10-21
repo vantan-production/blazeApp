@@ -2,7 +2,8 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { app } from "../app.js";
 import { cleanDb } from "./setup.js";
-import { extractCookie, registerAndLogin, getUsers } from "./testHelpers.js";
+import { extractCookie, registerAndLogin, getUsers, seedInvitation } from "./testHelpers.js";
+import { createOwnerAccount, ownerExists } from "../admin/createOwner.js";
 
 const D = "@auth.test";
 
@@ -10,11 +11,46 @@ beforeEach(async () => {
   await cleanDb();
 });
 
-async function register(name: string, email: string, password: string, passwordConfirmation?: string) {
+// 登録は招待制になったため、招待を発行する owner と招待そのものを先に用意する
+async function ensureOwner() {
+  if (!(await ownerExists())) {
+    await createOwnerAccount({
+      name: "Seed Owner",
+      email: `seed-owner${D}`,
+      password: "Test@Password1!",
+    });
+  }
+}
+
+async function register(
+  name: string,
+  email: string,
+  password: string,
+  passwordConfirmation?: string,
+  role: "admin" | "member" = "member",
+) {
+  await ensureOwner();
+  const token = await seedInvitation(email, role);
+  return registerWithToken(token, name, email, password, passwordConfirmation);
+}
+
+async function registerWithToken(
+  token: string,
+  name: string,
+  email: string,
+  password: string,
+  passwordConfirmation?: string,
+) {
   return app.request("/api/admin/register", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name, email, password, passwordConfirmation: passwordConfirmation ?? password }),
+    body: JSON.stringify({
+      token,
+      name,
+      email,
+      password,
+      passwordConfirmation: passwordConfirmation ?? password,
+    }),
   });
 }
 
@@ -51,33 +87,50 @@ async function registerTwoOwners(email1: string, email2: string): Promise<string
 // --- Register ---
 
 describe("POST /api/admin/register", () => {
-  it("初回登録者は owner になる", async () => {
-    const res = await register("Test Owner", `owner${D}`, "Test@Password1!");
-    expect(res.status).toBe(200);
-    const body = await res.json() as { success: boolean; data: { name: string } };
-    expect(body.success).toBe(true);
+  it("招待で指定された role が付与される", async () => {
+    const ownerCookie = await registerAndLogin("Owner", `owner${D}`);
 
-    const cookie = extractCookie(res.headers.get("set-cookie") ?? "");
-    const usersRes = await app.request("/api/admin/users", { headers: { Cookie: cookie } });
-    expect(usersRes.status).toBe(200);
-    const usersBody = await usersRes.json() as { data: Array<{ email: string; role: string }> };
-    expect(usersBody.data.find((u) => u.email === `owner${D}`)?.role).toBe("owner");
+    const res = await register("Member", `member${D}`, "Test@Password1!");
+    expect(res.status).toBe(200);
+    const body = await res.json() as { success: boolean; data: { role: string } };
+    expect(body.success).toBe(true);
+    expect(body.data.role).toBe("member");
+
+    const adminRes = await register("Admin", `admin${D}`, "Test@Password1!", undefined, "admin");
+    expect(adminRes.status).toBe(200);
+
+    const users = await getUsers(ownerCookie);
+    expect(users.find((u) => u.email === `member${D}`)?.role).toBe("member");
+    expect(users.find((u) => u.email === `admin${D}`)?.role).toBe("admin");
   });
 
-  it("2人目以降は member になる", async () => {
-    await register("Owner", `owner${D}`, "Test@Password1!");
-    const res2 = await register("Member", `member${D}`, "Test@Password1!");
-    expect(res2.status).toBe(200);
+  it("招待トークンが無いと 400", async () => {
+    await ensureOwner();
+    const res = await app.request("/api/admin/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: "NoToken",
+        email: `notoken${D}`,
+        password: "Test@Password1!",
+        passwordConfirmation: "Test@Password1!",
+      }),
+    });
+    expect(res.status).toBe(400);
+  });
 
-    const cookie = await registerAndLogin("_owner", `owner2${D}`);
-    void cookie; // owner登録済みなので新loginで確認
+  it("招待された宛先と違うメールでは登録できない", async () => {
+    await ensureOwner();
+    const token = await seedInvitation(`invited${D}`);
+    const res = await registerWithToken(token, "Other", `other${D}`, "Test@Password1!");
+    expect(res.status).toBe(400);
+  });
 
-    const loginRes = await login(`owner${D}`, "Test@Password1!");
-    const ownerCookie = extractCookie(loginRes.headers.get("set-cookie") ?? "");
-    const usersRes = await app.request("/api/admin/users", { headers: { Cookie: ownerCookie } });
-    expect(usersRes.status).toBe(200);
-    const usersBody = await usersRes.json() as { data: Array<{ email: string; role: string }> };
-    expect(usersBody.data.find((u) => u.email === `member${D}`)?.role).toBe("member");
+  it("同じ招待トークンは2回使えない", async () => {
+    await ensureOwner();
+    const token = await seedInvitation(`once${D}`);
+    expect((await registerWithToken(token, "Once", `once${D}`, "Test@Password1!")).status).toBe(200);
+    expect((await registerWithToken(token, "Once", `once${D}`, "Test@Password1!")).status).toBe(400);
   });
 
   it("パスワード不一致は 400", async () => {

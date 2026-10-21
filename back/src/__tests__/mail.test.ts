@@ -1,0 +1,347 @@
+// メール本文の単体テスト
+// 実送信は NODE_ENV=test でスキップされるため、送信直前の「組み立て結果」を検証する。
+// Resendへの実疎通は scripts/sendTestMail.ts で別途確認する（README参照）。
+
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import {
+  buildPasswordResetEmail,
+  buildInvitationEmail,
+  buildTrialApplicationConfirmationEmail,
+  buildTrialApplicationAdminNotification,
+  buildInquiryAutoReplyEmail,
+  buildInquiryReplyEmail,
+  buildNoticeNotificationEmail,
+  buildSurveyNotificationEmail,
+  buildTrialNoticeEmail,
+  trialNotificationEmails,
+  sendInquiryAutoReplyEmail,
+  type TrialApplicationMailData,
+} from "../utils/mail.js";
+
+// 各テストで書き換える環境変数（元の値に戻す）
+const ENV_KEYS = ["MAIL_FROM", "FRONTEND_URL", "TRIAL_NOTIFICATION_EMAIL"] as const;
+const savedEnv: Partial<Record<(typeof ENV_KEYS)[number], string | undefined>> = {};
+
+beforeEach(() => {
+  for (const key of ENV_KEYS) {
+    savedEnv[key] = process.env[key];
+    delete process.env[key];
+  }
+  process.env["MAIL_FROM"] = "noreply@nishioblaze.test";
+  process.env["FRONTEND_URL"] = "https://nishioblaze.test";
+});
+
+afterEach(() => {
+  for (const key of ENV_KEYS) {
+    const value = savedEnv[key];
+    if (value === undefined) {
+      delete process.env[key];
+    } else {
+      process.env[key] = value;
+    }
+  }
+});
+
+const trialData: TrialApplicationMailData = {
+  email: "applicant@example.com",
+  name: "山田 太郎",
+  furigana: "ヤマダ タロウ",
+  trialDate: "2026-10-01",
+  gender: "male",
+  birthDate: "2014-04-01",
+  schoolName: "西尾第一小学校",
+  cramSchool: undefined,
+  phoneNumber: "09012345678",
+  motivation: "flyer",
+};
+
+describe("buildPasswordResetEmail", () => {
+  it("宛先・件名・送信元を設定する", () => {
+    const mail = buildPasswordResetEmail("admin@example.com", "raw-token");
+    expect(mail.to).toBe("admin@example.com");
+    expect(mail.from).toBe("noreply@nishioblaze.test");
+    expect(mail.subject).toBe("【西尾ブレイズ管理画面】パスワード再設定のご案内");
+  });
+
+  it("FRONTEND_URL を使った再設定リンクを含む", () => {
+    const mail = buildPasswordResetEmail("admin@example.com", "raw-token");
+    expect(mail.html).toContain(
+      "https://nishioblaze.test/admin/reset-password?token=raw-token",
+    );
+  });
+
+  it("トークンをURLエンコードする", () => {
+    const mail = buildPasswordResetEmail("admin@example.com", "a+b/c=d&e");
+    expect(mail.html).toContain("token=a%2Bb%2Fc%3Dd%26e");
+    expect(mail.html).not.toContain("token=a+b/c=d&e");
+  });
+
+  it("MAIL_FROM 未設定時は Resend の既定アドレスにフォールバックする", () => {
+    delete process.env["MAIL_FROM"];
+    expect(buildPasswordResetEmail("admin@example.com", "t").from).toBe(
+      "onboarding@resend.dev",
+    );
+  });
+});
+
+describe("buildInvitationEmail", () => {
+  it("宛先・件名・送信元を設定する", () => {
+    const mail = buildInvitationEmail("new@example.com", "raw-token", "admin");
+    expect(mail.to).toBe("new@example.com");
+    expect(mail.from).toBe("noreply@nishioblaze.test");
+    expect(mail.subject).toBe("【西尾ブレイズ】アカウント作成のご案内");
+  });
+
+  it("管理画面の新規登録ページ（/admin/register）へのリンクを含む", () => {
+    const mail = buildInvitationEmail("new@example.com", "raw-token", "member");
+    expect(mail.html).toContain("https://nishioblaze.test/admin/register?token=raw-token");
+    // 旧パス（/register 直下）はフロントに存在しないので使わない
+    expect(mail.html).not.toContain("https://nishioblaze.test/register?");
+  });
+
+  it("トークンをURLエンコードする", () => {
+    const mail = buildInvitationEmail("new@example.com", "a+b/c=d&e", "admin");
+    expect(mail.html).toContain("token=a%2Bb%2Fc%3Dd%26e");
+  });
+});
+
+describe("buildTrialApplicationConfirmationEmail", () => {
+  it("申込者宛に体験日を含めて送る", () => {
+    const mail = buildTrialApplicationConfirmationEmail(trialData);
+    expect(mail.to).toBe("applicant@example.com");
+    expect(mail.subject).toBe("【西尾ブレイズ】体験申し込みを受け付けました");
+    expect(mail.html).toContain("山田 太郎 様");
+    expect(mail.html).toContain("2026-10-01");
+  });
+
+  it("氏名のHTMLをエスケープする", () => {
+    const mail = buildTrialApplicationConfirmationEmail({
+      ...trialData,
+      name: '<script>alert("x")</script>',
+    });
+    expect(mail.html).not.toContain("<script>");
+    expect(mail.html).toContain("&lt;script&gt;alert(&quot;x&quot;)&lt;/script&gt;");
+  });
+});
+
+describe("buildTrialApplicationAdminNotification", () => {
+  it("TRIAL_NOTIFICATION_EMAIL 未設定なら null を返す", () => {
+    expect(buildTrialApplicationAdminNotification(trialData)).toBeNull();
+  });
+
+  it("カンマ区切りの複数宛先を配列にする", () => {
+    process.env["TRIAL_NOTIFICATION_EMAIL"] = "a@example.com, b@example.com ,";
+    const mail = buildTrialApplicationAdminNotification(trialData);
+    expect(mail?.to).toEqual(["a@example.com", "b@example.com"]);
+  });
+
+  it("申込内容を一覧で含む", () => {
+    process.env["TRIAL_NOTIFICATION_EMAIL"] = "staff@example.com";
+    const mail = buildTrialApplicationAdminNotification(trialData);
+    expect(mail?.subject).toBe("【西尾ブレイズ】新しい体験申し込みがありました");
+    expect(mail?.html).toContain("山田 太郎");
+    expect(mail?.html).toContain("ヤマダ タロウ");
+    expect(mail?.html).toContain("男性");
+    expect(mail?.html).toContain("西尾第一小学校");
+    expect(mail?.html).toContain("09012345678");
+    expect(mail?.html).toContain("学校で配布されたチラシ");
+    expect(mail?.html).toContain("塾: なし");
+  });
+
+  it("きっかけが「その他」なら自由入力を併記する", () => {
+    process.env["TRIAL_NOTIFICATION_EMAIL"] = "staff@example.com";
+    const mail = buildTrialApplicationAdminNotification({
+      ...trialData,
+      motivation: "other",
+      motivationOther: "友人の<紹介>",
+    });
+    expect(mail?.html).toContain("その他（友人の&lt;紹介&gt;）");
+  });
+
+  it("きっかけが「紹介」なら紹介者名を併記する", () => {
+    process.env["TRIAL_NOTIFICATION_EMAIL"] = "staff@example.com";
+    const mail = buildTrialApplicationAdminNotification({
+      ...trialData,
+      motivation: "referral",
+      referrerName: "鈴木 花子",
+    });
+    expect(mail?.html).toContain("紹介者: 鈴木 花子");
+  });
+});
+
+describe("buildInquiryAutoReplyEmail", () => {
+  it("問い合わせ者宛に件名と内容を含めて送る", () => {
+    const mail = buildInquiryAutoReplyEmail({
+      email: "guest@example.com",
+      name: "佐藤 次郎",
+      title: "入団について",
+      body: "質問があります。",
+    });
+    expect(mail.to).toBe("guest@example.com");
+    expect(mail.from).toBe("noreply@nishioblaze.test");
+    expect(mail.subject).toBe("【西尾ブレイズ】お問い合わせを受け付けました");
+    expect(mail.html).toContain("佐藤 次郎 様");
+    expect(mail.html).toContain("件名: 入団について");
+    expect(mail.html).toContain("質問があります。");
+    expect(mail.html).toContain("このメールは自動送信です");
+  });
+
+  it("本文の改行を <br /> に変換する", () => {
+    const mail = buildInquiryAutoReplyEmail({
+      email: "guest@example.com",
+      name: "佐藤 次郎",
+      title: "件名",
+      body: "1行目\n2行目",
+    });
+    expect(mail.html).toContain("1行目<br />2行目");
+  });
+
+  it("件名・本文のHTMLをエスケープする", () => {
+    const mail = buildInquiryAutoReplyEmail({
+      email: "guest@example.com",
+      name: "佐藤 次郎",
+      title: "<b>強調</b>",
+      body: "<img src=x onerror=alert(1)>",
+    });
+    expect(mail.html).not.toContain("<b>強調</b>");
+    expect(mail.html).not.toContain("<img src=x");
+    expect(mail.html).toContain("&lt;b&gt;強調&lt;/b&gt;");
+  });
+});
+
+// 関係者への一斉通知は「宛先が互いに見えないこと」が要件。
+// to に全員を並べると1通のヘッダーに全アドレスが載り、関係者間でメールアドレスが漏れる。
+describe("関係者への一斉通知（宛先の秘匿）", () => {
+  const members = ["a@example.com", "b@example.com", "c@example.com"];
+
+  it("お知らせ通知は受信者を bcc に入れ、to には出さない", () => {
+    const mail = buildNoticeNotificationEmail(members, "新しいお知らせ");
+
+    expect(mail.bcc).toEqual(members);
+    expect(mail.to).toBe("noreply@nishioblaze.test");
+    expect(JSON.stringify(mail.to)).not.toContain("a@example.com");
+  });
+
+  it("アンケート通知も受信者を bcc に入れる", () => {
+    const mail = buildSurveyNotificationEmail(members, "出欠確認");
+
+    expect(mail.bcc).toEqual(members);
+    expect(mail.to).toBe("noreply@nishioblaze.test");
+    expect(JSON.stringify(mail.to)).not.toContain("a@example.com");
+  });
+});
+
+describe("buildTrialNoticeEmail", () => {
+  it("宛先は1人だけで、cc / bcc を使わない", () => {
+    const mail = buildTrialNoticeEmail("parent@example.com", { title: "持ち物", body: "本文" });
+    expect(mail.to).toBe("parent@example.com");
+    expect(mail.bcc).toBeUndefined();
+    expect(mail.from).toBe("noreply@nishioblaze.test");
+  });
+
+  it("件名にタイトルを使い、改行は潰す", () => {
+    const mail = buildTrialNoticeEmail("p@example.com", {
+      title: "持ち物\r\nBcc: evil@example.com",
+      body: "本文",
+    });
+    expect(mail.subject).toBe("【西尾ブレイズ】持ち物 Bcc: evil@example.com");
+  });
+
+  it("本文をエスケープし、改行を <br /> にする", () => {
+    const mail = buildTrialNoticeEmail("p@example.com", {
+      title: "<b>件名</b>",
+      body: "1行目\n<script>x</script>",
+    });
+    expect(mail.html).toContain("&lt;b&gt;件名&lt;/b&gt;");
+    expect(mail.html).toContain("1行目<br />&lt;script&gt;");
+    expect(mail.html).not.toContain("<script>");
+  });
+});
+
+describe("buildInquiryReplyEmail", () => {
+  const replyData = {
+    name: "佐藤 次郎",
+    inquiryTitle: "入団について",
+    inquiryBody: "練習日を教えてください。",
+    replyTitle: "Re: 入団について",
+    replyBody: "毎週土曜日です。",
+  };
+
+  it("問い合わせ元1人宛に、返信の件名で送る", () => {
+    const mail = buildInquiryReplyEmail("guest@example.com", replyData);
+    expect(mail.to).toBe("guest@example.com");
+    expect(mail.bcc).toBeUndefined();
+    expect(mail.from).toBe("noreply@nishioblaze.test");
+    expect(mail.subject).toBe("【西尾ブレイズ】Re: 入団について");
+  });
+
+  it("宛名・返信本文・元の問い合わせの引用・チーム名を含める", () => {
+    const mail = buildInquiryReplyEmail("guest@example.com", replyData);
+    expect(mail.html).toContain("佐藤 次郎 様");
+    expect(mail.html).toContain("毎週土曜日です。");
+    expect(mail.html).toContain("【お問い合わせ内容】");
+    expect(mail.html).toContain("件名: 入団について");
+    expect(mail.html).toContain("練習日を教えてください。");
+    expect(mail.html).toContain("<p>西尾ブレイズ</p>");
+    expect(mail.html).toContain("このメールは送信専用です");
+  });
+
+  it("件名の改行は潰す（ヘッダインジェクション対策）", () => {
+    const mail = buildInquiryReplyEmail("guest@example.com", {
+      ...replyData,
+      replyTitle: "Re: 質問\r\nBcc: evil@example.com",
+    });
+    expect(mail.subject).toBe("【西尾ブレイズ】Re: 質問 Bcc: evil@example.com");
+  });
+
+  it("名前・返信・引用をエスケープし、改行を <br /> にする", () => {
+    const mail = buildInquiryReplyEmail("guest@example.com", {
+      name: "<b>名前</b>",
+      inquiryTitle: "<i>件名</i>",
+      inquiryBody: "1行目\n<img src=x onerror=alert(1)>",
+      replyTitle: "Re: 件名",
+      replyBody: "返信1行目\n<script>x</script>",
+    });
+    expect(mail.html).toContain("&lt;b&gt;名前&lt;/b&gt; 様");
+    expect(mail.html).toContain("件名: &lt;i&gt;件名&lt;/i&gt;");
+    expect(mail.html).toContain("1行目<br />&lt;img src=x");
+    expect(mail.html).toContain("返信1行目<br />&lt;script&gt;");
+    expect(mail.html).not.toContain("<script>");
+    expect(mail.html).not.toContain("<img src=x");
+  });
+
+  it("添付があるときだけ attachments を付ける", () => {
+    expect(buildInquiryReplyEmail("guest@example.com", replyData).attachments).toBeUndefined();
+
+    const content = Buffer.from("image");
+    const mail = buildInquiryReplyEmail("guest@example.com", replyData, [
+      { filename: "image.webp", content },
+    ]);
+    expect(mail.attachments).toEqual([{ filename: "image.webp", content }]);
+  });
+});
+
+describe("trialNotificationEmails", () => {
+  it("未設定なら空配列", () => {
+    expect(trialNotificationEmails()).toEqual([]);
+  });
+
+  it("空文字だけの指定は無視する", () => {
+    process.env["TRIAL_NOTIFICATION_EMAIL"] = " , ,";
+    expect(trialNotificationEmails()).toEqual([]);
+  });
+});
+
+describe("送信ガード", () => {
+  it("NODE_ENV=test では RESEND_API_KEY が無くても実送信せず解決する", async () => {
+    expect(process.env["NODE_ENV"]).toBe("test");
+    await expect(
+      sendInquiryAutoReplyEmail({
+        email: "guest@example.com",
+        name: "佐藤 次郎",
+        title: "件名",
+        body: "本文",
+      }),
+    ).resolves.toBeUndefined();
+  });
+});

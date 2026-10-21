@@ -3,7 +3,6 @@ import { hashToken } from "../db/token.js";
 import {
   Hono,
   z,
-  getConnInfo,
   rateLimiter,
   RedisStore,
   bcrypt,
@@ -16,6 +15,7 @@ import {
   passwordBaseSchema,
   redisClient,
 } from "../shared/index.js";
+import { clientIp } from "../utils/monitoring.js";
 
 const app = new Hono();
 
@@ -27,9 +27,9 @@ const recoverLimiter =
         windowMs: 60 * 1000,
         limit: 3,
         message: "試行回数の上限に達しました。1分後に再試行してください。",
-        keyGenerator: (c) => {
-          try { return getConnInfo(c).remote.address ?? "unknown"; } catch { return "unknown"; }
-        },
+        // ALB配下では接続元IPが常にALBになるため、X-Forwarded-For から実IPを取る。
+        // 素の接続元IPで数えると、全利用者が1つのバケットを共有してしまう（monitoring.ts参照）
+        keyGenerator: (c) => clientIp(c),
         store: new RedisStore({
           sendCommand: (...args: string[]) => redisClient.sendCommand(args),
         }) as any,

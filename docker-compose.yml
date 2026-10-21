@@ -2,10 +2,19 @@ services:
   frontend:
     build:
       context: ./front
+      target: dev
     ports:
       - "3000:3000"
     environment:
+      # ブラウザから back を呼ぶときのURL
       - NEXT_PUBLIC_API_BASE_URL=http://localhost:8080
+      # サーバー側（layout のログイン確認など）から back を呼ぶときのURL。コンテナ内の localhost は frontend 自身なのでサービス名で指定する
+      - API_INTERNAL_BASE_URL=http://backend:8080
+    volumes:
+      - ./front:/app
+      # node_modules と .next はコンテナ側のものを使う（ホストの macOS 用のものと混ざらないように）
+      - /app/node_modules
+      - /app/.next
     depends_on:
       - backend
 

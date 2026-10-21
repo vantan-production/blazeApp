@@ -40,3 +40,14 @@ Thumbs.db
 !.vscode/extensions.json
 *.swp
 *.swo
+# 実メディアテストフィクスチャ（scripts/fetchMediaFixtures.ts で取得）
+back/src/__tests__/fixtures/media/
+
+# CDK の合成結果・コンテキストキャッシュ（cdk synth / cdk deploy が生成する）
+infra/cdk.out/
+infra/cdk.context.json
+
+# Playwright（E2E）の実行結果
+e2e/test-results/
+e2e/playwright-report/
+e2e/blob-report/

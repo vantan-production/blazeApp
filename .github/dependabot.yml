@@ -1,0 +1,131 @@
+# 依存関係の自動更新（Dependabot）
+#
+# GitHubが週1回リポジトリを走査し、更新のある依存についてPRを自動で作成する。
+# このファイルは「デフォルトブランチ（main）にある物」だけが読まれる。
+# featureブランチに置いても起動しないため、有効化するにはmainへマージする必要がある。
+#
+# 意図的に対象外にしているもの:
+# - ルートの package.json ... 実装から参照されていない残骸のため。
+#   （ルートに src が無く、docker-compose.yml は ./front と ./back をビルドしている）
+#   package.json ごと整理したうえで、必要なら追加する。
+# - e2e/ ... mainにまだ存在しないため。マージ後に npm のブロックを追加する。
+#
+# 更新のまとめ方:
+#   minor/patch は1つのPRにまとめ、majorだけ個別のPRにする。
+#   小さな更新でPRが溢れるとレビューされなくなり、結果として放置されるため。
+
+version: 2
+
+updates:
+  # ---------------------------------------------------------------------------
+  # GitHub Actions（.github/workflows/*.yml の uses: を更新する）
+  # ---------------------------------------------------------------------------
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Tokyo"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    # checkout / setup-node など小粒な更新が多いので、majorも含めて1PRにまとめる
+    groups:
+      github-actions:
+        patterns: ["*"]
+
+  # ---------------------------------------------------------------------------
+  # npm: バックエンド（Hono / Drizzle / Redis など）
+  # ---------------------------------------------------------------------------
+  - package-ecosystem: "npm"
+    directory: "/back"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Tokyo"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    groups:
+      back-minor-patch:
+        patterns: ["*"]
+        update-types:
+          - "minor"
+          - "patch"
+
+  # ---------------------------------------------------------------------------
+  # npm: フロントエンド（Next.js / React など）
+  # ---------------------------------------------------------------------------
+  - package-ecosystem: "npm"
+    directory: "/front"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Tokyo"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    groups:
+      front-minor-patch:
+        patterns: ["*"]
+        update-types:
+          - "minor"
+          - "patch"
+
+  # ---------------------------------------------------------------------------
+  # npm: インフラ（AWS CDK）
+  # aws-cdk-lib と aws-cdk はバージョンを揃える必要があるため、majorも含めてまとめる
+  # ---------------------------------------------------------------------------
+  - package-ecosystem: "npm"
+    directory: "/infra"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Tokyo"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    groups:
+      aws-cdk:
+        patterns:
+          - "aws-cdk"
+          - "aws-cdk-lib"
+          - "constructs"
+      infra-minor-patch:
+        patterns: ["*"]
+        update-types:
+          - "minor"
+          - "patch"
+
+  # ---------------------------------------------------------------------------
+  # Docker: ベースイメージ（back/front とも node:20-alpine）
+  # Nodeのmajor更新は影響が大きいので、まとめずに個別PRで届くようにしている
+  # ---------------------------------------------------------------------------
+  - package-ecosystem: "docker"
+    directory: "/back"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Tokyo"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+
+  - package-ecosystem: "docker"
+    directory: "/front"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Tokyo"
+    commit-message:
+      prefix: "chore"
+      include: "scope"

@@ -1,6 +1,7 @@
 import { Hono, z, eq, bcrypt } from "../index.js";
 import { isNull } from "drizzle-orm";
 import { db, admin, passwordBaseSchema, authToken } from "../shared/index.js";
+import { clearedTokenCookie } from "../utils/authCookie.js";
 
 type Variables = {
   user: typeof admin.$inferSelect;
@@ -73,10 +74,7 @@ app.delete("/api/admin/account-delete", authToken, async (c) => {
     .where(eq(admin.id, user.id));
 
   // Cookieも削除
-  c.header(
-    "Set-Cookie",
-    "token=; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=0",
-  );
+  c.header("Set-Cookie", clearedTokenCookie());
 
   return c.json(
     {

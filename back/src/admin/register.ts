@@ -25,6 +25,7 @@ import {
   redisClient,
 } from "../shared/index.js";
 import { clientIp } from "../utils/monitoring.js";
+import { tokenCookie } from "../utils/authCookie.js";
 
 const app = new Hono();
 
@@ -213,10 +214,7 @@ app.post("/api/admin/register", registerLimiter, async (c) => {
     throw e;
   }
 
-  c.header(
-    "Set-Cookie",
-    `token=${rawToken}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=2592000`,
-  );
+  c.header("Set-Cookie", tokenCookie(rawToken));
   // 成功（tokenはHttpOnly Cookieで送信済み。レスポンスボディには含めない）
   return c.json(
     {

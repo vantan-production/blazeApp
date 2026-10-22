@@ -16,6 +16,7 @@ import {
   redisClient,
 } from "../shared/index.js";
 import { clientIp } from "../utils/monitoring.js";
+import { tokenCookie } from "../utils/authCookie.js";
 
 const app = new Hono();
 
@@ -126,10 +127,7 @@ app.post("/api/admin/account-recover", recoverLimiter, async (c) => {
     .set({ deleted_at: null, token: hashedToken, token_issued_at: tokenIssuedAt })
     .where(eq(admin.id, user.id));
 
-  c.header(
-    "Set-Cookie",
-    `token=${rawToken}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=2592000`,
-  );
+  c.header("Set-Cookie", tokenCookie(rawToken));
 
   return c.json(
     {

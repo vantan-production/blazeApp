@@ -6,7 +6,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { path as ffmpegPath } from "@ffmpeg-installer/ffmpeg";
 import ffmpeg from "fluent-ffmpeg";
-import sharp from "sharp";
+import sharp, { type Sharp } from "sharp";
 
 // FFmpegのパスを設定
 ffmpeg.setFfmpegPath(ffmpegPath);
@@ -288,10 +288,7 @@ async function readExifOrientation(buffer: Buffer): Promise<number> {
  * EXIF Orientation を打ち消す回転・反転を適用する。
  * sharp は flip/flop を必ず rotate の後に適用するため、この組み合わせで正しい向きになる。
  */
-function applyExifOrientation(
-	image: sharp.Sharp,
-	orientation: number,
-): sharp.Sharp {
+function applyExifOrientation(image: Sharp, orientation: number): Sharp {
 	switch (orientation) {
 		case 2:
 			return image.flop();
@@ -340,7 +337,7 @@ export function hasHeifTransformProperty(buffer: Buffer): boolean {
 }
 
 /** HEICを生ピクセルに展開して sharp のパイプラインを作る */
-async function heicToSharp(buffer: Buffer): Promise<sharp.Sharp> {
+async function heicToSharp(buffer: Buffer): Promise<Sharp> {
 	const { default: decode } = await import("heic-decode");
 	const { width, height, data } = await decode({ buffer });
 
@@ -360,7 +357,7 @@ async function heicToSharp(buffer: Buffer): Promise<sharp.Sharp> {
 }
 
 /** リサイズしてWebPにエンコードする共通処理 */
-async function toWebp(image: sharp.Sharp): Promise<Buffer> {
+async function toWebp(image: Sharp): Promise<Buffer> {
 	return image
 		.resize({
 			width: 1920,

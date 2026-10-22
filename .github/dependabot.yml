@@ -4,6 +4,11 @@
 # このファイルは「デフォルトブランチ（main）にある物」だけが読まれる。
 # featureブランチに置いても起動しないため、有効化するにはmainへマージする必要がある。
 #
+# PRの向き先:
+#   各 updates に target-branch: "dev" を付け、dev 向けにPRを作らせる。
+#   未指定だとデフォルトブランチ（main）向けになり、dev を経由せずに本番へ入るうえ、
+#   main と dev の履歴がさらに分かれる。
+#
 # 意図的に対象外にしているもの:
 # - ルートの package.json ... 実装から参照されていない残骸のため。
 #   （ルートに src が無く、docker-compose.yml は ./front と ./back をビルドしている）
@@ -22,6 +27,7 @@ updates:
   # ---------------------------------------------------------------------------
   - package-ecosystem: "github-actions"
     directory: "/"
+    target-branch: "dev"
     schedule:
       interval: "weekly"
       day: "monday"
@@ -40,6 +46,7 @@ updates:
   # ---------------------------------------------------------------------------
   - package-ecosystem: "npm"
     directory: "/back"
+    target-branch: "dev"
     schedule:
       interval: "weekly"
       day: "monday"
@@ -61,6 +68,7 @@ updates:
   # ---------------------------------------------------------------------------
   - package-ecosystem: "npm"
     directory: "/front"
+    target-branch: "dev"
     schedule:
       interval: "weekly"
       day: "monday"
@@ -83,6 +91,7 @@ updates:
   # ---------------------------------------------------------------------------
   - package-ecosystem: "npm"
     directory: "/infra"
+    target-branch: "dev"
     schedule:
       interval: "weekly"
       day: "monday"
@@ -110,6 +119,7 @@ updates:
   # ---------------------------------------------------------------------------
   - package-ecosystem: "docker"
     directory: "/back"
+    target-branch: "dev"
     schedule:
       interval: "weekly"
       day: "monday"
@@ -121,6 +131,7 @@ updates:
 
   - package-ecosystem: "docker"
     directory: "/front"
+    target-branch: "dev"
     schedule:
       interval: "weekly"
       day: "monday"

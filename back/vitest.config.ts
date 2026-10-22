@@ -1,4 +1,9 @@
+import { config } from "dotenv";
 import { defineConfig } from "vitest/config";
+
+// ローカル用の .env.test があれば読み込む。CI には無く、環境変数はワークフロー側で渡す。
+// 既に設定されている環境変数は上書きしない
+config({ path: ".env.test", quiet: true });
 
 export default defineConfig({
   test: {

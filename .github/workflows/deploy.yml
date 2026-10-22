@@ -72,11 +72,19 @@ jobs:
       # dev への deploy はコミットごとにURLが変わるため、バックエンドのCORS_ORIGIN等に
       # 固定で指定できるよう常に同じドメインへエイリアスする（main/production側はプロジェクトの
       # 本番ドメインが自動で使われるため不要）
+      # vercel alias set は最初にトークンの持ち主のユーザーを引きに行き、ユーザーに紐づかない
+      # トークンだと「User not found」で失敗するため、チームIDを付けて REST API を直接呼ぶ
       - name: Alias dev deployment to a stable domain
         if: github.ref_name != 'main'
         env:
           DEPLOY_URL: ${{ steps.deploy.outputs.url }}
-        run: vercel alias set "$DEPLOY_URL" nisio-blaze-dev.vercel.app --token=${{ secrets.VERCEL_TOKEN }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          curl --fail-with-body -sS -X POST \
+            "https://api.vercel.com/v2/deployments/${DEPLOY_URL#https://}/aliases?teamId=${VERCEL_ORG_ID}" \
+            -H "Authorization: Bearer ${VERCEL_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d '{"alias":"nisio-blaze-dev.vercel.app"}'
 
   # 3. バックエンド（Hono）を ECS Fargate にデプロイ（infra/lib/backend-stack.ts 参照）
   #    デプロイ前に Secrets Manager に `blazeapp/backend-prod` / `blazeapp/backend-dev` シークレットを作成しておくこと

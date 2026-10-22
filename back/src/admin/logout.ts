@@ -1,5 +1,6 @@
 import { Hono, eq } from "../index.js";
 import { db, admin, authToken } from "../shared/index.js";
+import { clearedTokenCookie } from "../utils/authCookie.js";
 
 // c.get("user") で使う型を宣言
 type Variables = {
@@ -16,10 +17,7 @@ app.post("/api/admin/logout", authToken, async (c) => {
   await db.update(admin).set({ token: null }).where(eq(admin.id, user.id));
 
   // CookieのTokenも削除
-  c.header(
-    "Set-Cookie",
-    "token=; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=0",
-  );
+  c.header("Set-Cookie", clearedTokenCookie());
 
   // 成功
   return c.json(

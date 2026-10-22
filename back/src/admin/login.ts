@@ -16,6 +16,7 @@ import {
   redisClient,
 } from "../shared/index.js";
 import { clientIp, setSecurityActor } from "../utils/monitoring.js";
+import { tokenCookie } from "../utils/authCookie.js";
 
 // タイミング攻撃対策用のダミーハッシュ（ユーザーが存在しない場合に使用）
 // bcrypt.compareが必ず失敗する正規の60文字ハッシュ。形式が不正だとエラーになるため実在するハッシュを使用
@@ -135,15 +136,7 @@ app.post("/api/admin/login", loginLimiter, async (c) => {
     .set({ token: hashedToken, token_issued_at: tokenIssuedAt })
     .where(eq(admin.id, user.id));
 
-  c.header(
-    "Set-Cookie",
-    // token=${rawToken}はCookieの名前と値
-    //  HttpOnlyはXSS攻撃対策
-    //  Secureはhttpsのみ送信可能httpは不可
-    // SameSite=StrictはCSRF攻撃対策
-    // Path=/はサイト全体でCookieの使用が可能
-    // Max-Age=2592000は1ヶ月
-    `token=${rawToken}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=2592000`);
+  c.header("Set-Cookie", tokenCookie(rawToken));
   // 成功（tokenはHttpOnly Cookieで送信済み。レスポンスボディには含めない）
   return c.json(
     {

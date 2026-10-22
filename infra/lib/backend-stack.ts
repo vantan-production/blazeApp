@@ -42,6 +42,7 @@ export interface BackendStackProps extends cdk.StackProps {
  *
  * 段階的に有効にする設定（-c で渡したときだけ効く。未指定なら従来どおりの構成のまま）:
  * - certificateArn / apiDomainName: ALB を HTTPS にし、80番は443へリダイレクトする
+ * - cookieDomain: ログイン Cookie に Domain を付け、front（www.example.com）からも読めるようにする
  * - storageBucket: S3 をアクセスキーではなく ECS タスクロールで使う
  * - backupBucket: pg_dump の毎時バックアップ（復元検証つき）を動かす
  * - manageDatabase: この VPC 内に非公開の RDS を stage ごとに作る（prod/dev の分離）
@@ -117,6 +118,11 @@ export class BackendStack extends cdk.Stack {
     const corsOrigin = requireContext("corsOrigin");
     const frontendUrl = requireContext("frontendUrl");
     const mailFrom = requireContext("mailFrom");
+
+    // ログイン Cookie の Domain（例: nishio-blaze.com）。front と API が別ホストのとき必要
+    // （未指定だと Cookie が API ホスト専用になり、front のサーバー側でログイン状態を確認できない）
+    const cookieDomain =
+      (this.node.tryGetContext("cookieDomain") as string | undefined) ?? "";
 
     // 体験申し込みの管理者通知メールの宛先（カンマ区切りで複数可）。
     // 未指定でもデプロイは通すが、その場合は通知メールが送られないので警告を出す。
@@ -250,6 +256,7 @@ export class BackendStack extends cdk.Stack {
             AWS_REGION: this.region,
             CORS_ORIGIN: corsOrigin,
             FRONTEND_URL: frontendUrl,
+            ...(cookieDomain ? { COOKIE_DOMAIN: cookieDomain } : {}),
             MAIL_FROM: mailFrom,
             TRIAL_NOTIFICATION_EMAIL: trialNotificationEmail,
             ...(storageBucketName ? { AWS_S3_BUCKET: storageBucketName } : {}),

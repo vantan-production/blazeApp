@@ -50,11 +50,16 @@ export function SortableHeading({
 			{/* 中央寄せでは見出しの左右の幅を揃えるため、ボタンと同じ大きさの空きを置く */}
 			{centered && <span aria-hidden className="size-9 shrink-0" />}
 			{title ? (
+				// ページタイトル（PageTitle）と同じく、左に赤い短い線を添えた太字にする
 				<Heading
-					className={`min-w-0 text-[22px] leading-[22px] tracking-[1.5px] text-brand-white ${
-						centered ? "flex-1 text-center" : ""
+					className={`flex min-w-0 items-center gap-3 text-[20px] font-bold tracking-[2px] text-brand-white ${
+						centered ? "flex-1 justify-center" : ""
 					}`}
 				>
+					<span
+						aria-hidden="true"
+						className="h-[3px] w-6 shrink-0 bg-brand-red"
+					/>
 					{title}
 				</Heading>
 			) : (

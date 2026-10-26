@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { PageShell } from "@/components/layout/PageShell";
 import { TrialForm } from "@/components/trial/TrialForm";
 import { ContentPanel } from "@/components/ui/ContentPanel";
-import { PillHeading } from "@/components/ui/PillHeading";
+import { PageTitle } from "@/components/ui/PageTitle";
 
 export const metadata: Metadata = {
 	title: "ドッジボール体験 | 西尾ブレイズ",
@@ -14,20 +14,22 @@ export default async function TrialPage({ searchParams }: PageProps<"/trial">) {
 	const { date } = await searchParams;
 	return (
 		<PageShell>
-			<main className="flex flex-col items-center gap-8 px-6 pt-6 pb-10">
-				<PillHeading as="h1">ドッジボール体験</PillHeading>
-				<ContentPanel title="体験について" titleAs="h2" align="center">
-					<p>
-						小学1〜6年生のお子さまを対象に、無料で練習に参加できます。
-						<br />
-						動きやすい服装・水筒・上履きをご用意ください。
-					</p>
-				</ContentPanel>
-				<ContentPanel title="お申し込み" titleAs="h2">
-					<TrialForm
-						initialTrialDate={typeof date === "string" ? date : undefined}
-					/>
-				</ContentPanel>
+			<main className="flex flex-col items-center gap-6 pb-10">
+				<PageTitle>ドッジボール体験</PageTitle>
+				<div className="flex w-full flex-col items-center gap-8 px-6">
+					<ContentPanel title="体験について" titleAs="h2" align="center">
+						<p>
+							小学1〜6年生のお子さまを対象に、無料で練習に参加できます。
+							<br />
+							動きやすい服装・水筒・上履きをご用意ください。
+						</p>
+					</ContentPanel>
+					<ContentPanel title="お申し込み" titleAs="h2">
+						<TrialForm
+							initialTrialDate={typeof date === "string" ? date : undefined}
+						/>
+					</ContentPanel>
+				</div>
 			</main>
 		</PageShell>
 	);

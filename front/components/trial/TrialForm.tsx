@@ -3,6 +3,13 @@
 import { useState, useSyncExternalStore } from "react";
 import { z } from "zod";
 import { upcomingPracticeDates } from "@/components/features/activities/practiceDates";
+import { primaryButtonClass } from "@/components/ui/buttonStyles";
+import {
+	FormField,
+	fieldClass,
+	PRIVACY_CONSENT_ERROR,
+	PrivacyConsent,
+} from "@/components/ui/form";
 import { postForm, toErrorMessage } from "@/lib/postForm";
 import {
 	birthDateSchema,
@@ -48,11 +55,9 @@ const trialFormSchema = z
 	});
 
 type TrialFormValues = z.infer<typeof trialFormSchema>;
-type FieldErrors = Partial<Record<keyof TrialFormValues, string>>;
+// 同意チェックは back に送らないため、スキーマの外でエラーを持つ
+type FieldErrors = Partial<Record<keyof TrialFormValues | "privacy", string>>;
 type Status = "idle" | "sending" | "done" | "error";
-
-const inputClass =
-	"w-full rounded-[8px] border border-brand-blue/30 bg-white px-3 py-2 text-[16px] text-brand-black";
 
 /**
  * 日付が変わったら React に知らせる。フォームを開いたまま日をまたいでも、
@@ -106,6 +111,7 @@ export function TrialForm({ initialTrialDate }: Props) {
 	const [submitError, setSubmitError] = useState<string | null>(null);
 	// 「その他」「紹介」を選んだときだけ追加の入力欄を出すため、きっかけだけ state で持つ
 	const [motivation, setMotivation] = useState("");
+	const [privacyAgreed, setPrivacyAgreed] = useState(false);
 	// 体験希望日は練習日からだけ選べるようにする。今日はビルド時と閲覧時でずれるため、クライアントでのみ取得する（サーバーでは null）
 	const todayKey = useSyncExternalStore(
 		subscribeToday,
@@ -125,12 +131,13 @@ export function TrialForm({ initialTrialDate }: Props) {
 		event.preventDefault();
 		const form = new FormData(event.currentTarget);
 		const parsed = trialFormSchema.safeParse(Object.fromEntries(form));
-		if (!parsed.success) {
+		if (!parsed.success || !privacyAgreed) {
 			const fieldErrors: FieldErrors = {};
-			for (const issue of parsed.error.issues) {
+			for (const issue of parsed.error?.issues ?? []) {
 				const key = issue.path[0] as keyof TrialFormValues;
 				fieldErrors[key] ??= issue.message;
 			}
+			if (!privacyAgreed) fieldErrors.privacy = PRIVACY_CONSENT_ERROR;
 			setErrors(fieldErrors);
 			return;
 		}
@@ -170,9 +177,9 @@ export function TrialForm({ initialTrialDate }: Props) {
 
 	return (
 		<form noValidate onSubmit={handleSubmit} className="flex flex-col gap-5">
-			<Field
+			<FormField
 				label="体験希望日"
-				name="trial_date"
+				htmlFor="trial_date"
 				error={errors.trial_date}
 				required
 			>
@@ -181,7 +188,7 @@ export function TrialForm({ initialTrialDate }: Props) {
 					name="trial_date"
 					value={selectedTrialDate}
 					onChange={(event) => setTrialDate(event.target.value)}
-					className={inputClass}
+					className={fieldClass}
 				>
 					<option value="" disabled>
 						練習日から選んでください
@@ -192,24 +199,29 @@ export function TrialForm({ initialTrialDate }: Props) {
 						</option>
 					))}
 				</select>
-			</Field>
-			<Field label="お名前" name="name" error={errors.name} required>
-				<input id="name" name="name" className={inputClass} />
-			</Field>
-			<Field label="フリガナ" name="furigana" error={errors.furigana} required>
+			</FormField>
+			<FormField label="お名前" htmlFor="name" error={errors.name} required>
+				<input id="name" name="name" className={fieldClass} />
+			</FormField>
+			<FormField
+				label="フリガナ"
+				htmlFor="furigana"
+				error={errors.furigana}
+				required
+			>
 				<input
 					id="furigana"
 					name="furigana"
 					placeholder="ニシオ タロウ"
-					className={inputClass}
+					className={fieldClass}
 				/>
-			</Field>
-			<Field label="性別" name="gender" error={errors.gender} required>
+			</FormField>
+			<FormField label="性別" htmlFor="gender" error={errors.gender} required>
 				<select
 					id="gender"
 					name="gender"
 					defaultValue=""
-					className={inputClass}
+					className={fieldClass}
 				>
 					<option value="" disabled>
 						選択してください
@@ -220,10 +232,10 @@ export function TrialForm({ initialTrialDate }: Props) {
 						</option>
 					))}
 				</select>
-			</Field>
-			<Field
+			</FormField>
+			<FormField
 				label="生年月日"
-				name="birth_date"
+				htmlFor="birth_date"
 				error={errors.birth_date}
 				required
 			>
@@ -231,23 +243,23 @@ export function TrialForm({ initialTrialDate }: Props) {
 					id="birth_date"
 					name="birth_date"
 					type="date"
-					className={inputClass}
+					className={fieldClass}
 				/>
-			</Field>
-			<Field
+			</FormField>
+			<FormField
 				label="学校名"
-				name="school_name"
+				htmlFor="school_name"
 				error={errors.school_name}
 				required
 			>
-				<input id="school_name" name="school_name" className={inputClass} />
-			</Field>
-			<Field label="塾" name="cram_school" error={errors.cram_school}>
-				<input id="cram_school" name="cram_school" className={inputClass} />
-			</Field>
-			<Field
+				<input id="school_name" name="school_name" className={fieldClass} />
+			</FormField>
+			<FormField label="塾" htmlFor="cram_school" error={errors.cram_school}>
+				<input id="cram_school" name="cram_school" className={fieldClass} />
+			</FormField>
+			<FormField
 				label="連絡の取れる電話番号"
-				name="phone_number"
+				htmlFor="phone_number"
 				error={errors.phone_number}
 				required
 			>
@@ -257,22 +269,27 @@ export function TrialForm({ initialTrialDate }: Props) {
 					type="tel"
 					autoComplete="tel"
 					placeholder="090-1234-5678"
-					className={inputClass}
+					className={fieldClass}
 				/>
-			</Field>
-			<Field label="メールアドレス" name="email" error={errors.email} required>
+			</FormField>
+			<FormField
+				label="メールアドレス"
+				htmlFor="email"
+				error={errors.email}
+				required
+			>
 				<input
 					id="email"
 					name="email"
 					type="email"
 					autoComplete="email"
 					placeholder="example@example.com"
-					className={inputClass}
+					className={fieldClass}
 				/>
-			</Field>
-			<Field
+			</FormField>
+			<FormField
 				label="体験のきっかけ"
-				name="motivation"
+				htmlFor="motivation"
 				error={errors.motivation}
 				required
 			>
@@ -281,7 +298,7 @@ export function TrialForm({ initialTrialDate }: Props) {
 					name="motivation"
 					value={motivation}
 					onChange={(event) => setMotivation(event.target.value)}
-					className={inputClass}
+					className={fieldClass}
 				>
 					<option value="" disabled>
 						選択してください
@@ -292,34 +309,39 @@ export function TrialForm({ initialTrialDate }: Props) {
 						</option>
 					))}
 				</select>
-			</Field>
+			</FormField>
 			{motivation === "other" && (
-				<Field
+				<FormField
 					label="きっかけ（その他）"
-					name="motivation_other"
+					htmlFor="motivation_other"
 					error={errors.motivation_other}
 					required
 				>
 					<input
 						id="motivation_other"
 						name="motivation_other"
-						className={inputClass}
+						className={fieldClass}
 					/>
-				</Field>
+				</FormField>
 			)}
 			{motivation === "referral" && (
-				<Field
+				<FormField
 					label="紹介者のお名前"
-					name="referrer_name"
+					htmlFor="referrer_name"
 					error={errors.referrer_name}
 				>
 					<input
 						id="referrer_name"
 						name="referrer_name"
-						className={inputClass}
+						className={fieldClass}
 					/>
-				</Field>
+				</FormField>
 			)}
+			<PrivacyConsent
+				checked={privacyAgreed}
+				onChange={setPrivacyAgreed}
+				error={errors.privacy}
+			/>
 			{status === "error" && submitError && (
 				<p role="alert" className="text-[14px] text-brand-red">
 					{submitError}
@@ -328,35 +350,10 @@ export function TrialForm({ initialTrialDate }: Props) {
 			<button
 				type="submit"
 				disabled={status === "sending"}
-				className="mx-auto cursor-pointer rounded-[1000px] bg-brand-yellow px-[52px] py-4 text-[18px] font-medium tracking-[1px] text-brand-blue disabled:opacity-60"
+				className={`mx-auto ${primaryButtonClass}`}
 			>
 				{status === "sending" ? "送信中…" : "申し込む"}
 			</button>
 		</form>
-	);
-}
-
-type FieldProps = {
-	label: string;
-	name: string;
-	error?: string;
-	required?: boolean;
-	children: React.ReactNode;
-};
-
-function Field({ label, name, error, required, children }: FieldProps) {
-	return (
-		<div className="flex flex-col gap-1 text-left">
-			<label htmlFor={name} className="text-[14px] tracking-[1px]">
-				{label}
-				{required && <span className="ml-1 text-brand-red">*</span>}
-			</label>
-			{children}
-			{error && (
-				<p role="alert" className="text-[12px] text-brand-red">
-					{error}
-				</p>
-			)}
-		</div>
 	);
 }

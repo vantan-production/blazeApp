@@ -67,7 +67,7 @@ export function LastResultCard({
 							/>
 							{summary.isSetCount ? (
 								// セット数（例: 2-1）はスコアのように「-」でつなぐ。数字と同じ大きさ・行にそろえる
-								<span className="self-start font-inter text-[clamp(48px,16vw,64px)] leading-none font-black text-brand-blue/50">
+								<span className="self-start text-[clamp(48px,16vw,64px)] leading-none font-black text-brand-blue/50">
 									-
 								</span>
 							) : (
@@ -131,7 +131,7 @@ function TeamScore({
 	return (
 		<div className="flex min-w-0 flex-col items-center gap-2">
 			<span
-				className={`font-inter text-[clamp(48px,16vw,64px)] leading-none font-black tabular-nums ${
+				className={`text-[clamp(48px,16vw,64px)] leading-none font-black tabular-nums ${
 					highlight ? "text-brand-red" : ""
 				}`}
 			>

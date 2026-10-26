@@ -54,7 +54,7 @@ export function PhotoCard({
 						{subtitle}
 					</span>
 				)}
-				<span className="font-mincho text-[clamp(18px,5.5vw,22px)] leading-[26px] tracking-[1.5px]">
+				<span className="text-[clamp(18px,5.5vw,22px)] font-medium leading-[26px] tracking-[1.5px]">
 					{title}
 				</span>
 			</span>

@@ -27,11 +27,10 @@ export function NewsList({ items, pagination, order }: Props) {
 
 	return (
 		<>
-			<div className="px-5 py-5">
+			<div className="px-[clamp(16px,5.97vw,24px)] pt-2 pb-4">
 				<SortableHeading
 					title="お知らせ"
 					titleAs="h1"
-					align="center"
 					order={order}
 					sortHref={sortHref}
 				/>

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { primaryButtonClass } from "@/components/ui/buttonStyles";
 import { routes } from "@/lib/routes";
 
 type Props = {
@@ -45,12 +46,12 @@ export function ErrorView({
 					))}
 				</p>
 			</div>
-			<Link
-				href={routes.top}
-				className="flex h-[50px] w-[160px] items-center justify-center border border-brand-white text-[22px] leading-[22px] tracking-[1px] transition-colors hover:bg-brand-white hover:text-brand-blue"
-			>
-				トップに戻る
-			</Link>
+			{/* ボタンは親の幅いっぱいに広がるため、枠で幅を決める */}
+			<div className="flex w-[240px] justify-center">
+				<Link href={routes.top} className={primaryButtonClass}>
+					トップに戻る
+				</Link>
+			</div>
 		</main>
 	);
 }

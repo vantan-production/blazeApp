@@ -53,7 +53,7 @@ export default async function ResultsPage() {
 							>
 								“
 							</span>
-							<p className="text-center font-mincho text-[clamp(18px,5.5vw,22px)] leading-[1.6] font-bold tracking-[1px] text-balance">
+							<p className="text-center text-[clamp(18px,5.5vw,22px)] leading-[1.6] font-bold tracking-[1px] text-balance">
 								{teamGoal}
 							</p>
 							<span

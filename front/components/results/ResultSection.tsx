@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { SectionHeading } from "@/components/ui/SectionHeading";
 
 type Props = {
 	title: string;
@@ -12,15 +13,7 @@ type Props = {
 export function ResultSection({ title, moreHref, children }: Props) {
 	return (
 		<section className="flex w-full flex-col items-center gap-8 pt-12 pb-6">
-			<div className="flex flex-col items-center gap-2">
-				<h2 className="text-[clamp(20px,6.2vw,24px)] font-bold tracking-[2px] whitespace-nowrap">
-					{title}
-				</h2>
-				<span aria-hidden className="flex gap-1">
-					<span className="h-[3px] w-8 rounded-full bg-brand-yellow" />
-					<span className="h-[3px] w-3 rounded-full bg-brand-red" />
-				</span>
-			</div>
+			<SectionHeading>{title}</SectionHeading>
 			{children}
 			{moreHref && (
 				<div className="flex w-full justify-end">

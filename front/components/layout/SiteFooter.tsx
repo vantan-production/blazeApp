@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { footerNavItems } from "@/lib/routes";
+import { footerNavItems, routes } from "@/lib/routes";
 import { Copyright } from "./Copyright";
 
 /**
@@ -19,7 +19,7 @@ export function SiteFooter() {
 				className="h-auto w-full"
 			/>
 			<nav aria-label="フッターメニュー">
-				<ul className="flex flex-col items-center gap-6 text-center font-mincho text-[16px] leading-[22px] tracking-[1.5px] whitespace-nowrap text-white">
+				<ul className="flex flex-col items-center gap-6 text-center text-[16px] leading-[22px] tracking-[1.5px] whitespace-nowrap text-white">
 					{footerNavItems.map((item) => (
 						<li key={item.label}>
 							<Link href={item.href}>{item.label}</Link>
@@ -27,7 +27,15 @@ export function SiteFooter() {
 					))}
 				</ul>
 			</nav>
-			<Copyright />
+			<div className="flex flex-col items-center gap-3">
+				<Link
+					href={routes.privacy}
+					className="text-[12px] tracking-[1px] text-brand-white underline underline-offset-2"
+				>
+					プライバシーポリシー
+				</Link>
+				<Copyright />
+			</div>
 		</footer>
 	);
 }

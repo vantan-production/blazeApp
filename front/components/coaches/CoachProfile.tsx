@@ -39,7 +39,7 @@ export function CoachProfile({ coach }: Props) {
 				</div>
 				<div className="flex min-w-0 flex-1 flex-col gap-2 self-stretch pt-3 text-white">
 					<div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-						<h2 className="font-savate text-[22px] leading-[22px] tracking-[1.5px] whitespace-nowrap">
+						<h2 className="text-[22px] leading-[22px] font-bold tracking-[1.5px] whitespace-nowrap">
 							{coach.name}
 						</h2>
 						<CoachRoleBadge role={coach.role} />
@@ -51,11 +51,11 @@ export function CoachProfile({ coach }: Props) {
 			</div>
 			<div className="flex w-full flex-col items-center gap-4 rounded-[20px] bg-brand-white">
 				<ContentPanel title="指導方針">
-					<p className="text-center">{coach.policy}</p>
+					<p>{coach.policy}</p>
 				</ContentPanel>
 				<Image src="/icons/divider-line.svg" alt="" width={211} height={1} />
 				<ContentPanel title="趣味、特技">
-					<p className="text-center">{coach.hobby}</p>
+					<p>{coach.hobby}</p>
 				</ContentPanel>
 			</div>
 		</article>

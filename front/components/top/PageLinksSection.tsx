@@ -1,5 +1,5 @@
 import { PhotoCard } from "@/components/ui/PhotoCard";
-import { PillHeading } from "@/components/ui/PillHeading";
+import { SectionHeading } from "@/components/ui/SectionHeading";
 import { routes } from "@/lib/routes";
 
 // TODO: imageSrc 未指定のカードは仮の画像（card-bg.png）。カードごとに別の画像へ差し替える
@@ -47,7 +47,7 @@ const pageLinks: {
 export function PageLinksSection() {
 	return (
 		<section className="flex w-full flex-col items-center gap-8">
-			<PillHeading>西尾ブレイズを知る</PillHeading>
+			<SectionHeading>西尾ブレイズを知る</SectionHeading>
 			<ul className="flex w-full flex-col gap-3">
 				{pageLinks.map((link) => (
 					<li key={link.href}>

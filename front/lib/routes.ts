@@ -17,6 +17,8 @@ export const routes = {
 	contact: "/contact",
 	// Figma注記「体験フォームページが必要」: デザイン未作成のため仮のパス
 	trial: "/trial",
+	// 体験申し込み・お問い合わせフォームの同意チェックとフッターから開く
+	privacy: "/privacy",
 	// ギャラリーページは未作成のため仮のパス（ナビからは外している）
 	gallery: "/gallery",
 } as const;

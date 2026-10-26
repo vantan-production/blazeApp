@@ -119,9 +119,7 @@ export function PracticeDayDialog({ date, events, onClose }: Props) {
 						<dl className="flex w-full flex-col gap-5">
 							<div className="flex flex-col items-center gap-2">
 								<dt>
-									<PillHeading variant="label" as="h3">
-										練習時間
-									</PillHeading>
+									<PillHeading as="h3">練習時間</PillHeading>
 								</dt>
 								<dd className="text-[20px] font-medium tracking-[1px]">
 									{slot?.time ?? "練習はありません"}
@@ -129,9 +127,7 @@ export function PracticeDayDialog({ date, events, onClose }: Props) {
 							</div>
 							<div className="flex flex-col items-center gap-2">
 								<dt>
-									<PillHeading variant="label" as="h3">
-										練習場所
-									</PillHeading>
+									<PillHeading as="h3">練習場所</PillHeading>
 								</dt>
 								<dd className="flex flex-col items-center gap-3">
 									{activityPlaces.map((place) => {

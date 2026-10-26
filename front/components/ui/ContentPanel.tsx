@@ -24,11 +24,7 @@ export function ContentPanel({
 			id={id}
 			className="flex w-full scroll-mt-[96px] flex-col items-center gap-8 rounded-[20px] bg-brand-white p-5 text-brand-blue"
 		>
-			{title && (
-				<PillHeading variant="label" as={titleAs}>
-					{title}
-				</PillHeading>
-			)}
+			{title && <PillHeading as={titleAs}>{title}</PillHeading>}
 			<div
 				className={`w-full text-[16px] leading-[22px] tracking-[1.5px] ${
 					align === "center" ? "text-center" : ""

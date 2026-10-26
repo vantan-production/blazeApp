@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import { AboutPageTitle } from "@/components/about/AboutPageTitle";
 import { AboutTabs } from "@/components/about/AboutTabs";
 import { type Coach, CoachProfile } from "@/components/coaches/CoachProfile";
 import { PageShell } from "@/components/layout/PageShell";
+import { PageTitle } from "@/components/ui/PageTitle";
 
 export const metadata: Metadata = {
 	title: "コーチ紹介 | 西尾ブレイズ",
@@ -37,7 +37,7 @@ export default function CoachesPage() {
 		<PageShell>
 			<main className="flex flex-col items-center gap-8 pb-[111px]">
 				<AboutTabs current="coaches" />
-				<AboutPageTitle>コーチ紹介</AboutPageTitle>
+				<PageTitle>コーチ紹介</PageTitle>
 				{/* 402px幅で左右27px（列幅348px）。狭い画面では余白も少し縮める */}
 				<div className="flex w-full max-w-[402px] flex-col gap-16 px-[clamp(16px,6.7vw,27px)]">
 					{coaches.map((coach) => (

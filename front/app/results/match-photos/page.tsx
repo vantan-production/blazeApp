@@ -42,7 +42,7 @@ export default async function MatchPhotosPage({ searchParams }: Props) {
 					<li key={post.id} className="flex flex-col gap-3">
 						<time
 							dateTime={post.dateTime}
-							className="font-inter text-[14px] font-bold tracking-[1px] text-brand-yellow"
+							className="text-[14px] tabular-nums font-bold tracking-[1px] text-brand-yellow"
 						>
 							{post.date}
 						</time>

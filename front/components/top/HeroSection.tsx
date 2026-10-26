@@ -22,20 +22,16 @@ export function HeroSection() {
 			className="@container relative flex w-full justify-center overflow-hidden"
 		>
 			<div className="grid shrink-0 place-items-start">
-				{/* 選手写真（players_img05）。元画像が横向きのため回転＋反転して縦長に見せる */}
-				<div className="col-start-1 row-start-1 flex h-[156.48cqw] w-[119.45cqw] items-center justify-center">
-					<div className="flex-none -rotate-90 -scale-y-100">
-						<div className="relative h-[119.45cqw] w-[156.48cqw]">
-							<Image
-								src="/images/top-hero.jpg"
-								alt="ジャンプボールをする選手たち"
-								fill
-								sizes="160vw"
-								preload
-								className="object-cover"
-							/>
-						</div>
-					</div>
+				{/* 選手写真（円陣を組む選手たち）。横長の写真を縦長の枠に合わせて中央を切り抜く */}
+				<div className="relative col-start-1 row-start-1 h-[156.48cqw] w-[119.45cqw]">
+					<Image
+						src="/images/blaze-circle.JPG"
+						alt="円陣を組む選手たち"
+						fill
+						sizes="120vw"
+						preload
+						className="object-cover"
+					/>
 				</div>
 				{/* 体育館の写真（Vector 2）。上辺が斜めに切り抜かれた画像を左右反転して重ねる */}
 				<div className="relative col-start-1 row-start-1 mt-[100.26cqw] ml-[0.59cqw] h-[117.1cqw] w-[119.05cqw] -scale-x-100">

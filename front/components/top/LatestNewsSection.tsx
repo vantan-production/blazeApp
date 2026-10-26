@@ -1,4 +1,5 @@
 import { NewsListItem } from "@/components/ui/NewsListItem";
+import { SectionHeading } from "@/components/ui/SectionHeading";
 import { API_BASE_URL } from "@/lib/apiClient";
 import { newsDetailPath } from "@/lib/news";
 
@@ -48,10 +49,8 @@ export async function LatestNewsSection() {
 	const items = await fetchLatestNews();
 
 	return (
-		<section className="flex w-full flex-col gap-4">
-			<h2 className="px-[10px] pt-[10px] pb-5 text-center text-[22px] leading-[22px] tracking-[1.5px] text-brand-white">
-				お知らせ
-			</h2>
+		<section className="flex w-full flex-col gap-8">
+			<SectionHeading>お知らせ</SectionHeading>
 			{items.length === 0 ? (
 				<p className="text-center text-[14px] text-brand-white">
 					お知らせはまだありません

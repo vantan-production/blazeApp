@@ -46,7 +46,7 @@ export function MediaList({ items }: Props) {
 						<div className="flex flex-col gap-2 border-t-4 border-brand-yellow px-4 pt-3 pb-4">
 							<time
 								dateTime={item.dateTime}
-								className="font-inter text-[13px] font-bold tracking-[1px] text-brand-red"
+								className="text-[13px] tabular-nums font-bold tracking-[1px] text-brand-red"
 							>
 								{item.date}
 							</time>

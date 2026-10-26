@@ -66,7 +66,7 @@ export function SnsShare() {
 
 	return (
 		<div className="flex w-[142px] flex-col items-center gap-2">
-			<p className="w-full text-center font-inter text-[12px] text-white">
+			<p className="w-full text-center font-savate text-[12px] tracking-[2px] text-white">
 				SHARE
 			</p>
 			<ul className="flex w-full items-center justify-center gap-5">

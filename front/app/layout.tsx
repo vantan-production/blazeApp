@@ -1,14 +1,9 @@
 import type { Metadata } from "next";
-import {
-	Inter,
-	M_PLUS_Rounded_1c,
-	Noto_Sans_JP,
-	Savate,
-	Sawarabi_Mincho,
-} from "next/font/google";
+import { Noto_Sans_JP, Savate } from "next/font/google";
 import { PcFrame } from "@/components/layout/PcFrame";
 import "./globals.css";
 
+// 文字は Noto Sans JP にそろえる。Savate は英字の飾りラベル（TEAM・WIN など）だけに使う
 const notoSansJp = Noto_Sans_JP({
 	variable: "--font-next-noto-sans-jp",
 	subsets: ["latin"],
@@ -17,23 +12,6 @@ const notoSansJp = Noto_Sans_JP({
 
 const savate = Savate({
 	variable: "--font-next-savate",
-	subsets: ["latin"],
-});
-
-const sawarabiMincho = Sawarabi_Mincho({
-	variable: "--font-next-sawarabi-mincho",
-	subsets: ["latin"],
-	weight: "400",
-});
-
-const mplusRounded = M_PLUS_Rounded_1c({
-	variable: "--font-next-mplus-rounded",
-	subsets: ["latin"],
-	weight: ["700"],
-});
-
-const inter = Inter({
-	variable: "--font-next-inter",
 	subsets: ["latin"],
 });
 
@@ -51,7 +29,7 @@ export default function RootLayout({
 	return (
 		<html
 			lang="ja"
-			className={`${notoSansJp.variable} ${savate.variable} ${sawarabiMincho.variable} ${mplusRounded.variable} ${inter.variable} h-full antialiased`}
+			className={`${notoSansJp.variable} ${savate.variable} h-full antialiased`}
 		>
 			<body className="min-h-full flex flex-col font-sans">
 				<PcFrame />

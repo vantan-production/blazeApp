@@ -11,7 +11,9 @@ import { InquiryForm } from "@/components/features/activities/InquiryForm";
 import { PageTabs } from "@/components/features/activities/PageTabs";
 import { ScheduleCalendar } from "@/components/features/activities/ScheduleCalendar";
 import { PageShell } from "@/components/layout/PageShell";
-import { PillHeading } from "@/components/ui/PillHeading";
+import { ContentPanel } from "@/components/ui/ContentPanel";
+import { PageTitle } from "@/components/ui/PageTitle";
+import { SectionHeading } from "@/components/ui/SectionHeading";
 import { fetchScheduleEvents } from "@/lib/schedule";
 
 export const metadata: Metadata = {
@@ -20,7 +22,7 @@ export const metadata: Metadata = {
 
 /**
  * 活動内容・スケジュールページ（Figma: 活動内容 978:282）。
- * トップページと同じ黄色のピル見出し・白パネル・お知らせ行のデザインで組んでいる。
+ * 見出しは他ページと同じく、ページタイトル（h1）→ 大見出し（h2）→ 白パネルの黄色ラベル（h3）の3段で組む。
  */
 export default async function ActivitiesPage() {
 	const events = await fetchScheduleEvents();
@@ -44,18 +46,20 @@ export default async function ActivitiesPage() {
 
 				<section
 					id="activities"
-					className="flex w-full scroll-mt-[96px] flex-col items-center gap-8 px-6"
+					className="flex w-full scroll-mt-[96px] flex-col gap-6"
 				>
-					<PillHeading as="h1">活動内容</PillHeading>
-					<ActivityOverview
-						grade={activityGrade}
-						slots={activitySlots}
-						places={activityPlaces}
-					/>
+					<PageTitle>活動内容</PageTitle>
+					<div className="flex w-full flex-col items-center px-6">
+						<ActivityOverview
+							grade={activityGrade}
+							slots={activitySlots}
+							places={activityPlaces}
+						/>
+					</div>
 				</section>
 
 				<section className="flex w-full flex-col items-center gap-8 px-6">
-					<PillHeading>スケジュール</PillHeading>
+					<SectionHeading>スケジュール</SectionHeading>
 					<ScheduleCalendar events={events} />
 				</section>
 
@@ -65,10 +69,12 @@ export default async function ActivitiesPage() {
 
 				<section
 					id="inquiry"
-					className="flex w-full scroll-mt-[96px] flex-col items-center gap-8"
+					className="flex w-full scroll-mt-[96px] flex-col items-center gap-8 px-6"
 				>
-					<PillHeading>お問い合わせ</PillHeading>
-					<InquiryForm />
+					<SectionHeading>お問い合わせ</SectionHeading>
+					<ContentPanel>
+						<InquiryForm />
+					</ContentPanel>
 				</section>
 			</main>
 		</PageShell>

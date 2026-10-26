@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import Image from "next/image";
-import { AboutPageTitle } from "@/components/about/AboutPageTitle";
 import { AboutTabs } from "@/components/about/AboutTabs";
 import { PageShell } from "@/components/layout/PageShell";
 import { ContentPanel } from "@/components/ui/ContentPanel";
+import { PageTitle } from "@/components/ui/PageTitle";
 
 export const metadata: Metadata = {
 	title: "チーム紹介 | 西尾ブレイズ",
@@ -37,7 +37,7 @@ export default function TeamPage() {
 		<PageShell>
 			<main className="flex flex-col items-center gap-6 pb-[111px]">
 				<AboutTabs current="team" />
-				<AboutPageTitle>チーム紹介</AboutPageTitle>
+				<PageTitle>チーム紹介</PageTitle>
 				{/* 402px幅で左右27px（パネル幅348px）。狭い画面では余白も少し縮める */}
 				<div className="flex w-full max-w-[402px] flex-col items-center gap-10 px-[clamp(16px,6.7vw,27px)]">
 					{upperSections.map((section) => (
@@ -65,7 +65,7 @@ export default function TeamPage() {
 function TeamSectionPanel({ section }: { section: TeamSection }) {
 	return (
 		<ContentPanel title={section.title}>
-			<p className="text-center">{section.body}</p>
+			<p>{section.body}</p>
 		</ContentPanel>
 	);
 }

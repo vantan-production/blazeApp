@@ -29,7 +29,7 @@ export function PcFrame() {
 			{/* ぼかしで端が透けないよう、ぼかし幅分だけ外側に広げる */}
 			<div className="absolute -inset-2 blur-[4px]">
 				<Image
-					src="/images/pc-background.jpg"
+					src="/images/group-photo.JPG"
 					alt=""
 					fill
 					sizes="100vw"

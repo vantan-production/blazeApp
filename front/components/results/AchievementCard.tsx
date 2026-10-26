@@ -48,7 +48,7 @@ export function AchievementCard({
 				{date && (
 					<time
 						dateTime={dateTime}
-						className="font-inter text-[13px] font-bold tracking-[1px] text-brand-red"
+						className="text-[13px] tabular-nums font-bold tracking-[1px] text-brand-red"
 					>
 						{date}
 					</time>

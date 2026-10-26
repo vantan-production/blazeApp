@@ -20,10 +20,6 @@
 	--font-sans: var(--font-next-noto-sans-jp), sans-serif;
 	--font-savate:
 		var(--font-next-savate), var(--font-next-noto-sans-jp), sans-serif;
-	--font-mincho: var(--font-next-sawarabi-mincho), serif;
-	--font-rounded:
-		var(--font-next-mplus-rounded), var(--font-next-noto-sans-jp), sans-serif;
-	--font-inter: var(--font-next-inter), sans-serif;
 }
 
 body {

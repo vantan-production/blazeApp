@@ -41,6 +41,10 @@ type TextareaProps = CommonProps &
 
 type Props = InputProps | TextareaProps;
 
+// iOS Safari は日付入力を中身の幅で描き w-full が効かないため、ネイティブの見た目を外して左寄せにする
+const dateInputClass =
+	"block min-w-0 appearance-none [&::-webkit-date-and-time-value]:text-left";
+
 const inputBaseClass =
 	"w-full rounded-[10px] border-[0.3px] border-black text-[12px] leading-[22px] font-medium text-brand-black outline-none placeholder:text-[rgba(80,80,80,0.4)] focus:border-brand-blue focus:ring-1 focus:ring-brand-blue";
 
@@ -84,7 +88,7 @@ export function AdminTextField(props: Props) {
 				aria-invalid={error ? true : undefined}
 				aria-describedby={describedBy}
 				aria-label={ariaLabel}
-				className={`${inputBaseClass} ${boxClass[tone]} h-10 ${isPassword ? "pr-11" : ""}`}
+				className={`${inputBaseClass} ${boxClass[tone]} h-10 ${isPassword ? "pr-11" : ""} ${type === "date" ? dateInputClass : ""}`}
 				{...inputProps}
 			/>
 		);
